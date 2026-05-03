@@ -38,11 +38,52 @@ const nextConfig = {
     const beforeFiles = [];
     const apiHost = process.env.NEXT_PUBLIC_API_BASE_HOST;
     if (apiHost) {
-      beforeFiles.push({
-        source: "/:path*",
-        destination: "/api/:path*",
-        has: [{ type: "host", value: apiHost }],
-      });
+      beforeFiles.push(
+        // The only allowed surface on the api subdomain is the public v1 API.
+        {
+          source: "/v1/:path*",
+          destination: "/api/v1/:path*",
+          has: [{ type: "host", value: apiHost }],
+        },
+        // Block direct hits to the internal /api/*, /oauth/*, and
+        // /.well-known/* routes on the api host. These paths bypass
+        // middleware (excluded in the matcher) so we rewrite them to /404
+        // here. Order matters — the /v1 rule above wins for /v1/* requests.
+        {
+          source: "/api/:path*",
+          destination: "/404",
+          has: [{ type: "host", value: apiHost }],
+        },
+        {
+          source: "/oauth/:path*",
+          destination: "/404",
+          has: [{ type: "host", value: apiHost }],
+        },
+        {
+          source: "/.well-known/:path*",
+          destination: "/404",
+          has: [{ type: "host", value: apiHost }],
+        },
+        // Public static files served from /public also bypass middleware
+        // (excluded in the matcher). Block them on the api host so the
+        // surface is genuinely just /v1/* — no marketing-site favicon /
+        // sitemap leaking through.
+        {
+          source: "/favicon.ico",
+          destination: "/404",
+          has: [{ type: "host", value: apiHost }],
+        },
+        {
+          source: "/sitemap.xml",
+          destination: "/404",
+          has: [{ type: "host", value: apiHost }],
+        },
+        {
+          source: "/robots.txt",
+          destination: "/404",
+          has: [{ type: "host", value: apiHost }],
+        },
+      );
     }
     // mcp.papermark.com — Linear-style short MCP entry point. Clients paste
     // `https://mcp.papermark.com/mcp` in their configs; this host rewrites
