@@ -45,15 +45,17 @@ const nextConfig = {
           destination: "/api/v1/:path*",
           has: [{ type: "host", value: apiHost }],
         },
-        // Block direct hits to the internal /api/*, /oauth/*, and
-        // /.well-known/* routes on the api host. These paths bypass
-        // middleware (excluded in the matcher) so we rewrite them to /404
-        // here. Order matters — the /v1 rule above wins for /v1/* requests.
-        {
-          source: "/api/:path*",
-          destination: "/404",
-          has: [{ type: "host", value: apiHost }],
-        },
+        // Block direct hits to /oauth/* and /.well-known/* on the api host.
+        // These paths bypass middleware (excluded in the matcher) so we
+        // rewrite them to /404 here.
+        //
+        // Note: we deliberately do NOT block /api/* on the api host. Vercel
+        // re-evaluates beforeFiles rules against the rewritten path, so a
+        // generic /api/:path* → /404 rule cascades and catches /api/v1/*
+        // (the target of the /v1 rewrite above), breaking the v1 surface
+        // we're trying to expose. The internal /api/* routes are already
+        // auth-gated by NextAuth or bearer-token middleware, so reachability
+        // on api.papermark.com adds no net exposure beyond app.papermark.com.
         {
           source: "/oauth/:path*",
           destination: "/404",
