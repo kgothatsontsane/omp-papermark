@@ -92,6 +92,7 @@ export default async function handler(
     return res.status(200).json({
       id: job.id,
       status: job.status,
+      phase: job.phase,
       progress: job.progress,
       totalFiles: job.totalFiles,
       processedFiles: job.processedFiles,
@@ -110,7 +111,6 @@ export default async function handler(
     console.error("Error fetching download:", error);
     return res.status(500).json({
       error: "Failed to fetch download",
-      details: (error as Error).message,
     });
   }
 }

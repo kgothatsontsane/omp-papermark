@@ -31,6 +31,7 @@ import { Progress } from "@/components/ui/progress";
 export interface DownloadJobStatus {
   id: string;
   status: "PENDING" | "PROCESSING" | "COMPLETED" | "FAILED";
+  phase?: "VALIDATING" | "BUILDING" | "ZIPPING";
   progress: number;
   totalFiles: number;
   processedFiles: number;
@@ -41,6 +42,32 @@ export interface DownloadJobStatus {
   createdAt: string;
   completedAt?: string;
   expiresAt?: string;
+}
+
+function getProgressMessage(status: DownloadJobStatus | null): string {
+  if (!status) return "Starting download...";
+  if (status.status === "PENDING") {
+    switch (status.phase) {
+      case "VALIDATING":
+        return "Verifying access...";
+      case "BUILDING":
+        return "Building file list...";
+      default:
+        return "Preparing your download...";
+    }
+  }
+  if (status.status === "PROCESSING") {
+    if (status.totalFiles > 0) {
+      return `Processing ${status.processedFiles} of ${status.totalFiles} files...`;
+    }
+    return "Creating ZIP archive...";
+  }
+  if (status.status === "COMPLETED") {
+    return status.downloadUrls && status.downloadUrls.length > 1
+      ? `Your download is ready! ${status.downloadUrls.length} ZIP files have been created.`
+      : "Your download is ready!";
+  }
+  return status.error || "Download failed. Please try again.";
 }
 
 interface DownloadProgressModalProps {
@@ -383,17 +410,7 @@ export function DownloadProgressModal({
                   : "text-muted-foreground",
               )}
             >
-              {!status
-                ? "Starting download..."
-                : status.status === "PENDING"
-                  ? "Preparing your download..."
-                  : status.status === "PROCESSING"
-                    ? `Processing ${status.processedFiles} of ${status.totalFiles} files...`
-                    : status.status === "COMPLETED"
-                      ? status.downloadUrls && status.downloadUrls.length > 1
-                        ? `Your download is ready! ${status.downloadUrls.length} ZIP files have been created.`
-                        : "Your download is ready!"
-                      : status.error || "Download failed. Please try again."}
+              {getProgressMessage(status)}
             </p>
 
             {/* Progress Bar */}

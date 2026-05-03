@@ -17,6 +17,7 @@ import { DownloadOtpVerification } from "@/components/view/dataroom/download-otp
 type Job = {
   id: string;
   status: string;
+  phase?: "VALIDATING" | "BUILDING" | "ZIPPING";
   progress: number;
   totalFiles: number;
   processedFiles: number;
@@ -28,6 +29,26 @@ type Job = {
   createdAt: string;
   expiresAt?: string;
 };
+
+function getJobStatusLabel(job: Job): string {
+  if (job.status === "COMPLETED") return "Ready";
+  if (job.status === "FAILED") return job.error || "Failed";
+  if (job.status === "PROCESSING") {
+    if (job.totalFiles > 0) {
+      return `${job.processedFiles} / ${job.totalFiles} files`;
+    }
+    return "Creating ZIP...";
+  }
+  // PENDING — break out the sub-phase so users see meaningful progress.
+  switch (job.phase) {
+    case "VALIDATING":
+      return "Verifying access...";
+    case "BUILDING":
+      return "Building file list...";
+    default:
+      return "Preparing...";
+  }
+}
 
 const POLL_INTERVAL_MS = 5_000;
 
@@ -346,11 +367,7 @@ export function DownloadsPanel({ linkId }: { linkId: string }) {
                   <FileArchive className="h-4 w-4 shrink-0 text-muted-foreground" />
                 )}
                 <span className="text-muted-foreground">
-                  {job.status === "COMPLETED"
-                    ? "Ready"
-                    : job.status === "PROCESSING"
-                      ? `${job.processedFiles} / ${job.totalFiles} files`
-                      : job.status}
+                  {getJobStatusLabel(job)}
                 </span>
               </div>
               {job.status === "COMPLETED" &&
