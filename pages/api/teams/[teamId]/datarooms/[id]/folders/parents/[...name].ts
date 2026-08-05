@@ -69,7 +69,6 @@ export default async function handle(
             id: true,
             parentId: true,
             name: true,
-            hierarchicalIndex: true,
           },
         });
 
@@ -77,11 +76,7 @@ export default async function handle(
           return res.status(404).end("Parent Folder not found");
         }
 
-        folderNames.push({
-          name: folder.name,
-          path: path,
-          hierarchicalIndex: folder.hierarchicalIndex,
-        });
+        folderNames.push({ name: folder.name, path: path });
       }
 
       return res.status(200).json(folderNames);

@@ -3,7 +3,6 @@ import { NextApiRequest, NextApiResponse } from "next";
 import { authOptions } from "@/pages/api/auth/[...nextauth]";
 import { getServerSession } from "next-auth/next";
 
-import { enforceDataroomMemberScope } from "@/lib/api/rbac/guard";
 import prisma from "@/lib/prisma";
 import { CustomUser } from "@/lib/types";
 
@@ -15,7 +14,8 @@ export default async function handle(
     // PATCH /api/teams/:teamId/datarooms/:id/documents/:documentId
     const session = await getServerSession(req, res, authOptions);
     if (!session) {
-      return res.status(401).json({ message: "Unauthorized" });
+      res.status(401).end("Unauthorized");
+      return;
     }
     const userId = (session.user as CustomUser).id;
     const {
@@ -27,13 +27,6 @@ export default async function handle(
       folderId: string;
       currentPathName: string;
     };
-
-    // Scoped members may only manage documents within their assigned rooms.
-    if (
-      await enforceDataroomMemberScope({ userId, teamId, dataroomId, res })
-    ) {
-      return;
-    }
 
     try {
       // Check if the user is part of the team
@@ -49,7 +42,7 @@ export default async function handle(
       });
 
       if (!team) {
-        return res.status(401).json({ message: "Unauthorized" });
+        return res.status(401).end("Unauthorized");
       }
 
       const document = await prisma.dataroomDocument.update({
@@ -70,7 +63,7 @@ export default async function handle(
       });
 
       if (!document) {
-        return res.status(404).json({ message: "Document not found" });
+        return res.status(404).end("Document not found");
       }
 
       return res.status(200).json({
@@ -83,7 +76,8 @@ export default async function handle(
     /// DELETE /api/teams/:teamId/datarooms/:id/documents/:documentId
     const session = await getServerSession(req, res, authOptions);
     if (!session) {
-      return res.status(401).json({ message: "Unauthorized" });
+      res.status(401).end("Unauthorized");
+      return;
     }
 
     const userId = (session.user as CustomUser).id;
@@ -93,38 +87,31 @@ export default async function handle(
       documentId,
     } = req.query as { teamId: string; id: string; documentId: string };
 
-    // Scoped members may only manage documents within their assigned rooms.
-    if (
-      await enforceDataroomMemberScope({ userId, teamId, dataroomId, res })
-    ) {
-      return;
-    }
-
     try {
-      const teamAccess = await prisma.userTeam.findUnique({
+      const team = await prisma.team.findUnique({
         where: {
-          userId_teamId: {
-            userId: userId,
-            teamId: teamId,
+          id: teamId,
+          users: {
+            some: {
+              userId: userId,
+            },
           },
         },
-        select: {
-          role: true,
-        },
       });
-      if (!teamAccess) {
-        return res.status(401).json({ message: "Unauthorized" });
+
+      if (!team) {
+        return res.status(401).end("Unauthorized");
       }
 
       const dataroom = await prisma.dataroom.findUnique({
         where: {
           id: dataroomId,
-          teamId,
+          teamId: team.id,
         },
       });
 
       if (!dataroom) {
-        return res.status(404).json({ message: "Dataroom not found" });
+        return res.status(401).end("Dataroom not found");
       }
 
       const document = await prisma.dataroomDocument.delete({
@@ -135,7 +122,7 @@ export default async function handle(
       });
 
       if (!document) {
-        return res.status(404).json({ message: "Document not found" });
+        return res.status(404).end("Document not found");
       }
 
       return res.status(204).end(); // No Content
@@ -143,8 +130,6 @@ export default async function handle(
   } else {
     // We only allow PATCH and DELETE requests
     res.setHeader("Allow", ["PATCH", "DELETE"]);
-    return res
-      .status(405)
-      .json({ message: `Method ${req.method} Not Allowed` });
+    return res.status(405).end(`Method ${req.method} Not Allowed`);
   }
 }

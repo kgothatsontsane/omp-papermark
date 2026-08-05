@@ -9,7 +9,6 @@ import {
   BetweenHorizontalStartIcon,
   ChevronRight,
   EyeIcon,
-  EyeOffIcon,
   FileIcon,
   FolderIcon,
   FolderInputIcon,
@@ -21,7 +20,7 @@ import { useTheme } from "next-themes";
 import { toast } from "sonner";
 import { mutate } from "swr";
 
-import useDataroomsSimple from "@/lib/swr/use-datarooms-simple";
+import useDatarooms from "@/lib/swr/use-datarooms";
 import useLimits from "@/lib/swr/use-limits";
 import { DocumentWithLinksAndLinkCountAndViewCount } from "@/lib/types";
 import { cn, getBreadcrumbPath, nFormatter, timeAgo } from "@/lib/utils";
@@ -76,7 +75,7 @@ export default function DocumentsCard({
   const [planModalOpen, setPlanModalOpen] = useState<boolean>(false);
   const [previewOpen, setPreviewOpen] = useState<boolean>(false);
 
-  const { datarooms } = useDataroomsSimple();
+  const { datarooms } = useDatarooms();
 
   const dropdownRef = useRef<HTMLDivElement | null>(null);
   const { canAddDocuments } = useLimits();
@@ -147,17 +146,13 @@ export default function DocumentsCard({
     const queryString = queryParts.length > 0 ? `?${queryParts.join("&")}` : "";
 
     const endpoint = currentFolderPath
-      ? `/folder-documents/${currentFolderPath.join("/")}`
+      ? `/folders/documents/${currentFolderPath.join("/")}`
       : `/documents${queryString}`;
 
     toast.promise(
       fetch(`/api/teams/${teamInfo?.currentTeam?.id}/documents/${documentId}`, {
         method: "DELETE",
-      }).then(async (res) => {
-        if (!res.ok) {
-          const error = await res.json();
-          throw new Error(error.message || "Failed to delete document");
-        }
+      }).then(() => {
         mutate(
           `/api/teams/${teamInfo?.currentTeam?.id}${endpoint}`,
           (currentData: any) => {
@@ -187,7 +182,7 @@ export default function DocumentsCard({
       {
         loading: "Deleting document...",
         success: "Document deleted successfully.",
-        error: (err) => err.message || "Failed to delete document. Try again.",
+        error: "Failed to delete document. Try again.",
       },
     );
   };
@@ -221,84 +216,13 @@ export default function DocumentsCard({
       ).then(() => {
         mutate(`/api/teams/${teamInfo?.currentTeam?.id}/documents`);
         mutate(
-          `/api/teams/${teamInfo?.currentTeam?.id}/folder-documents/${currentFolderPath?.join("/")}`,
+          `/api/teams/${teamInfo?.currentTeam?.id}/folders/documents/${currentFolderPath?.join("/")}`,
         );
       }),
       {
         loading: "Duplicating document...",
         success: "Document duplicated successfully.",
         error: "Failed to duplicate document. Try again.",
-      },
-    );
-  };
-
-  const handleHideDocument = async (event: any) => {
-    event.stopPropagation();
-    event.preventDefault();
-
-    const page = Number(queryParams["page"]) || 1;
-    const pageSize = Number(queryParams["limit"]) || 10;
-
-    const queryParts = [];
-    if (searchQuery) queryParts.push(`query=${searchQuery}`);
-    if (sortQuery) queryParts.push(`sort=${sortQuery}`);
-
-    const paginationParams =
-      searchQuery || sortQuery ? `&page=${page}&limit=${pageSize}` : "";
-    if (paginationParams) queryParts.push(paginationParams.substring(1));
-    const queryString = queryParts.length > 0 ? `?${queryParts.join("&")}` : "";
-
-    const endpoint = currentFolderPath
-      ? `/folder-documents/${currentFolderPath.join("/")}`
-      : `/documents${queryString}`;
-
-    toast.promise(
-      fetch(`/api/teams/${teamInfo?.currentTeam?.id}/documents/hide`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          documentIds: [prismaDocument.id],
-          hidden: true,
-        }),
-      }).then(async (res) => {
-        if (!res.ok) {
-          const error = await res.json();
-          throw new Error(error.message || "Failed to hide document");
-        }
-        mutate(
-          `/api/teams/${teamInfo?.currentTeam?.id}${endpoint}`,
-          (currentData: any) => {
-            if (!currentData) return currentData;
-
-            if (Array.isArray(currentData)) {
-              return currentData.filter(
-                (doc: DocumentWithLinksAndLinkCountAndViewCount) =>
-                  doc.id !== prismaDocument.id,
-              );
-            } else if (currentData.documents) {
-              return {
-                ...currentData,
-                documents: currentData.documents.filter(
-                  (doc: DocumentWithLinksAndLinkCountAndViewCount) =>
-                    doc.id !== prismaDocument.id,
-                ),
-              };
-            }
-            return currentData;
-          },
-          {
-            revalidate: false,
-          },
-        );
-        setMenuOpen(false);
-      }),
-      {
-        loading: "Hiding document from All Documents...",
-        success: "Document hidden from All Documents.",
-        error: (err) =>
-          err.message || "Failed to hide document. Try again.",
       },
     );
   };
@@ -311,9 +235,9 @@ export default function DocumentsCard({
           isHovered && "bg-secondary ring-gray-300 dark:ring-gray-500",
         )}
       >
-        <div className="flex min-w-0 flex-1 shrink items-center space-x-2 sm:space-x-4">
+        <div className="flex min-w-0 shrink items-center space-x-2 sm:space-x-4">
           {!isSelected && !isHovered ? (
-            <div className="mx-0.5 flex w-8 shrink-0 items-center justify-center text-center sm:mx-1">
+            <div className="mx-0.5 flex w-8 items-center justify-center text-center sm:mx-1">
               {fileIcon({
                 fileType: prismaDocument.type ?? "",
                 className: "h-8 w-8",
@@ -321,25 +245,22 @@ export default function DocumentsCard({
               })}
             </div>
           ) : (
-            <div className="mx-0.5 w-8 shrink-0 sm:mx-1"></div>
+            <div className="mx-0.5 w-8 sm:mx-1"></div>
           )}
 
-          <div className="relative flex min-w-0 flex-1 flex-col overflow-hidden">
-            <div className="flex min-w-0 items-center gap-1">
-              <h2 className="min-w-0 flex-1 truncate text-sm font-semibold leading-6 text-foreground sm:max-w-none">
+          <div className="flex-col">
+            <div className="flex items-center">
+              <h2 className="min-w-0 max-w-[250px] truncate text-sm font-semibold leading-6 text-foreground sm:max-w-md">
                 <Link
                   href={`/documents/${prismaDocument.id}`}
-                  className="relative block w-full min-w-0 truncate"
+                  className="w-full truncate"
                 >
-                  <span className="block truncate">{prismaDocument.name}</span>
-                  <span
-                    className="absolute inset-0 z-0"
-                    aria-hidden
-                  />
+                  <span>{prismaDocument.name}</span>
+                  <span className="absolute inset-0" />
                 </Link>
               </h2>
               {prismaDocument._count.datarooms > 0 && (
-                <div className="z-20 shrink-0">
+                <div className="z-20">
                   <BadgeTooltip
                     content={`In ${prismaDocument._count.datarooms} dataroom${prismaDocument._count.datarooms > 1 ? "s" : ""}`}
                     key="dataroom"
@@ -349,7 +270,7 @@ export default function DocumentsCard({
                 </div>
               )}
             </div>
-            <div className="mt-1 flex min-w-0 items-center space-x-1 overflow-hidden text-xs leading-5 text-muted-foreground">
+            <div className="mt-1 flex items-center space-x-1 text-xs leading-5 text-muted-foreground">
               <p className="truncate">{timeAgo(prismaDocument.createdAt)}</p>
               <p>•</p>
               <p className="truncate">
@@ -397,13 +318,13 @@ export default function DocumentsCard({
           </div>
         </div>
 
-        <div className="flex shrink-0 flex-row space-x-2">
+        <div className="flex flex-row space-x-2">
           <Link
             onClick={(e) => {
               e.stopPropagation();
             }}
             href={`/documents/${prismaDocument.id}`}
-            className="z-20 flex shrink-0 items-center space-x-1 rounded-md bg-gray-200 px-1.5 py-0.5 transition-all duration-75 hover:scale-105 active:scale-100 dark:bg-gray-700 sm:px-2"
+            className="z-20 flex items-center space-x-1 rounded-md bg-gray-200 px-1.5 py-0.5 transition-all duration-75 hover:scale-105 active:scale-100 dark:bg-gray-700 sm:px-2"
           >
             <BarChart className="h-3 w-3 text-muted-foreground sm:h-4 sm:w-4" />
             <p className="whitespace-nowrap text-xs text-muted-foreground sm:text-sm">
@@ -417,7 +338,7 @@ export default function DocumentsCard({
               <Button
                 // size="icon"
                 variant="outline"
-                className="z-20 h-8 w-8 shrink-0 border-gray-200 bg-transparent p-0 hover:bg-gray-200 dark:border-gray-700 hover:dark:bg-gray-700 lg:h-9 lg:w-9"
+                className="z-20 h-8 w-8 border-gray-200 bg-transparent p-0 hover:bg-gray-200 dark:border-gray-700 hover:dark:bg-gray-700 lg:h-9 lg:w-9"
               >
                 <span className="sr-only">Open menu</span>
                 <MoreVertical className="h-4 w-4" />
@@ -453,10 +374,6 @@ export default function DocumentsCard({
                   Add to dataroom
                 </DropdownMenuItem>
               )}
-              <DropdownMenuItem onClick={handleHideDocument}>
-                <EyeOffIcon className="mr-2 h-4 w-4" />
-                Hide from All Documents
-              </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem
                 onClick={(event) => handleButtonClick(event, prismaDocument.id)}

@@ -37,11 +37,10 @@ export default function PasswordSection({
   return (
     <div className="pb-5">
       <LinkItem
-        title="Password protection"
+        title="Require password to view"
         enabled={enabled}
         action={handleEnablePassword}
         tooltipContent="Users must enter a password to access the content."
-        link="https://www.papermark.com/password-protection"
       />
 
       {enabled && (

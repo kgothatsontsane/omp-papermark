@@ -19,12 +19,10 @@ export default async function handler(
   const { teamId, id } = req.query as { teamId: string; id: string };
   const userId = (session.user as CustomUser).id;
 
-  const userTeam = await prisma.userTeam.findUnique({
+  const userTeam = await prisma.userTeam.findFirst({
     where: {
-      userId_teamId: {
-        userId,
-        teamId,
-      },
+      userId,
+      teamId,
     },
   });
 

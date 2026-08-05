@@ -4,7 +4,7 @@ import { useTeam } from "@/context/team-context";
 import { toast } from "sonner";
 import useSWR from "swr";
 
-import { fetcher, sanitizeList, validateList } from "@/lib/utils";
+import { fetcher, sanitizeList } from "@/lib/utils";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -38,7 +38,14 @@ export default function IgnoredDomainsForm() {
     }
   }, [ignoredDomains]);
 
-  const { invalid: invalidDomains } = validateList(domainsInput, "domain");
+  const allEnteredDomains = domainsInput
+    .split("\n")
+    .map((d) => d.trim())
+    .filter(Boolean);
+  const validDomains = sanitizeList(domainsInput, "domain");
+  const invalidDomains = allEnteredDomains.filter(
+    (d) => !validDomains.includes(d.toLowerCase()),
+  );
 
   const saveDisabled = useMemo(() => {
     return (
@@ -61,7 +68,7 @@ export default function IgnoredDomainsForm() {
     }).then(async (res) => {
       if (!res.ok) {
         const { error } = await res.json();
-        throw new Error(error || "Failed to update ignored domains.");
+        throw new Error(error?.message || "Failed to update ignored domains.");
       }
       await mutate();
       return res.json();
@@ -93,21 +100,16 @@ export default function IgnoredDomainsForm() {
         <Textarea
           className="focus:ring-inset"
           rows={5}
-          placeholder={`Enter domains separated by comma, semicolon, or new line, e.g.
+          placeholder={`Enter one domain per line, e.g.
 @company.io
 @example.com`}
           value={domainsInput}
           onChange={(e) => setDomainsInput(e.target.value)}
-          aria-invalid={invalidDomains.length > 0}
         />
-        {invalidDomains.length > 0 ? (
+        {invalidDomains.length > 0 && (
           <p className="mt-2 text-sm text-destructive">
-            The following entries are not valid domains and must be fixed
-            before saving: {invalidDomains.join(", ")}
-          </p>
-        ) : (
-          <p className="mt-2 text-xs text-muted-foreground">
-            Separate multiple domains with a comma, semicolon, or new line.
+            The following entries are not valid domains and will be ignored:{" "}
+            {invalidDomains.join(", ")}
           </p>
         )}
       </CardContent>

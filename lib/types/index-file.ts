@@ -1,5 +1,4 @@
 export interface DataroomIndexEntry {
-  hierarchicalIndex: string | null | undefined;
   name: string;
   type: "File" | "Folder" | "Root Folder";
   path: string;

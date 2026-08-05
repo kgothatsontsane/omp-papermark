@@ -115,19 +115,9 @@ interface MultiSelectProps<
    * Optional, can be used to add custom styles.
    */
   className?: string;
-
-  /**
-   * Additional class names to apply to the popover content.
-   * Optional, can be used to customize popover width and styles.
-   */
-  popoverClassName?: string;
-
   isPopoverOpen: boolean;
   setIsPopoverOpen: React.Dispatch<React.SetStateAction<boolean>>;
   loading?: boolean;
-  triggerIcon?: React.ReactNode;
-  /** Optional content rendered as a pinned footer inside the dropdown. */
-  footer?: React.ReactNode;
 }
 
 export type ComboboxOption<
@@ -156,7 +146,6 @@ export const MultiSelect = React.forwardRef<
       modalPopover = false,
       asChild = false,
       className,
-      popoverClassName,
       value,
       searchPlaceholder = "Search...",
       inputClassName,
@@ -166,8 +155,6 @@ export const MultiSelect = React.forwardRef<
       setIsPopoverOpen,
       isPopoverOpen,
       loading,
-      triggerIcon,
-      footer,
       ...props
     },
     ref,
@@ -227,25 +214,22 @@ export const MultiSelect = React.forwardRef<
     // };
     // flex w-full rounded-none rounded-l-md border border-input bg-white text-foreground placeholder-muted-foreground focus:border-muted-foreground focus:outline-none focus:ring-inset focus:ring-muted-foreground dark:border-gray-500 dark:bg-gray-800 focus:dark:bg-transparent sm:text-sm
     return (
-      <Popover open={isPopoverOpen} onOpenChange={setIsPopoverOpen} modal>
+      <Popover
+        open={isPopoverOpen}
+        onOpenChange={setIsPopoverOpen}
+        modal
+      >
         <PopoverTrigger asChild>
           <Button
             ref={ref}
             {...props}
             onClick={handleTogglePopover}
-            variant="outline"
-            size="sm"
             className={cn(
-              "flex w-full items-center justify-between gap-1.5 rounded-md border border-input bg-background px-2 py-0 font-normal shadow-sm hover:bg-background focus:border-muted-foreground focus:outline-none focus:ring-1 focus:ring-inset focus:ring-muted-foreground dark:border-gray-500 dark:bg-gray-800 focus:dark:bg-transparent sm:gap-2 sm:px-3 [&_svg]:pointer-events-auto",
-              value.length === 0
-                ? "h-9 max-h-9 min-h-9 sm:h-10 sm:max-h-10 sm:min-h-10"
-                : "!h-auto min-h-9 py-1 sm:min-h-10 sm:py-1.5",
+              "flex h-auto w-full items-center justify-between rounded-md border border-input bg-inherit px-3 py-1.5 hover:bg-inherit focus:border-muted-foreground focus:outline-none focus:ring-1 focus:ring-inset focus:ring-muted-foreground dark:border-gray-500 dark:bg-gray-800 focus:dark:bg-transparent [&_svg]:pointer-events-auto",
               className,
             )}
           >
-            {triggerIcon || (
-              <TagIcon className="!size-4 shrink-0 text-muted-foreground" />
-            )}
+            <TagIcon className="!size-4 shrink-0 text-muted-foreground" />
             {loading ? (
               <div className="mx-auto flex w-full items-center justify-between">
                 <LoadingSpinner className="size-4 shrink-0" />
@@ -268,14 +252,14 @@ export const MultiSelect = React.forwardRef<
                       className="my-auto block whitespace-nowrap rounded-md border px-2 py-0.5 text-sm text-foreground dark:border-gray-500"
                       style={{ animationDuration: `${animation}s` }}
                     >
-                      +{value.length - maxCount} more
+                      {`+ ${value.length - maxCount} more`}
                     </span>
                   )}
                 </div>
               </div>
             ) : (
-              <div className="mx-auto flex w-full min-w-0 items-center justify-between">
-                <span className="truncate py-0 text-sm font-normal leading-none text-muted-foreground">
+              <div className="mx-auto flex w-full items-center justify-between">
+                <span className="py-[3px] text-sm font-normal text-muted-foreground">
                   {placeholder}
                 </span>
               </div>
@@ -283,10 +267,7 @@ export const MultiSelect = React.forwardRef<
           </Button>
         </PopoverTrigger>
         <PopoverContent
-          className={cn(
-            "w-auto p-0 sm:w-[600px] sm:max-w-[35rem]",
-            popoverClassName,
-          )}
+          className="w-auto p-0 sm:w-[600px] sm:max-w-[35rem]"
           align="start"
           onEscapeKeyDown={() => setIsPopoverOpen(false)}
         >
@@ -377,9 +358,6 @@ export const MultiSelect = React.forwardRef<
               </CommandList>
             </ScrollArea>
           </Command>
-          {footer ? (
-            <div className="border-t border-border p-1">{footer}</div>
-          ) : null}
         </PopoverContent>
         {animation > 0 && value.length > 0 && (
           <WandSparkles

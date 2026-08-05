@@ -3,7 +3,6 @@ import { useRouter } from "next/router";
 import { FormEvent, useEffect, useState } from "react";
 
 import { useTeam } from "@/context/team-context";
-import ConfidentialViewSection from "@/ee/features/permissions/components/confidential-view/confidential-view-section";
 import { PlanEnum } from "@/ee/stripe/constants";
 import { LinkPreset } from "@prisma/client";
 import { AlertCircle, ArrowLeft, Trash2, X } from "lucide-react";
@@ -32,7 +31,6 @@ import ExpirationInSection from "@/components/links/link-sheet/expirationIn-sect
 import { LinkUpgradeOptions } from "@/components/links/link-sheet/link-options";
 import OGSection from "@/components/links/link-sheet/og-section";
 import PasswordSection from "@/components/links/link-sheet/password-section";
-import { ProBannerSection } from "@/components/links/link-sheet/pro-banner-section";
 import ScreenshotProtectionSection from "@/components/links/link-sheet/screenshot-protection-section";
 import WatermarkSection from "@/components/links/link-sheet/watermark-section";
 import Preview from "@/components/settings/og-preview";
@@ -135,13 +133,11 @@ export default function EditPreset() {
         watermarkConfig: watermarkConfig,
         pId: preset.pId,
         enableScreenshotProtection: preset.enableScreenshotProtection ?? false,
-        enableConfidentialView: preset.enableConfidentialView ?? false,
         enableAgreement: preset.enableAgreement ?? false,
         agreementId: preset.agreementId,
         enableCustomFields: customFields.length > 0,
         customFields: customFields,
         enableNotification: preset.enableNotification ?? false,
-        showBanner: preset.showBanner ?? false,
       });
     }
   }, [preset]);
@@ -187,13 +183,11 @@ export default function EditPreset() {
           expiresIn: data.expiresIn,
           pId: data.pId,
           enableScreenshotProtection: data.enableScreenshotProtection,
-          enableConfidentialView: data.enableConfidentialView,
           enableAgreement: data.enableAgreement,
           agreementId: data.agreementId,
           enableCustomFields: data.enableCustomFields,
           customFields: data.customFields,
           enableNotification: data.enableNotification,
-          showBanner: data.showBanner,
         }),
       });
 
@@ -462,14 +456,6 @@ export default function EditPreset() {
                   }
                   handleUpgradeStateChange={handleUpgradeStateChange}
                 />
-                <ConfidentialViewSection
-                  data={data as any}
-                  setData={setData as any}
-                  isAllowed={
-                    isTrial || isBusiness || isDatarooms || isDataroomsPlus
-                  }
-                  handleUpgradeStateChange={handleUpgradeStateChange}
-                />
                 <AgreementSection
                   data={data as any}
                   setData={setData as any}
@@ -488,22 +474,6 @@ export default function EditPreset() {
                   }
                   handleUpgradeStateChange={handleUpgradeStateChange}
                   presets={null}
-                />
-              </div>
-
-              <div className="rounded-lg border p-6">
-                <h3 className="mb-4 text-lg font-medium">Branding</h3>
-                <ProBannerSection
-                  data={data as any}
-                  setData={setData as any}
-                  isAllowed={
-                    isTrial ||
-                    (isPro && allowAdvancedLinkControls) ||
-                    isBusiness ||
-                    isDatarooms ||
-                    isDataroomsPlus
-                  }
-                  handleUpgradeStateChange={handleUpgradeStateChange}
                 />
               </div>
             </div>

@@ -1,9 +1,8 @@
 import { Upload } from "@aws-sdk/lib-storage";
 import { DocumentStorageType } from "@prisma/client";
+import slugify from "@sindresorhus/slugify";
 import path from "node:path";
 import { Readable } from "stream";
-
-import { buildContentDisposition, safeSlugify } from "@/lib/utils";
 
 import { getTeamS3ClientAndConfig } from "./aws-client";
 
@@ -27,9 +26,7 @@ export const streamFileServer = async ({
   // Get the basename and extension for the file
   const { name, ext } = path.parse(file.name);
 
-  const slugifiedName = safeSlugify(name) + ext;
-  const originalFileName = `${name}${ext}`;
-  const key = `${teamId}/${docId}/${slugifiedName}`;
+  const key = `${teamId}/${docId}/${slugify(name)}${ext}`;
 
   const params = {
     client,
@@ -38,10 +35,6 @@ export const streamFileServer = async ({
       Key: key,
       Body: file.stream,
       ContentType: file.type,
-      ContentDisposition: buildContentDisposition(
-        originalFileName,
-        slugifiedName,
-      ),
     },
   };
 

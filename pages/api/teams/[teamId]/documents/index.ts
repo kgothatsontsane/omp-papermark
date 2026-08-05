@@ -1,19 +1,17 @@
 import { NextApiRequest, NextApiResponse } from "next";
 
-import { isTeamPausedById } from "@/ee/features/billing/cancellation/lib/is-team-paused";
 import { authOptions } from "@/pages/api/auth/[...nextauth]";
-import { Prisma } from "@prisma/client";
+import { DocumentStorageType, Prisma } from "@prisma/client";
 import { getServerSession } from "next-auth/next";
 
 import { hashToken } from "@/lib/api/auth/token";
-import { isDataroomScopedRole } from "@/lib/api/rbac/permissions";
 import { processDocument } from "@/lib/api/documents/process-document";
 import { errorhandler } from "@/lib/errorHandler";
 import prisma from "@/lib/prisma";
+import { getTeamWithUsersAndDocument } from "@/lib/team/helper";
 import { CustomUser } from "@/lib/types";
 import { log, serializeFileSize } from "@/lib/utils";
 import { supportsAdvancedExcelMode } from "@/lib/utils/get-content-type";
-import { documentUploadSchema } from "@/lib/zod/url-validation";
 
 export const config = {
   // in order to enable `waitUntil` function
@@ -40,25 +38,19 @@ export default async function handle(
     const limit = usePagination ? Number(req.query.limit) || 10 : undefined;
 
     try {
-      const teamAccess = await prisma.userTeam.findUnique({
+      const team = await prisma.team.findUnique({
         where: {
-          userId_teamId: {
-            userId: userId,
-            teamId: teamId,
+          id: teamId,
+          users: {
+            some: {
+              userId: userId,
+            },
           },
         },
       });
 
-      if (!teamAccess) {
-        return res.status(401).end("Unauthorized");
-      }
-
-      // The team-wide "All Documents" list is not part of the dataroom-scoped
-      // surface; scoped members must never enumerate every team document.
-      if (isDataroomScopedRole(teamAccess.role)) {
-        return res
-          .status(403)
-          .json({ error: "You do not have permission to perform this action." });
+      if (!team) {
+        return res.status(404).end("Team not found");
       }
 
       let orderBy: Prisma.DocumentOrderByWithRelationInput;
@@ -84,45 +76,36 @@ export default async function handle(
         orderBy = { createdAt: "desc" };
       }
 
-      // Build the base where clause for All Documents view
-      // Documents should be excluded if:
-      // 1. They are directly hidden (hiddenInAllDocuments: true)
-      // 2. They are in a folder that is hidden (folder.hiddenInAllDocuments: true)
-      const baseWhere = {
-        teamId: teamId,
-        hiddenInAllDocuments: false, // Exclude directly hidden documents
-        ...(query && {
-          name: {
-            contains: query,
-            mode: "insensitive" as const,
-          },
-        }),
-        // For root view (no search/sort), only show root-level documents
-        ...(!(query || sort) && {
-          folderId: null,
-        }),
-        // For search/sort view, also exclude documents in hidden folders
-        ...((query || sort) && {
-          OR: [
-            { folderId: null },
-            {
-              folder: {
-                hiddenInAllDocuments: false,
-              },
-            },
-          ],
-        }),
-      };
-
       const totalDocuments = usePagination
         ? await prisma.document.count({
-            where: baseWhere,
+            where: {
+              teamId: teamId,
+              ...(query && {
+                name: {
+                  contains: query,
+                  mode: "insensitive",
+                },
+              }),
+              ...(!(query || sort) && {
+                folderId: null,
+              }),
+            },
           })
         : undefined;
 
-      // First, get documents without expensive counts
       const documents = await prisma.document.findMany({
-        where: baseWhere,
+        where: {
+          teamId: teamId,
+          ...(query && {
+            name: {
+              contains: query,
+              mode: "insensitive",
+            },
+          }),
+          ...(!(query || sort) && {
+            folderId: null,
+          }),
+        },
         orderBy,
         ...(usePagination && {
           skip: ((page as number) - 1) * (limit as number),
@@ -142,75 +125,22 @@ export default async function handle(
               take: 1,
             },
           }),
+          _count: {
+            select: {
+              links: true,
+              views: true,
+              versions: true,
+              datarooms: true,
+            },
+          },
         },
       });
 
-      // Then, get counts efficiently with separate GROUP BY queries
-      const documentIds = documents.map((d) => d.id);
-
-      const [linkCounts, viewCounts, versionCounts, dataroomCounts] =
-        await Promise.all([
-          prisma.link.groupBy({
-            by: ["documentId"],
-            where: {
-              documentId: { in: documentIds },
-              deletedAt: null,
-            },
-            _count: { id: true },
-          }),
-          prisma.view.groupBy({
-            by: ["documentId"],
-            where: {
-              documentId: { in: documentIds },
-            },
-            _count: { id: true },
-          }),
-          prisma.documentVersion.groupBy({
-            by: ["documentId"],
-            where: {
-              documentId: { in: documentIds },
-            },
-            _count: { id: true },
-          }),
-          prisma.dataroomDocument.groupBy({
-            by: ["documentId"],
-            where: {
-              documentId: { in: documentIds },
-            },
-            _count: { id: true },
-          }),
-        ]);
-
-      // Create lookup maps for counts
-      const linkCountMap = new Map(
-        linkCounts.map((lc) => [lc.documentId, lc._count.id]),
-      );
-      const viewCountMap = new Map(
-        viewCounts.map((vc) => [vc.documentId, vc._count.id]),
-      );
-      const versionCountMap = new Map(
-        versionCounts.map((vsc) => [vsc.documentId, vsc._count.id]),
-      );
-      const dataroomCountMap = new Map(
-        dataroomCounts.map((dc) => [dc.documentId, dc._count.id]),
-      );
-
-      // Combine documents with their counts
-      const documentsWithCounts = documents.map((document) => ({
-        ...document,
-        _count: {
-          links: linkCountMap.get(document.id) || 0,
-          views: viewCountMap.get(document.id) || 0,
-          versions: versionCountMap.get(document.id) || 0,
-          datarooms: dataroomCountMap.get(document.id) || 0,
-        },
-      }));
-
-      let documentsWithFolderList = documentsWithCounts;
+      let documentsWithFolderList = documents;
 
       if (query || sort) {
         documentsWithFolderList = await Promise.all(
-          documentsWithCounts.map(async (doc) => {
+          documents.map(async (doc) => {
             const folderNames = [];
             const pathSegments = doc.folder?.path?.split("/") || [];
 
@@ -257,100 +187,8 @@ export default async function handle(
         );
       }
 
-      let matchingFolders: any[] = [];
-      if (query) {
-        const folders = await prisma.folder.findMany({
-          where: {
-            teamId,
-            hiddenInAllDocuments: false,
-            name: {
-              contains: query,
-              mode: "insensitive",
-            },
-            OR: [
-              { parentId: null },
-              {
-                parentFolder: {
-                  hiddenInAllDocuments: false,
-                },
-              },
-            ],
-          },
-          include: {
-            _count: {
-              select: {
-                documents: {
-                  where: {
-                    hiddenInAllDocuments: false,
-                  },
-                },
-                childFolders: {
-                  where: {
-                    hiddenInAllDocuments: false,
-                  },
-                },
-              },
-            },
-          },
-          orderBy: { name: "asc" },
-        });
-
-        const allParentPaths = new Set<string>();
-        for (const folder of folders) {
-          const parentPath = folder.path.substring(
-            0,
-            folder.path.lastIndexOf("/"),
-          );
-          if (!parentPath) continue;
-
-          const pathSegments = parentPath.split("/").filter(Boolean);
-          for (let index = 0; index < pathSegments.length; index++) {
-            allParentPaths.add(
-              `/${pathSegments.slice(0, index + 1).join("/")}`,
-            );
-          }
-        }
-
-        const parentFolders = allParentPaths.size
-          ? await prisma.folder.findMany({
-              where: {
-                teamId,
-                path: { in: Array.from(allParentPaths) },
-              },
-              select: { path: true, name: true },
-            })
-          : [];
-
-        const parentFolderNameByPath = new Map(
-          parentFolders.map((folder) => [folder.path, folder.name]),
-        );
-
-        matchingFolders = folders.map((folder) => {
-          const folderNames: string[] = [];
-          const parentPath = folder.path.substring(
-            0,
-            folder.path.lastIndexOf("/"),
-          );
-
-          if (parentPath) {
-            const pathSegments = parentPath.split("/").filter(Boolean);
-            for (let index = 0; index < pathSegments.length; index++) {
-              const path = `/${pathSegments.slice(0, index + 1).join("/")}`;
-              const parentFolderName = parentFolderNameByPath.get(path);
-
-              if (parentFolderName) {
-                folderNames.push(parentFolderName);
-              }
-            }
-          }
-
-          return { ...folder, folderList: folderNames };
-        });
-      }
-
       return res.status(200).json({
         documents: documentsWithFolderList,
-        ...(query && { folders: matchingFolders }),
         ...(usePagination && {
           pagination: {
             total: totalDocuments,
@@ -402,22 +240,7 @@ export default async function handle(
       userId = (session.user as CustomUser).id;
     }
 
-    // Validate request body using Zod schema for security
-    const validationResult = await documentUploadSchema.safeParseAsync(
-      req.body,
-    );
-
-    if (!validationResult.success) {
-      log({
-        message: `Document upload validation failed for teamId: ${teamId}. Errors: ${JSON.stringify(validationResult.error.errors)}`,
-        type: "error",
-      });
-      return res.status(400).json({
-        error: "Invalid document upload data",
-        details: validationResult.error.errors,
-      });
-    }
-
+    // Assuming data is an object with `name` and `description` properties
     const {
       name,
       url: fileUrl,
@@ -428,47 +251,32 @@ export default async function handle(
       contentType,
       createLink,
       fileSize,
-    } = validationResult.data;
+    } = req.body as {
+      name: string;
+      url: string;
+      storageType: DocumentStorageType;
+      numPages?: number;
+      type: string;
+      folderPathName?: string;
+      contentType: string;
+      createLink?: boolean;
+      fileSize?: number;
+    };
 
     try {
-      const team = await prisma.team.findUnique({
-        where: {
-          id: teamId,
-          users: {
-            some: {
-              userId,
-            },
-          },
-        },
-        select: { plan: true, enableExcelAdvancedMode: true },
+      const { team } = await getTeamWithUsersAndDocument({
+        teamId,
+        userId,
       });
-
-      if (!team) {
-        return res.status(404).end("Team not found");
-      }
-
-      // Check if team is paused
-      const teamIsPaused = await isTeamPausedById(teamId);
-      if (teamIsPaused) {
-        return res.status(403).json({
-          error:
-            "Team is currently paused. New document uploads are not available.",
-        });
-      }
-
-      // For link documents, storageType is optional but processDocument requires it
-      // Use VERCEL_BLOB as a placeholder (not actually used for links)
-      const finalStorageType =
-        storageType || (fileType === "link" ? "VERCEL_BLOB" : "VERCEL_BLOB");
 
       const document = await processDocument({
         documentData: {
           name,
           key: fileUrl,
-          storageType: finalStorageType,
+          storageType,
           numPages,
           supportedFileType: fileType,
-          contentType: contentType || null,
+          contentType,
           fileSize,
           enableExcelAdvancedMode:
             fileType === "sheet" &&

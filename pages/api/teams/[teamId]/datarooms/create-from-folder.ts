@@ -15,24 +15,13 @@ interface FolderWithContents extends Folder {
   childFolders: Omit<FolderWithContents, "parentId">[];
 }
 
-class FolderAccessError extends Error {
-  statusCode = 404;
-
-  constructor() {
-    super("Folder not found");
-    this.name = "FolderAccessError";
-  }
-}
-
 // Recursive function to fetch all folders, child folders, and documents
 async function fetchFolderContents(
   folderId: string,
-  teamId: string,
 ): Promise<FolderWithContents> {
-  const folder = await prisma.folder.findFirst({
+  const folder = await prisma.folder.findUnique({
     where: {
       id: folderId,
-      teamId,
     },
     include: {
       documents: true,
@@ -41,26 +30,12 @@ async function fetchFolderContents(
   });
 
   if (!folder) {
-    throw new FolderAccessError();
-  }
-
-  const hasCrossTeamDocument = folder.documents.some(
-    (document) => document.teamId !== teamId,
-  );
-  const hasCrossTeamChildFolder = folder.childFolders.some(
-    (childFolder) => childFolder.teamId !== teamId,
-  );
-
-  if (hasCrossTeamDocument || hasCrossTeamChildFolder) {
-    throw new FolderAccessError();
+    throw new Error(`Folder with id ${folderId} not found`);
   }
 
   const childFolders = await Promise.all(
     folder.childFolders.map(async (childFolder) => {
-      const nestedChildFolders = await fetchFolderContents(
-        childFolder.id,
-        teamId,
-      );
+      const nestedChildFolders = await fetchFolderContents(childFolder.id);
       return nestedChildFolders;
     }),
   );
@@ -153,10 +128,6 @@ export default async function handle(
     const userId = (session.user as CustomUser).id;
 
     try {
-      if (!folderId || typeof folderId !== "string") {
-        return res.status(400).json({ error: "Missing folderId" });
-      }
-
       const team = await prisma.team.findUnique({
         where: {
           id: teamId,
@@ -186,9 +157,8 @@ export default async function handle(
 
       if (
         !team.plan.includes("drtrial") &&
-        ["business", "datarooms", "datarooms-plus", "datarooms-premium", "datarooms-unlimited"].includes(stripedTeamPlan) &&
+        ["business", "datarooms", "datarooms-plus"].includes(stripedTeamPlan) &&
         limits &&
-        limits.datarooms !== null &&
         team._count.datarooms >= limits.datarooms
       ) {
         return res.status(403).json({
@@ -210,7 +180,7 @@ export default async function handle(
       }
 
       // Fetch the folder structure
-      const folderContents = await fetchFolderContents(folderId, teamId);
+      const folderContents = await fetchFolderContents(folderId);
 
       // Create the data room
       const pId = newId("dataroom");
@@ -249,10 +219,6 @@ export default async function handle(
 
       res.status(201).json(dataroomWithCount);
     } catch (error) {
-      if (error instanceof FolderAccessError) {
-        return res.status(error.statusCode).json({ error: error.message });
-      }
-
       console.error("Request error", error);
       res.status(500).json({ error: "Error creating dataroom" });
     }

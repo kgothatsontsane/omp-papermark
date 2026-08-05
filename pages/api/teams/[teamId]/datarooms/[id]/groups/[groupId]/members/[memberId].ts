@@ -47,27 +47,8 @@ export default async function handle(
         return res.status(401).json("Unauthorized");
       }
 
-      // Confirm the target membership belongs to a group inside THIS team's dataroom.
-      const membership = await prisma.viewerGroupMembership.findFirst({
-        where: {
-          id: memberId,
-          group: {
-            id: groupId,
-            dataroom: {
-              id: dataroomId,
-              teamId: teamId,
-            },
-          },
-        },
-        select: { id: true },
-      });
-
-      if (!membership) {
-        return res.status(404).json({ error: "Member not found" });
-      }
-
       await prisma.viewerGroupMembership.delete({
-        where: { id: membership.id },
+        where: { id: memberId },
       });
       return res.status(204).end();
     } catch (error) {

@@ -8,8 +8,9 @@ import { waitUntil } from "@vercel/functions";
 import { hashToken } from "@/lib/api/auth/token";
 import prisma from "@/lib/prisma";
 import { redis } from "@/lib/redis";
-import { sendEmail, subscribe, unsubscribe } from "@/lib/resend";
+import { sendEmail } from "@/lib/resend";
 import { CustomUser } from "@/lib/types";
+import { subscribe, unsubscribe } from "@/lib/unsend";
 
 import EmailUpdated from "@/components/emails/email-updated";
 
@@ -80,12 +81,9 @@ const VerifyEmailChange = async ({ params: { token } }: PageProps) => {
   }
 
   const currentUserId = (session.user as CustomUser).id;
-  const tokenUserId = tokenFound.identifier;
-
-  if (tokenUserId !== currentUserId) return <NotFound />;
 
   const data = await redis.get<{ email: string; newEmail: string }>(
-    `email-change-request:user:${tokenUserId}`,
+    `email-change-request:user:${currentUserId}`,
   );
 
   if (!data) return <NotFound />;
@@ -94,7 +92,7 @@ const VerifyEmailChange = async ({ params: { token } }: PageProps) => {
 
   await prisma.user.update({
     where: {
-      id: tokenUserId,
+      id: currentUserId,
     },
     data: {
       email: data.newEmail,

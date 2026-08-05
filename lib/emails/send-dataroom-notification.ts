@@ -12,7 +12,7 @@ export const sendDataroomNotification = async ({
 }: {
   dataroomName: string;
   documentName: string | undefined;
-  senderEmail: string | null;
+  senderEmail: string;
   to: string;
   url: string;
   unsubscribeUrl: string;

@@ -1,7 +1,7 @@
 import { NextApiRequest, NextApiResponse } from "next";
 
 import { authOptions } from "@/pages/api/auth/[...nextauth]";
-import { safeSlugify } from "@/lib/utils";
+import slugify from "@sindresorhus/slugify";
 import { getServerSession } from "next-auth/next";
 
 import prisma from "@/lib/prisma";
@@ -27,16 +27,18 @@ export default async function handle(
     };
 
     // Ensure the user is an admin of the team
-    const teamAccess = await prisma.userTeam.findUnique({
-      where: {
-        userId_teamId: {
-          userId: userId,
-          teamId: teamId,
+    const team = await prisma.team.findUnique({
+      where: { id: teamId },
+      include: {
+        users: {
+          where: {
+            userId: userId,
+          },
         },
       },
     });
 
-    if (!teamAccess) {
+    if (!team || team.users.length === 0) {
       return res.status(403).end("Forbidden");
     }
 
@@ -49,28 +51,6 @@ export default async function handle(
             teamId,
           },
         });
-
-        // Prevent moving a folder into itself or one of its descendants.
-        if (selectedFolder) {
-          const allFolders = await prisma.folder.findMany({
-            where: { teamId },
-            select: { id: true, parentId: true },
-          });
-          const parentMap = new Map(
-            allFolders.map((f) => [f.id, f.parentId]),
-          );
-          const folderIdSet = new Set(folderIds);
-          const visited = new Set<string>();
-          let currentId: string | null = selectedFolder;
-          while (currentId) {
-            if (folderIdSet.has(currentId)) {
-              throw new Error("MOVE_INVALID_PARENT");
-            }
-            if (visited.has(currentId)) break;
-            visited.add(currentId);
-            currentId = parentMap.get(currentId) ?? null;
-          }
-        }
 
         const existingFolders = await prisma.folder.findMany({
           where: {
@@ -88,17 +68,17 @@ export default async function handle(
             .filter((name) => existingFolderNames.has(name));
 
           if (duplicateNames.length > 0) {
-            throw new Error(
-              `MOVE_DUPLICATE_NAMES:${duplicateNames.join(", ")}`,
-            );
+            return res.status(409).json({
+              message: `Cannot move folders: Duplicate names found inside target folder - ${duplicateNames.join(", ")}`,
+            });
           }
         }
-        // Fetch all nested subfolders of the selected folders (excluding the folders themselves)
+        // Fetch all nested subfolders of the selected folders
         const allSubfolders = await prisma.folder.findMany({
           where: {
             teamId,
             OR: foldersToMove.map((folder) => ({
-              path: { startsWith: `${folder.path}/` },
+              path: { startsWith: folder.path },
             })),
           },
         });
@@ -107,8 +87,8 @@ export default async function handle(
         foldersToMove.forEach((folder) => {
           const newPath =
             selectedFolderPath !== "/"
-              ? `${selectedFolderPath}/${safeSlugify(folder.name)}`
-              : `/${safeSlugify(folder.name)}`;
+              ? `${selectedFolderPath}/${slugify(folder.name)}`
+              : `/${slugify(folder.name)}`;
 
           folderPathUpdates.set(folder.id, newPath);
         });
@@ -174,22 +154,7 @@ export default async function handle(
         newPath: folder?.path,
       });
     } catch (error) {
-      if (error instanceof Error) {
-        if (error.message === "MOVE_INVALID_PARENT") {
-          return res.status(400).json({
-            message:
-              "Cannot move a folder into itself or one of its subfolders",
-          });
-        }
-        if (error.message.startsWith("MOVE_DUPLICATE_NAMES:")) {
-          const names = error.message.slice("MOVE_DUPLICATE_NAMES:".length);
-          return res.status(409).json({
-            message: `Cannot move folders: Duplicate names found inside target folder - ${names}`,
-          });
-        }
-      }
-      console.error(error);
-      return res.status(500).end("Failed to move folder");
+      return res.status(500).end(error);
     }
   } else {
     // We only allow PATCH requests

@@ -41,36 +41,15 @@ export const config = {
      * 2. /_next/ (Next.js internals)
      * 3. /_static (inside /public)
      * 4. /_vercel (Vercel internals)
-     * 5. /favicon.ico, /sitemap.xml, /robots.txt (static files)
-     * 6. /mcp and /mcp/ (remote MCP endpoint — does its own Bearer-token
-     *    auth and returns 401; must not be bounced to /login. End-anchored
-     *    so it matches only that exact path, not /mcp-oauth/*.)
+     * 5. /favicon.ico, /sitemap.xml (static files)
      */
-    "/((?!api/|oauth/|mcp/?$|\\.well-known/|_next/|_static|vendor|_icons|_vercel|favicon.ico|sitemap.xml|robots.txt).*)",
+    "/((?!api/|_next/|_static|vendor|_icons|_vercel|favicon.ico|sitemap.xml).*)",
   ],
 };
 
 export default async function middleware(req: NextRequest, ev: NextFetchEvent) {
   const path = req.nextUrl.pathname;
   const host = req.headers.get("host");
-
-  // api.papermark.com is restricted to the v1 surface. Filesystem pages
-  // (/dashboard, /settings, /login, …) would otherwise render here too,
-  // because Next.js routes pages on every host bound to the project.
-  // The Host header carries the port for non-default ports (e.g.
-  // `localhost:3000` in dev), so strip it before comparing to the env var
-  // — which is set to a bare hostname.
-  const apiHost = process.env.NEXT_PUBLIC_API_BASE_HOST?.toLowerCase().trim();
-  const requestHostname = host?.split(":")[0]?.toLowerCase().trim();
-  if (apiHost && requestHostname === apiHost) {
-    if (path === "/v1" || path.startsWith("/v1/") || path === "/openapi.json") {
-      return NextResponse.next();
-    }
-    if (path === "/") {
-      return NextResponse.redirect("https://www.papermark.com/docs/api", 302);
-    }
-    return new NextResponse(null, { status: 404 });
-  }
 
   if (isAnalyticsPath(path)) {
     return PostHogMiddleware(req);
@@ -86,13 +65,11 @@ export default async function middleware(req: NextRequest, ev: NextFetchEvent) {
     return DomainMiddleware(req);
   }
 
-  // Handle standard papermark.com paths
+  // Handle standard papermark.io paths
   if (
     !path.startsWith("/view/") &&
     !path.startsWith("/verify") &&
-    !path.startsWith("/unsubscribe") &&
-    !path.startsWith("/notification-preferences") &&
-    !path.startsWith("/auth/email")
+    !path.startsWith("/unsubscribe")
   ) {
     return AppMiddleware(req);
   }

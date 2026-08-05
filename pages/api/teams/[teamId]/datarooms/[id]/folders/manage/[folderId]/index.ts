@@ -1,9 +1,9 @@
 import { NextApiRequest, NextApiResponse } from "next";
 
 import { authOptions } from "@/pages/api/auth/[...nextauth]";
+import slugify from "@sindresorhus/slugify";
 import { getServerSession } from "next-auth/next";
 
-import { enforceDataroomMemberScope } from "@/lib/api/rbac/guard";
 import { errorhandler } from "@/lib/errorHandler";
 import prisma from "@/lib/prisma";
 import { CustomUser } from "@/lib/types";
@@ -16,7 +16,8 @@ export default async function handle(
     // DELETE /api/teams/:teamId/datarooms/[:id]/folders/manage
     const session = await getServerSession(req, res, authOptions);
     if (!session) {
-      return res.status(401).json({ message: "Unauthorized" });
+      res.status(401).end("Unauthorized");
+      return;
     }
 
     const {
@@ -31,39 +32,31 @@ export default async function handle(
 
     const userId = (session.user as CustomUser).id;
 
-    // Scoped members may only manage folders within their assigned rooms.
-    if (
-      await enforceDataroomMemberScope({ userId, teamId, dataroomId, res })
-    ) {
-      return;
-    }
-
     try {
-      const teamAccess = await prisma.userTeam.findUnique({
+      const team = await prisma.team.findUnique({
         where: {
-          userId_teamId: {
-            userId: userId,
-            teamId: teamId,
+          id: teamId,
+          users: {
+            some: {
+              userId: userId,
+            },
           },
-        },
-        select: {
-          role: true,
         },
       });
 
-      if (!teamAccess) {
-        return res.status(401).json({ message: "Unauthorized" });
+      if (!team) {
+        return res.status(401).end("Unauthorized");
       }
 
       const dataroom = await prisma.dataroom.findUnique({
         where: {
           id: dataroomId,
-          teamId,
+          teamId: team.id,
         },
       });
 
       if (!dataroom) {
-        return res.status(404).json({ message: "Dataroom not found" });
+        return res.status(401).end("Dataroom not found");
       }
 
       const folder = await prisma.dataroomFolder.findUnique({
@@ -89,9 +82,7 @@ export default async function handle(
   } else {
     // We only allow DELETE requests
     res.setHeader("Allow", ["DELETE"]);
-    return res
-      .status(405)
-      .json({ message: `Method ${req.method} Not Allowed` });
+    return res.status(405).end(`Method ${req.method} Not Allowed`);
   }
 }
 

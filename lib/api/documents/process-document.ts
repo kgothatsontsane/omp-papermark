@@ -1,18 +1,16 @@
-import type {
-  convertFilesToPdfTask,
-  convertKeynoteToPdfTask,
-} from "@/ee/features/conversions/lib/trigger/convert-files";
-import { tasks } from "@trigger.dev/sdk";
+import { parsePageId } from "notion-utils";
 
-import { validateExternalDocumentUrl } from "@/lib/api/documents/validate-external-url";
 import { DocumentData } from "@/lib/documents/create-document";
-import { getFeatureFlags } from "@/lib/featureFlags";
+import { copyFileToBucketServer } from "@/lib/files/copy-file-to-bucket-server";
+import notion from "@/lib/notion";
+import { getNotionPageIdFromSlug } from "@/lib/notion/utils";
 import prisma from "@/lib/prisma";
+import { convertCadToPdfTask } from "@/lib/trigger/convert-files";
+import { convertFilesToPdfTask } from "@/lib/trigger/convert-files";
 import { processVideo } from "@/lib/trigger/optimize-video-files";
 import { convertPdfToImageRoute } from "@/lib/trigger/pdf-to-image-route";
 import { getExtension } from "@/lib/utils";
-import { isMarkdownFile } from "@/lib/utils/get-content-type";
-import { conversionQueueName } from "@/lib/utils/trigger-utils";
+import { conversionQueue } from "@/lib/utils/trigger-utils";
 import { sendDocumentCreatedWebhook } from "@/lib/webhook/triggers/document-created";
 import { sendLinkCreatedWebhook } from "@/lib/webhook/triggers/link-created";
 
@@ -22,7 +20,6 @@ type ProcessDocumentParams = {
   teamPlan: string;
   userId?: string;
   folderPathName?: string;
-  folderId?: string | null;
   createLink?: boolean;
   isExternalUpload?: boolean;
 };
@@ -33,7 +30,6 @@ export const processDocument = async ({
   teamPlan,
   userId,
   folderPathName,
-  folderId,
   createLink = false,
   isExternalUpload = false,
 }: ProcessDocumentParams) => {
@@ -51,51 +47,44 @@ export const processDocument = async ({
   // Get passed type property or alternatively, the file extension and save it as the type
   const type = supportedFileType || getExtension(name);
 
-  if (type === "html") {
-    const featureFlags = await getFeatureFlags({ teamId });
-    if (!featureFlags.htmlDocuments) {
-      throw new Error("HTML documents are not enabled for this team.");
+  // Check whether the Notion page is publically accessible or not
+  if (type === "notion") {
+    try {
+      let pageId = parsePageId(key, { uuid: false });
+
+      // If parsePageId fails, try to get page ID from slug
+      if (!pageId) {
+        try {
+          pageId = await getNotionPageIdFromSlug(key);
+        } catch (slugError) {
+          throw new Error("Unable to extract page ID from Notion URL");
+        }
+      }
+
+      // if the page isn't accessible then end the process here.
+      if (!pageId) {
+        throw new Error("Notion page not found");
+      }
+      await notion.getPage(pageId);
+    } catch (error) {
+      throw new Error("This Notion page isn't publically available.");
     }
   }
 
-  // For notion/link documents, validate the external URL (Notion page must be
-  // public; link URLs must be well-formed and not blocked). No-op otherwise.
-  await validateExternalDocumentUrl({ type, key, teamId });
-
-  // `folderId` (resolved by callers like the public v1 API) wins over the
-  // path-based lookup; the path lookup remains for the dashboard upload flow
-  // which still passes `folderPathName` referring to a pre-existing folder.
-  const folder = folderId
-    ? { id: folderId }
-    : folderPathName
-      ? await prisma.folder.findUnique({
-          where: {
-            teamId_path: {
-              teamId,
-              path: "/" + folderPathName,
-            },
-          },
-          select: { id: true },
-        })
-      : null;
-
-  const isDownloadOnlyByExtension =
-    /\.(log|err|prj|jgw|tif|tiff|ecw|bak|xlsb|sav|shp|shx|dbf|sbn|sbx|qix|cpg)$/i.test(
-      name,
-    );
-
-  const isMarkdown = isMarkdownFile({ name, contentType });
+  const folder = await prisma.folder.findUnique({
+    where: {
+      teamId_path: {
+        teamId,
+        path: "/" + folderPathName,
+      },
+    },
+    select: {
+      id: true,
+    },
+  });
 
   // determine if the document is download only
-  const isDownloadOnly =
-    type === "zip" ||
-    type === "map" ||
-    type === "email" ||
-    type === "other" ||
-    contentType === "text/tab-separated-values" ||
-    type === "cad" ||
-    isMarkdown ||
-    isDownloadOnlyByExtension;
+  const isDownloadOnly = type === "zip" || type === "map" || type === "email";
 
   // Save data to the database
   const document = await prisma.document.create({
@@ -115,7 +104,6 @@ export const processDocument = async ({
         links: {
           create: {
             teamId,
-            ownerId: userId,
           },
         },
       }),
@@ -142,37 +130,8 @@ export const processDocument = async ({
   });
 
   // Trigger appropriate conversion tasks based on document type
-  // Check if it's a Keynote file (slides type with Keynote content type)
-  if (
-    type === "slides" &&
-    (contentType === "application/vnd.apple.keynote" ||
-      contentType === "application/x-iwork-keynote-sffkey")
-  ) {
-    await tasks.trigger<typeof convertKeynoteToPdfTask>(
-      "convert-keynote-to-pdf",
-      {
-        documentId: document.id,
-        documentVersionId: document.versions[0].id,
-        teamId,
-      },
-      {
-        idempotencyKey: `${teamId}-${document.versions[0].id}-keynote`,
-        tags: [
-          `team_${teamId}`,
-          `document_${document.id}`,
-          `version:${document.versions[0].id}`,
-        ],
-        queue: conversionQueueName(teamPlan),
-        concurrencyKey: teamId,
-      },
-    );
-  } else if (
-    (type === "docs" || type === "slides") &&
-    !isDownloadOnlyByExtension &&
-    !isMarkdown
-  ) {
-    await tasks.trigger<typeof convertFilesToPdfTask>(
-      "convert-files-to-pdf",
+  if (type === "docs" || type === "slides") {
+    await convertFilesToPdfTask.trigger(
       {
         documentId: document.id,
         documentVersionId: document.versions[0].id,
@@ -185,17 +144,33 @@ export const processDocument = async ({
           `document_${document.id}`,
           `version:${document.versions[0].id}`,
         ],
-        queue: conversionQueueName(teamPlan),
+        queue: conversionQueue(teamPlan),
         concurrencyKey: teamId,
       },
     );
   }
 
-  if (
-    type === "video" &&
-    contentType !== "video/mp4" &&
-    contentType?.startsWith("video/")
-  ) {
+  if (type === "cad") {
+    await convertCadToPdfTask.trigger(
+      {
+        documentId: document.id,
+        documentVersionId: document.versions[0].id,
+        teamId,
+      },
+      {
+        idempotencyKey: `${teamId}-${document.versions[0].id}-cad`,
+        tags: [
+          `team_${teamId}`,
+          `document_${document.id}`,
+          `version:${document.versions[0].id}`,
+        ],
+        queue: conversionQueue(teamPlan),
+        concurrencyKey: teamId,
+      },
+    );
+  }
+
+  if (type === "video" && contentType !== "video/mp4") {
     await processVideo.trigger(
       {
         videoUrl: key,
@@ -211,7 +186,7 @@ export const processDocument = async ({
           `document_${document.id}`,
           `version:${document.versions[0].id}`,
         ],
-        queue: conversionQueueName(teamPlan),
+        queue: conversionQueue(teamPlan),
         concurrencyKey: teamId,
       },
     );
@@ -232,13 +207,19 @@ export const processDocument = async ({
           `document_${document.id}`,
           `version:${document.versions[0].id}`,
         ],
-        queue: conversionQueueName(teamPlan),
+        queue: conversionQueue(teamPlan),
         concurrencyKey: teamId,
       },
     );
   }
 
   if (type === "sheet" && enableExcelAdvancedMode) {
+    await copyFileToBucketServer({
+      filePath: document.versions[0].file,
+      storageType: document.versions[0].storageType,
+      teamId,
+    });
+
     await prisma.documentVersion.update({
       where: { id: document.versions[0].id },
       data: { numPages: 1 },

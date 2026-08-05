@@ -1,9 +1,9 @@
 import { NextApiRequest, NextApiResponse } from "next";
 
 import { authOptions } from "@/pages/api/auth/[...nextauth]";
+import slugify from "@sindresorhus/slugify";
 import { getServerSession } from "next-auth/next";
 
-import { resolveFreeFolderPath } from "@/lib/folders/bulk-create";
 import prisma from "@/lib/prisma";
 import { CustomUser } from "@/lib/types";
 
@@ -23,16 +23,18 @@ export default async function handle(
 
     try {
       // Check if the user is part of the team
-      const teamAccess = await prisma.userTeam.findUnique({
+      const team = await prisma.team.findUnique({
         where: {
-          userId_teamId: {
-            userId: userId,
-            teamId: teamId,
+          id: teamId,
+          users: {
+            some: {
+              userId: userId,
+            },
           },
         },
       });
 
-      if (!teamAccess) {
+      if (!team) {
         return res.status(401).end("Unauthorized");
       }
 
@@ -42,21 +44,13 @@ export default async function handle(
           where: {
             teamId: teamId,
             parentId: null,
-            hiddenInAllDocuments: false, // Exclude hidden folders from All Documents view
           },
           orderBy: {
             name: "asc",
           },
           include: {
             _count: {
-              select: {
-                documents: {
-                  where: { hiddenInAllDocuments: false },
-                },
-                childFolders: {
-                  where: { hiddenInAllDocuments: false },
-                },
-              },
+              select: { documents: true, childFolders: true },
             },
           },
         });
@@ -109,27 +103,24 @@ export default async function handle(
     const userId = (session.user as CustomUser).id;
 
     const { teamId } = req.query as { teamId: string };
-    const { name, path, icon, color } = req.body as {
-      name: string;
-      path: string;
-      icon?: string;
-      color?: string;
-    };
+    const { name, path } = req.body as { name: string; path: string };
 
     const parentFolderPath = path ? "/" + path : "/";
 
     try {
       // Check if the user is part of the team
-      const teamAccess = await prisma.userTeam.findUnique({
+      const team = await prisma.team.findUnique({
         where: {
-          userId_teamId: {
-            userId: userId,
-            teamId: teamId,
+          id: teamId,
+          users: {
+            some: {
+              userId: userId,
+            },
           },
         },
       });
 
-      if (!teamAccess) {
+      if (!team) {
         return res.status(401).end("Unauthorized");
       }
 
@@ -147,19 +138,34 @@ export default async function handle(
         },
       });
 
-      const resolved = await resolveFreeFolderPath({
-        name,
-        parentPath: parentFolderPath,
-        findExisting: (candidates) =>
-          prisma.folder.findMany({
-            where: { teamId, path: { in: candidates } },
-            select: { path: true },
-          }),
-      }).catch((err) => {
-        if (err?.code === "SLUG_EXHAUSTED") return null;
-        throw err;
-      });
-      if (!resolved) {
+      let folderName = name;
+      let counter = 1;
+      const MAX_RETRIES = 50;
+
+      let childFolderPath = path
+        ? "/" + path + "/" + slugify(folderName)
+        : "/" + slugify(folderName);
+
+      while (counter <= MAX_RETRIES) {
+        const existingFolder = await prisma.folder.findUnique({
+          where: {
+            teamId_path: {
+              teamId: teamId,
+              path: childFolderPath,
+            },
+          },
+        });
+
+        if (!existingFolder) break;
+
+        folderName = `${name} (${counter})`;
+        childFolderPath = path
+          ? "/" + path + "/" + slugify(folderName)
+          : "/" + slugify(folderName);
+        counter++;
+      }
+
+      if (counter > MAX_RETRIES) {
         return res.status(400).json({
           error: "Failed to create folder",
           message: "Too many folders with similar names",
@@ -168,12 +174,10 @@ export default async function handle(
 
       const folder = await prisma.folder.create({
         data: {
-          name: resolved.name,
-          path: resolved.path,
+          name: folderName,
+          path: childFolderPath,
           parentId: parentFolder?.id ?? null,
           teamId: teamId,
-          icon: icon ?? null,
-          color: color ?? null,
         },
       });
 

@@ -1,9 +1,7 @@
-import Link from "next/link";
 import { useRouter } from "next/router";
 
 import { useEffect, useState } from "react";
 
-import { UnlimitedPlanModal } from "@/components/billing/unlimited-plan-modal";
 import { useTeam } from "@/context/team-context";
 import { getPriceIdFromPlan } from "@/ee/stripe/functions/get-price-id-from-plan";
 import { getQuantityFromPriceId } from "@/ee/stripe/functions/get-quantity-from-plan";
@@ -61,9 +59,7 @@ export function AddSeatModal({
   }, [open]);
 
   // Calculate the total number of seats after the update
-  const totalSeatsAfterUpdate = limits?.users && limits.users !== Infinity
-    ? limits.users + quantity
-    : quantity;
+  const totalSeatsAfterUpdate = limits ? limits.users! + quantity : quantity;
 
   const handleDecrement = () => {
     if (quantity > 1) {
@@ -162,10 +158,8 @@ export function AddSeatModal({
 
           {limits && (
             <p className="mt-4 text-center text-sm text-muted-foreground">
-              Current limit:{" "}
-              {limits.users === Infinity || limits.users === null
-                ? "Unlimited"
-                : `${limits.users} ${limits.users === 1 ? "user" : "users"}`}
+              Current limit: {limits.users}{" "}
+              {limits.users === 1 ? "user" : "users"}
             </p>
           )}
 
@@ -181,27 +175,15 @@ export function AddSeatModal({
 
           {minQuantity > 1 && (
             <p className="mt-2 text-center text-sm text-muted-foreground">
-              Your {planName} plan includes {minQuantity} seats
+              Minimum quantity for {planName}: {minQuantity} users
             </p>
           )}
         </div>
 
-        <DialogFooter className="flex flex-col gap-2 sm:flex-col sm:justify-center">
+        <DialogFooter>
           <Button onClick={handleSubmit} className="w-full" disabled={loading}>
             {loading ? "Redirecting..." : "Proceed to checkout"}
           </Button>
-          <Link
-            href="/settings/billing/upgrade"
-            className="block w-full text-center text-xs text-muted-foreground underline underline-offset-4 hover:text-foreground"
-            onClick={() => setOpen(false)}
-          >
-            or upgrade to higher plan
-          </Link>
-          <UnlimitedPlanModal>
-            <p className="cursor-pointer text-center text-xs text-muted-foreground underline underline-offset-4 hover:text-foreground">
-              Interested in unlimited seats?
-            </p>
-          </UnlimitedPlanModal>
         </DialogFooter>
       </DialogContent>
     </Dialog>

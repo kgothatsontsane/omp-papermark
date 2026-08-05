@@ -1,10 +1,5 @@
 import { useTeam } from "@/context/team-context";
 
-export type PermissionStrategy =
-  | "INHERIT_FROM_PARENT"
-  | "ASK_EVERY_TIME"
-  | "HIDDEN_BY_DEFAULT";
-
 export const useDataroomPermissions = () => {
   const teamInfo = useTeam();
   const teamId = teamInfo?.currentTeam?.id;
@@ -12,12 +7,7 @@ export const useDataroomPermissions = () => {
   const applyPermissions = async (
     dataroomId: string,
     documentIds: string[],
-    strategies:
-      | PermissionStrategy
-      | {
-          groupStrategy?: PermissionStrategy;
-          linkStrategy?: PermissionStrategy;
-        },
+    strategy: "INHERIT_FROM_PARENT" | "ASK_EVERY_TIME" | "HIDDEN_BY_DEFAULT",
     folderPath?: string,
     onError?: (message: string) => void,
   ): Promise<{ success: boolean; error?: string }> => {
@@ -29,22 +19,6 @@ export const useDataroomPermissions = () => {
       return { success: false, error: "No document IDs provided" };
     }
 
-    // Accept either a legacy single-strategy string (applied to both targets
-    // server-side for backward compat) or per-target strategies.
-    const body =
-      typeof strategies === "string"
-        ? {
-            documentIds,
-            strategy: strategies,
-            folderPath,
-          }
-        : {
-            documentIds,
-            groupStrategy: strategies.groupStrategy,
-            linkStrategy: strategies.linkStrategy,
-            folderPath,
-          };
-
     try {
       const response = await fetch(
         `/api/teams/${encodeURIComponent(teamId)}/datarooms/${encodeURIComponent(dataroomId)}/apply-permissions`,
@@ -53,7 +27,11 @@ export const useDataroomPermissions = () => {
           headers: {
             "Content-Type": "application/json",
           },
-          body: JSON.stringify(body),
+          body: JSON.stringify({
+            documentIds,
+            strategy,
+            folderPath,
+          }),
         },
       );
 

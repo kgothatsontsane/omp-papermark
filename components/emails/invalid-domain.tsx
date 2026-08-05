@@ -12,9 +12,7 @@ import {
   Section,
   Tailwind,
   Text,
-} from "react-email";
-
-import { Footer } from "./shared/footer";
+} from "@react-email/components";
 
 export default function InvalidDomain({
   domain = "papermark.com",
@@ -79,7 +77,23 @@ export default function InvalidDomain({
                   }`
                 : ""}
             </Text>
-            <Footer />
+            <Hr />
+            <Section className="mt-8 text-gray-400">
+              <Text className="text-xs">
+                © {new Date().getFullYear()}{" "}
+                <a
+                  href="https://www.papermark.com"
+                  className="text-gray-400 no-underline hover:text-gray-400"
+                  target="_blank"
+                >
+                  papermark.com
+                </a>
+              </Text>
+              <Text className="text-xs">
+                If you have any feedback or questions about this email, simply
+                reply to it. I&apos;d love to hear from you!
+              </Text>
+            </Section>
           </Container>
         </Body>
       </Tailwind>

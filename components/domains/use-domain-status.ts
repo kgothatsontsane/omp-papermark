@@ -9,19 +9,8 @@ import {
 } from "@/lib/types";
 import { fetcher } from "@/lib/utils";
 
-export function useDomainStatus({
-  domain,
-  enabled = true,
-}: {
-  domain: string;
-  enabled?: boolean;
-}) {
+export function useDomainStatus({ domain }: { domain: string }) {
   const teamInfo = useTeam();
-
-  const key =
-    enabled && domain
-      ? `/api/teams/${teamInfo?.currentTeam?.id}/domains/${domain}/verify`
-      : null;
 
   const { data, isValidating, mutate } = useSWR<{
     status: DomainVerificationStatusProps;
@@ -29,7 +18,10 @@ export function useDomainStatus({
       domainJson: DomainResponse & { error: { code: string; message: string } };
       configJson: DomainConfigResponse;
     };
-  }>(key, fetcher);
+  }>(
+    `/api/teams/${teamInfo?.currentTeam?.id}/domains/${domain}/verify`,
+    fetcher,
+  );
 
   return {
     status: data?.status,

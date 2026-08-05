@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { useRouter } from "next/router";
 
 import { useEffect, useRef, useState } from "react";
@@ -6,11 +5,8 @@ import { useEffect, useRef, useState } from "react";
 import { TeamContextType } from "@/context/team-context";
 import {
   BetweenHorizontalStartIcon,
-  ChevronRight,
   ClipboardCopyIcon,
   CopyIcon,
-  EyeOffIcon,
-  FileSlidersIcon,
   FolderIcon,
   FolderInputIcon,
   FolderPenIcon,
@@ -21,14 +17,9 @@ import {
 import { toast } from "sonner";
 import { mutate } from "swr";
 
-import { getFolderColorClasses, getFolderIcon } from "@/lib/constants/folder-constants";
 import { DataroomFolderWithCount } from "@/lib/swr/use-dataroom";
-import { FolderWithCount, FolderWithCountAndPath } from "@/lib/swr/use-documents";
-import { getBreadcrumbPath, timeAgo } from "@/lib/utils";
-import {
-  HIERARCHICAL_DISPLAY_STYLE,
-  useHierarchicalDisplayName,
-} from "@/lib/utils/hierarchical-display";
+import { FolderWithCount } from "@/lib/swr/use-documents";
+import { timeAgo } from "@/lib/utils";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -41,13 +32,12 @@ import {
 } from "@/components/ui/dropdown-menu";
 
 import { MoveToDataroomFolderModal } from "../datarooms/move-dataroom-folder-modal";
-import { SetUnifiedPermissionsModal } from "../datarooms/groups/set-unified-permissions-modal";
 import { EditFolderModal } from "../folders/edit-folder-modal";
 import { AddFolderToDataroomModal } from "./add-folder-to-dataroom-modal";
 import { MoveToFolderModal } from "./move-folder-modal";
 
 type FolderCardProps = {
-  folder: FolderWithCount | FolderWithCountAndPath | DataroomFolderWithCount;
+  folder: FolderWithCount | DataroomFolderWithCount;
   teamInfo: TeamContextType | null;
   isDataroom?: boolean;
   dataroomId?: string;
@@ -70,25 +60,11 @@ export default function FolderCard({
   onDelete,
 }: FolderCardProps) {
   const router = useRouter();
-  const queryParams = router.query;
-  const searchQuery = queryParams["search"];
-  const sortQuery = queryParams["sort"];
-  const folderList = "folderList" in folder ? folder.folderList : undefined;
   const [moveFolderOpen, setMoveFolderOpen] = useState<boolean>(false);
   const [openFolder, setOpenFolder] = useState<boolean>(false);
   const [menuOpen, setMenuOpen] = useState<boolean>(false);
   const [addDataroomOpen, setAddDataroomOpen] = useState<boolean>(false);
-  const [groupPermissionOpen, setGroupPermissionOpen] =
-    useState<boolean>(false);
   const dropdownRef = useRef<HTMLDivElement | null>(null);
-
-  // Get hierarchical display name for dataroom folders
-  const displayName = useHierarchicalDisplayName(
-    folder.name,
-    isDataroom && "hierarchicalIndex" in folder
-      ? folder.hierarchicalIndex
-      : undefined,
-  );
 
   const folderPath =
     isDataroom && dataroomId
@@ -107,6 +83,8 @@ export default function FolderCard({
       });
     }
   }, [openFolder, addDataroomOpen]);
+
+
 
   const handleCreateDataroom = (e: any, folderId: string) => {
     e.stopPropagation();
@@ -139,7 +117,6 @@ export default function FolderCard({
           toast.dismiss();
           setMenuOpen(false);
           mutate(`/api/teams/${teamInfo?.currentTeam?.id}/datarooms`);
-          mutate(`/api/teams/${teamInfo?.currentTeam?.id}/datarooms?simple=true`);
           toast.success(`Successfully created!`, {
             description: `${folder.name} → ${data.name}`,
             action: {
@@ -158,48 +135,12 @@ export default function FolderCard({
   };
 
   const handleCardClick = (e: React.MouseEvent) => {
-    if (isDragging || menuOpen) {
+    if (isDragging) {
       e.preventDefault();
       e.stopPropagation();
       return;
     }
     router.push(folderPath);
-  };
-
-  const handleHideFolder = async (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-
-    toast.promise(
-      fetch(`/api/teams/${teamInfo?.currentTeam?.id}/folders/hide`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          folderIds: [folder.id],
-          hidden: true,
-        }),
-      }).then(async (res) => {
-        if (!res.ok) {
-          const error = await res.json();
-          throw new Error(error.message || "Failed to hide folder");
-        }
-        // Revalidate the folders and documents
-        mutate(`/api/teams/${teamInfo?.currentTeam?.id}/folders?root=true`);
-        mutate(`/api/teams/${teamInfo?.currentTeam?.id}/folders`);
-        mutate(
-          `/api/teams/${teamInfo?.currentTeam?.id}/folders${parentFolderPath}`,
-        );
-        mutate(`/api/teams/${teamInfo?.currentTeam?.id}/documents`);
-        setMenuOpen(false);
-      }),
-      {
-        loading: "Hiding folder from All Documents...",
-        success: "Folder hidden from All Documents.",
-        error: (err) => err.message || "Failed to hide folder. Try again.",
-      },
-    );
   };
 
   return (
@@ -211,16 +152,7 @@ export default function FolderCard({
         <div className="flex min-w-0 shrink items-center space-x-2 sm:space-x-4">
           {!isSelected && !isHovered ? (
             <div className="mx-0.5 flex w-8 items-center justify-center text-center sm:mx-1">
-              {(() => {
-                const FolderIconComponent = getFolderIcon(folder.icon);
-                const colorClasses = getFolderColorClasses(folder.color);
-                return (
-                  <FolderIconComponent
-                    className={`h-8 w-8 ${colorClasses.iconClass}`}
-                    strokeWidth={1}
-                  />
-                );
-              })()}
+              <FolderIcon className="h-8 w-8" strokeWidth={1} />
             </div>
           ) : (
             <div className="mx-0.5 w-8 sm:mx-1"></div>
@@ -228,11 +160,8 @@ export default function FolderCard({
 
           <div className="flex-col">
             <div className="flex items-center">
-              <h2
-                className="min-w-0 max-w-[150px] truncate text-sm font-semibold leading-6 text-foreground sm:max-w-md"
-                style={HIERARCHICAL_DISPLAY_STYLE}
-              >
-                {displayName}
+              <h2 className="min-w-0 max-w-[150px] truncate text-sm font-semibold leading-6 text-foreground sm:max-w-md">
+                {folder.name}
               </h2>
             </div>
             <div className="mt-1 flex items-center space-x-1 text-xs leading-5 text-muted-foreground">
@@ -248,37 +177,6 @@ export default function FolderCard({
                 {folder._count.childFolders === 1 ? "Folder" : "Folders"}
               </p>
             </div>
-            {searchQuery && folderList !== undefined ? (
-              <div className="relative z-10 mt-1 flex flex-wrap items-center space-x-1 text-xs leading-5 text-muted-foreground">
-                {getBreadcrumbPath(folderList).map((segment, index) => (
-                  <p
-                    className="inset-2 flex items-center gap-x-1 truncate"
-                    key={segment.pathLink}
-                  >
-                    {index !== 0 && <ChevronRight className="h-3 w-3" />}
-                    <FolderIcon className="h-3 w-3" />
-                    <Link
-                      href={segment.pathLink}
-                      onClick={(e) => e.stopPropagation()}
-                      className="relative z-10 hover:underline"
-                    >
-                      {segment.name}
-                    </Link>
-                  </p>
-                ))}
-                <p className="inset-2 flex items-center gap-x-1 truncate">
-                  <ChevronRight className="h-3 w-3" />
-                  <FolderIcon className="h-3 w-3" />
-                  <Link
-                    href={folderPath}
-                    onClick={(e) => e.stopPropagation()}
-                    className="relative z-10 hover:underline"
-                  >
-                    {folder.name}
-                  </Link>
-                </p>
-              </div>
-            ) : null}
           </div>
         </div>
 
@@ -300,7 +198,7 @@ export default function FolderCard({
           <DropdownMenu open={menuOpen} onOpenChange={setMenuOpen}>
             <DropdownMenuTrigger asChild>
               <Button
-                onClick={(e) => e.stopPropagation()}
+                // size="icon"
                 variant="outline"
                 className="z-10 h-8 w-8 border-gray-200 bg-transparent p-0 hover:bg-gray-200 dark:border-gray-700 hover:dark:bg-gray-700 lg:h-9 lg:w-9"
               >
@@ -350,18 +248,6 @@ export default function FolderCard({
                   ? "Copy folder to other dataroom"
                   : "Add folder to dataroom"}
               </DropdownMenuItem>
-              {isDataroom && dataroomId ? (
-                <DropdownMenuItem
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    setGroupPermissionOpen(true);
-                  }}
-                >
-                  <FileSlidersIcon className="mr-2 h-4 w-4" />
-                  Set Group Permissions
-                </DropdownMenuItem>
-              ) : null}
               <DropdownMenuItem
                 onClick={(e) => {
                   e.preventDefault();
@@ -379,12 +265,6 @@ export default function FolderCard({
                   {folder.id}
                 </span>
               </DropdownMenuItem>
-              {!isDataroom && (
-                <DropdownMenuItem onClick={handleHideFolder}>
-                  <EyeOffIcon className="mr-2 h-4 w-4" />
-                  Hide from All Documents
-                </DropdownMenuItem>
-              )}
               <DropdownMenuSeparator />
 
               <DropdownMenuItem
@@ -418,8 +298,6 @@ export default function FolderCard({
           setOpen={setOpenFolder}
           folderId={folder.id}
           name={folder.name}
-          icon={folder.icon}
-          color={folder.color}
           isDataroom={isDataroom}
           dataroomId={dataroomId}
         />
@@ -452,20 +330,6 @@ export default function FolderCard({
           folderIds={[folder.id]}
           folderParentId={folder.parentId!}
           itemName={folder.name}
-        />
-      ) : null}
-      {groupPermissionOpen && isDataroom && dataroomId ? (
-        <SetUnifiedPermissionsModal
-          open={groupPermissionOpen}
-          setOpen={setGroupPermissionOpen}
-          dataroomId={dataroomId}
-          uploadedFiles={[
-            {
-              dataroomFolderId: folder.id,
-              fileName: folder.name,
-              itemType: "folder",
-            },
-          ]}
         />
       ) : null}
     </>

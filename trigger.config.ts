@@ -1,11 +1,10 @@
 import { ffmpeg } from "@trigger.dev/build/extensions/core";
 import { prismaExtension } from "@trigger.dev/build/extensions/prisma";
-import { pythonExtension } from "@trigger.dev/python/extension";
-import { defineConfig, timeout } from "@trigger.dev/sdk";
+import { defineConfig, timeout } from "@trigger.dev/sdk/v3";
 
 export default defineConfig({
   project: "proj_plmsfqvqunboixacjjus",
-  dirs: ["./lib/trigger", "./ee/**/lib/trigger"],
+  dirs: ["./lib/trigger"],
   maxDuration: timeout.None, // no max duration
   retries: {
     enabledInDev: false,
@@ -18,16 +17,11 @@ export default defineConfig({
     },
   },
   build: {
-    external: ["mupdf"],
     extensions: [
       prismaExtension({
-        mode: "legacy",
         schema: "prisma/schema/schema.prisma",
       }),
       ffmpeg(),
-      pythonExtension({
-        scripts: ["./**/*.py"],
-      }),
     ],
   },
 });

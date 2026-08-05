@@ -90,12 +90,10 @@ export default async function handle(
 
     try {
       // Check if user has access to team
-      const userTeam = await prisma.userTeam.findUnique({
+      const userTeam = await prisma.userTeam.findFirst({
         where: {
-          userId_teamId: {
-            userId,
-            teamId,
-          },
+          teamId,
+          userId,
         },
       });
 

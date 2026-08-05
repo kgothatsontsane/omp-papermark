@@ -1,21 +1,17 @@
 import { NextApiRequest, NextApiResponse } from "next";
 
-import { authOptions } from "@/pages/api/auth/[...nextauth]";
 import { View } from "@prisma/client";
 import { getServerSession } from "next-auth/next";
 
-import { assertDocumentAccess } from "@/lib/api/rbac/entitlements";
 import { errorhandler } from "@/lib/errorHandler";
 import prisma from "@/lib/prisma";
 import {
   getTotalAvgPageDuration,
   getTotalDocumentDuration,
 } from "@/lib/tinybird";
-import {
-  getVideoEventsByDocument,
-  getViewCompletionStats,
-} from "@/lib/tinybird/pipes";
 import { CustomUser } from "@/lib/types";
+
+import { authOptions } from "../../../../auth/[...nextauth]";
 
 export default async function handle(
   req: NextApiRequest,
@@ -32,109 +28,54 @@ export default async function handle(
       teamId,
       id: docId,
       excludeTeamMembers,
-      dataroomId,
     } = req.query as {
       teamId: string;
       id: string;
       excludeTeamMembers?: string;
-      // When provided, stats are scoped to this data room's visits only,
-      // treating the document's direct-link visits as out of scope.
-      dataroomId?: string;
     };
 
     const userId = (session.user as CustomUser).id;
 
     try {
-      const teamHasUser = await prisma.team.findUnique({
-        where: { id: teamId, users: { some: { userId } } },
-      });
-
-      if (!teamHasUser) {
-        return res.status(401).end("Unauthorized");
-      }
-
-      // Dataroom-scoped members may only read stats for a document in one of
-      // their assigned rooms.
-      const membership = await prisma.userTeam.findUnique({
-        where: { userId_teamId: { userId, teamId } },
-        select: { role: true },
-      });
-      const hasDocumentAccess = await assertDocumentAccess({
-        role: membership?.role ?? "",
-        userId,
-        teamId,
-        documentId: docId,
-      });
-      if (!hasDocumentAccess) {
-        return res.status(403).end("Forbidden");
-      }
-
-      // First check if document exists and get basic info
       const document = await prisma.document.findUnique({
         where: {
           id: docId,
           teamId,
         },
-        select: {
-          id: true,
-          teamId: true,
-          numPages: true,
-          type: true,
-          versions: {
-            orderBy: { createdAt: "desc" },
+        include: {
+          views: true,
+          team: {
             select: {
-              versionNumber: true,
-              createdAt: true,
-              numPages: true,
-              type: true,
-              length: true,
-            },
-          },
-          _count: {
-            select: {
-              views: { where: { isArchived: false } },
+              plan: true,
             },
           },
         },
       });
 
-      if (!document) {
-        return res.status(404).json({ error: "Document not found" });
-      }
+      const users = await prisma.user.findMany({
+        where: {
+          teams: {
+            some: {
+              teamId: teamId,
+            },
+          },
+        },
+        select: {
+          email: true,
+        },
+      });
 
-      // Early return for documents with no views - avoid expensive queries
-      if (document._count.views === 0) {
+      const views = document?.views;
+
+      // if there are no views, return an empty array
+      if (!views) {
         return res.status(200).json({
           views: [],
           duration: { data: [] },
           total_duration: 0,
-          avgCompletionRate: 0,
-          totalViews: 0,
+          groupedReactions: [],
         });
       }
-
-      // Only fetch views and users if we have views
-      const [views, users] = await Promise.all([
-        prisma.view.findMany({
-          where: {
-            documentId: docId,
-          },
-        }),
-        excludeTeamMembers
-          ? prisma.user.findMany({
-              where: {
-                teams: {
-                  some: {
-                    teamId: teamId,
-                  },
-                },
-              },
-              select: {
-                email: true,
-              },
-            })
-          : Promise.resolve([]),
-      ]);
 
       const activeViews = views.filter((view) => !view.isArchived);
       const archivedViews = views.filter((view) => view.isArchived);
@@ -147,128 +88,47 @@ export default async function handle(
         });
       }
 
-      // When scoped to a data room, the document's direct-link visits (and any
-      // visits belonging to other rooms) are out of scope and excluded.
-      const outOfScopeViews: View[] = dataroomId
-        ? activeViews.filter((view) => view.dataroomId !== dataroomId)
-        : [];
-
-      // combined archived, internal, and out-of-scope views (deduped by id)
-      const excludedViewIdSet = new Set<string>();
-      for (const view of [
-        ...internalViews,
-        ...archivedViews,
-        ...outOfScopeViews,
-      ]) {
-        excludedViewIdSet.add(view.id);
-      }
-      const excludedViewIds = Array.from(excludedViewIdSet);
-      const excludedViewIdsString = excludedViewIds.join(",");
+      // combined archived and internal views
+      const allExcludedViews = [...internalViews, ...archivedViews];
 
       // filter out the excluded views
       const filteredViews = views.filter(
-        (view) => !excludedViewIdSet.has(view.id),
+        (view) => !allExcludedViews.map((view) => view.id).includes(view.id),
       );
 
-      const [duration, totalDocumentDuration] = await Promise.all([
-        getTotalAvgPageDuration({
-          documentId: docId,
-          excludedLinkIds: "",
-          excludedViewIds: excludedViewIdsString,
-          since: 0,
-        }),
-        getTotalDocumentDuration({
-          documentId: docId,
-          excludedLinkIds: "",
-          excludedViewIds: excludedViewIdsString,
-          since: 0,
-        }),
-      ]);
-
-      // Calculate average completion rate for all filtered views
-      let avgCompletionRate = 0;
-      if (filteredViews.length > 0) {
-        if (document.type === "video") {
-          // For video documents, calculate based on unique watch time
-          const videoEvents = await getVideoEventsByDocument({
-            document_id: docId,
-          });
-
-          const completionRates = await Promise.all(
-            filteredViews.map(async (view) => {
-              const viewEvents =
-                videoEvents?.data.filter(
-                  (event: any) =>
-                    event.view_id === view.id &&
-                    ["played", "muted", "unmuted", "rate_changed"].includes(
-                      event.event_type,
-                    ) &&
-                    event.end_time > event.start_time &&
-                    event.end_time - event.start_time >= 1,
-                ) || [];
-
-              const uniqueTimestamps = new Set<number>();
-              viewEvents.forEach((event: any) => {
-                for (let t = event.start_time; t < event.end_time; t++) {
-                  uniqueTimestamps.add(Math.floor(t));
-                }
-              });
-
-              const videoLength = document.versions[0]?.length || 0;
-              return videoLength > 0
-                ? Math.min(100, (uniqueTimestamps.size / videoLength) * 100)
-                : 0;
-            }),
-          );
-
-          avgCompletionRate =
-            completionRates.reduce((sum, rate) => sum + rate, 0) /
-            completionRates.length;
-        } else {
-          // For document type, calculate based on pages viewed
-          const completionStats = await getViewCompletionStats({
+      // get the reactions for the filtered views
+      const groupedReactions = await prisma.reaction.groupBy({
+        by: ["type"],
+        where: {
+          view: {
             documentId: docId,
-            excludedViewIds: excludedViewIdsString,
-            since: 0,
-          });
+            id: { notIn: allExcludedViews.map((view) => view.id) },
+          },
+        },
+        _count: { type: true },
+      });
 
-          // Build lookup map for O(1) access: viewId -> { versionNumber, pages_viewed }
-          const statsMap = new Map(
-            completionStats.data.map((s) => [
-              s.viewId,
-              { versionNumber: s.versionNumber, pagesViewed: s.pages_viewed },
-            ]),
-          );
+      const duration = await getTotalAvgPageDuration({
+        documentId: docId,
+        excludedLinkIds: "",
+        excludedViewIds: allExcludedViews.map((view) => view.id).join(","),
+        since: 0,
+      });
 
-          const completionRates = filteredViews.map((view) => {
-            const viewStats = statsMap.get(view.id);
-            if (!viewStats) return 0;
-
-            // Find the version that matches the versionNumber from Tinybird
-            const relevantVersion = document.versions.find(
-              (version) => version.versionNumber === viewStats.versionNumber,
-            );
-            const numPages =
-              relevantVersion?.numPages || document.numPages || 0;
-
-            return numPages > 0 ? (viewStats.pagesViewed / numPages) * 100 : 0;
-          });
-
-          avgCompletionRate =
-            completionRates.reduce((sum, rate) => sum + rate, 0) /
-            completionRates.length;
-        }
-      }
+      const totalDocumentDuration = await getTotalDocumentDuration({
+        documentId: docId,
+        excludedLinkIds: "",
+        excludedViewIds: allExcludedViews.map((view) => view.id).join(","),
+        since: 0,
+      });
 
       const stats = {
         views: filteredViews,
         duration,
         total_duration:
-          filteredViews.length > 0
-            ? ((totalDocumentDuration.data[0]?.sum_duration ?? 0) * 1.0) /
-              filteredViews.length
-            : 0,
-        avgCompletionRate: Math.round(avgCompletionRate),
+          (totalDocumentDuration.data[0].sum_duration * 1.0) /
+          filteredViews.length,
+        groupedReactions,
         totalViews: filteredViews.length,
       };
 

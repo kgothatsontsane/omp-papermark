@@ -6,9 +6,6 @@ import { CalendarIcon, ChevronDown, CrownIcon } from "lucide-react";
 import { DateRange } from "react-day-picker";
 import { toast } from "sonner";
 
-import { cn } from "@/lib/utils";
-
-import { UpgradePlanModal } from "@/components/billing/upgrade-plan-modal";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import {
@@ -17,63 +14,42 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 
-export const TIME_RANGES = [
+import { cn } from "@/lib/utils";
+
+import { UpgradePlanModal } from "../billing/upgrade-plan-modal";
+
+const TIME_RANGES = [
   { value: "24h", label: "Last 24 hours", shortcut: "D" },
   { value: "7d", label: "Last 7 days", shortcut: "W" },
   { value: "30d", label: "Last 30 days", shortcut: "M" },
-  { value: "all", label: "All time", shortcut: "A" },
   { value: "custom", label: "Custom Date", shortcut: "C" },
 ] as const;
 
 export type TimeRange = (typeof TIME_RANGES)[number]["value"];
-
-/** The dashboard's API only understands these; data rooms additionally offer "all". */
-export type DashboardTimeRange = Exclude<TimeRange, "all">;
-
-export const DASHBOARD_TIME_RANGES = TIME_RANGES.filter(
-  (
-    range,
-  ): range is Extract<
-    (typeof TIME_RANGES)[number],
-    { value: DashboardTimeRange }
-  > => range.value !== "all",
-);
-
-export function isDashboardTimeRange(
-  value: unknown,
-): value is DashboardTimeRange {
-  return DASHBOARD_TIME_RANGES.some((range) => range.value === value);
-}
-
 interface CustomRange {
   start: Date;
   end: Date;
 }
-interface TimeRangeSelectProps<T extends TimeRange> {
-  value: T;
-  /** The calendar commits a custom range regardless of which presets are offered. */
-  onChange: (value: NoInfer<T> | "custom") => void;
-  /** Pass the dashboard set to keep "All time" out of both the UI and the callback. */
-  ranges: readonly { value: T; label: string }[];
+interface TimeRangeSelectProps {
+  value: TimeRange;
+  onChange: (value: TimeRange) => void;
   customRange: CustomRange;
   setCustomRange: (range: CustomRange) => void;
   onCustomRangeComplete?: (range: CustomRange) => void;
-  /** Dashboard-only latch recording that the user has picked a range. */
-  slug?: React.MutableRefObject<boolean>;
+  slug: React.MutableRefObject<boolean>;
   isPremium?: boolean;
 }
 
-export function TimeRangeSelect<T extends TimeRange>({
+export function TimeRangeSelect({
   value,
   onChange,
-  ranges,
   customRange,
   setCustomRange,
   onCustomRangeComplete,
   slug,
   isPremium = false,
-}: TimeRangeSelectProps<T>) {
-  const selectedRange = ranges.find((range) => range.value === value);
+}: TimeRangeSelectProps) {
+  const selectedRange = TIME_RANGES.find((range) => range.value === value);
   const [date, setDate] = useState<DateRange | undefined>({
     from: customRange.start,
     to: customRange.end,
@@ -87,22 +63,21 @@ export function TimeRangeSelect<T extends TimeRange>({
     setDate({ from: customRange.start, to: customRange.end });
   }, [customRange]);
 
-  const handleSelectOption = (selected: T) => {
+  const handleSelectOption = (value: TimeRange) => {
     // Prevent selecting custom range for non-premium users
-    if (selected === "custom" && !isPremium) {
+    if (value === "custom" && !isPremium) {
       toast.error("Upgrade to view data beyond 30 days");
       return;
     }
 
-    onChange(selected);
+    onChange(value);
 
     // Update date range based on selected preset
     const now = new Date();
     const end = startOfDay(now);
     let start = startOfDay(now);
 
-    const preset: TimeRange = selected;
-    switch (preset) {
+    switch (value) {
       case "24h":
         start = subDays(end, 1);
         break;
@@ -112,24 +87,17 @@ export function TimeRangeSelect<T extends TimeRange>({
       case "30d":
         start = subDays(end, 30);
         break;
-      case "all":
-        setDate(undefined);
-        if (slug) slug.current = false;
-        setOpen(false);
-        return;
       case "custom":
         // Reset the date range when switching to custom
         setDate(undefined);
         return;
-      default: {
-        const exhaustive: never = preset;
-        return exhaustive;
-      }
+      default:
+        return;
     }
 
     setCustomRange({ start, end });
     setDate({ from: start, to: end });
-    if (slug) slug.current = false;
+    slug.current = false;
     setOpen(false);
   };
 
@@ -149,13 +117,13 @@ export function TimeRangeSelect<T extends TimeRange>({
       const newRange = { start: range.from, end: range.to };
       setCustomRange(newRange);
       onChange("custom");
-      if (slug) slug.current = false;
+      slug.current = false;
       setOpen(false);
       onCustomRangeComplete?.(newRange);
     } else if (range?.from) {
       setCustomRange({ start: range.from, end: range.from });
       onChange("custom");
-      if (slug) slug.current = false;
+      slug.current = false;
     }
   };
 
@@ -165,13 +133,13 @@ export function TimeRangeSelect<T extends TimeRange>({
         <Button
           variant="outline"
           className={cn(
-            "w-auto justify-between text-left font-normal sm:w-[300px]",
+            "w-[300px] justify-between text-left font-normal",
             !date && "text-muted-foreground",
           )}
         >
-          <div className="flex items-center gap-1.5 sm:gap-2">
-            <CalendarIcon className="h-4 w-4 shrink-0" />
-            <span className="text-xs sm:text-sm">
+          <div className="flex items-center gap-2">
+            <CalendarIcon className="h-4 w-4" />
+            <span>
               {value === "custom" && date?.from ? (
                 <>
                   {format(date.from, "MMM d")} -{" "}
@@ -182,7 +150,7 @@ export function TimeRangeSelect<T extends TimeRange>({
               )}
             </span>
           </div>
-          <ChevronDown className="h-4 w-4 shrink-0 opacity-50" />
+          <ChevronDown className="h-4 w-4 opacity-50" />
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-auto p-2" align="end">
@@ -207,7 +175,7 @@ export function TimeRangeSelect<T extends TimeRange>({
           </div>
           <div className="flex flex-col gap-2">
             <div className="grid gap-1">
-              {ranges.map((range) => {
+              {TIME_RANGES.map((range) => {
                 if (isPremium || range.value !== "custom") {
                   return (
                     <Button

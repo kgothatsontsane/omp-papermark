@@ -11,10 +11,10 @@ import {
   YAxis,
 } from "recharts";
 
-import { DashboardTimeRange } from "./time-range-select";
+import { TimeRange } from "./time-range-select";
 
 interface DashboardViewsChartProps {
-  timeRange: DashboardTimeRange;
+  timeRange: TimeRange;
   data?: { date: string; views: number }[];
   startDate?: Date;
   endDate?: Date;
@@ -186,16 +186,16 @@ export default function DashboardViewsChart({
   }, [timeRange, formattedData, totalDays]);
 
   const barSize = useMemo(() => {
-    if (timeRange === "24h") return 14;
-    if (timeRange === "7d") return 32;
-    if (timeRange === "30d") return 16;
+    if (timeRange === "24h") return 8;
+    if (timeRange === "7d") return 24;
+    if (timeRange === "30d") return 12;
 
     if (startDate && endDate) {
-      if (totalDays > 365) return 32;
-      if (totalDays > 30) return 22;
+      if (totalDays > 365) return 24;
+      if (totalDays > 30) return 16;
     }
 
-    return 16;
+    return 12;
   }, [timeRange, startDate, endDate, totalDays]);
 
   return (
@@ -265,7 +265,7 @@ export default function DashboardViewsChart({
             fill="rgb(16 185 129)"
             stroke="rgb(16 185 129)"
             strokeWidth={1}
-            radius={[0, 0, 0, 0]}
+            radius={[2, 2, 0, 0]}
           />
         </BarChart>
       </ResponsiveContainer>

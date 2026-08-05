@@ -25,14 +25,9 @@ import {
 } from "lucide-react";
 import useSWR from "swr";
 
-import { useFeatureFlags } from "@/lib/hooks/use-feature-flags";
 import { usePlan } from "@/lib/swr/use-billing";
 import { useDataroomFoldersTree } from "@/lib/swr/use-dataroom";
 import { cn, fetcher } from "@/lib/utils";
-import {
-  HIERARCHICAL_DISPLAY_STYLE,
-  getHierarchicalDisplayName,
-} from "@/lib/utils/hierarchical-display";
 
 import PlanBadge from "@/components/billing/plan-badge";
 import { UpgradePlanModal } from "@/components/billing/upgrade-plan-modal";
@@ -56,39 +51,10 @@ import {
 } from "@/components/ui/table";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 
-const PermissionGroupItemName = ({ item }: { item: FileOrFolder }) => {
-  const { isFeatureEnabled } = useFeatureFlags();
-  const isDataroomIndexEnabled = isFeatureEnabled("dataroomIndex");
-
-  const displayName = getHierarchicalDisplayName(
-    item.name,
-    item.hierarchicalIndex,
-    isDataroomIndexEnabled,
-  );
-
-  const isRoot = item.id === "__dataroom_root__";
-
-  return (
-    <div className="flex items-center text-foreground">
-      {isRoot ? (
-        <HomeIcon className="mr-2 h-5 w-5" />
-      ) : item.itemType === ItemType.DATAROOM_FOLDER ? (
-        <Folder className="mr-2 h-5 w-5" />
-      ) : (
-        <File className="mr-2 h-5 w-5" />
-      )}
-      <span className="truncate" style={HIERARCHICAL_DISPLAY_STYLE}>
-        {displayName}
-      </span>
-    </div>
-  );
-};
-
 // FileOrFolder type for link permissions
 type FileOrFolder = {
   id: string;
   name: string;
-  hierarchicalIndex?: string | null;
   subItems?: FileOrFolder[];
   permissions: {
     view: boolean;
@@ -135,7 +101,16 @@ const createColumns = (extra: ColumnExtra): ColumnDef<FileOrFolder>[] => [
           ) : (
             <div className="mr-1 h-6 w-6 shrink-0" /> // Placeholder to maintain alignment
           )}
-          <PermissionGroupItemName item={row.original} />
+          {isRoot ? (
+            <HomeIcon className="mr-2 h-5 w-5 shrink-0" />
+          ) : row.original.itemType === ItemType.DATAROOM_FOLDER ? (
+            <Folder className="mr-2 h-5 w-5 shrink-0" />
+          ) : (
+            <File className="mr-2 h-5 w-5 shrink-0" />
+          )}
+          <span className={cn("max-w-[400px] truncate", isRoot && "font-semibold")}>
+            {row.original.name}
+          </span>
         </div>
       );
     },
@@ -237,7 +212,6 @@ const buildTree = (
         id: doc.id,
         documentId: doc.document.id,
         name: doc.document.name,
-        hierarchicalIndex: doc.hierarchicalIndex,
         permissions: getPermissions(doc.id),
         itemType: ItemType.DATAROOM_DOCUMENT,
       }));
@@ -272,7 +246,6 @@ const buildTree = (
       result.push({
         id: folder.id,
         name: folder.name,
-        hierarchicalIndex: folder.hierarchicalIndex,
         subItems: allSubItems,
         permissions: {
           view: viewStatus,
@@ -296,7 +269,6 @@ const buildTree = (
         id: doc.id,
         documentId: doc.document.id,
         name: doc.document.name,
-        hierarchicalIndex: doc.hierarchicalIndex,
         permissions: getPermissions(doc.id),
         itemType: ItemType.DATAROOM_DOCUMENT,
       });
@@ -1094,7 +1066,7 @@ export function PermissionsSheet({
                   : Object.keys(pendingChanges).length === 0
               }
             >
-              Save & Share
+              Save Permissions
             </Button>
             <Button
               type="button"

@@ -22,8 +22,6 @@ type Props = {
     tag?: string;
     disabled?: boolean;
     limited?: boolean;
-    clickedPlan?: PlanEnum;
-    highlightItem?: string[];
   }[];
   className?: string;
 };
@@ -34,12 +32,12 @@ export const NavMenu: React.FC<React.PropsWithChildren<Props>> = ({
 }) => {
   return (
     <nav
-      className={cn("sticky top-0 z-10 bg-background dark:bg-gray-900 md:top-0", className)}
+      className={cn("sticky top-0 bg-background dark:bg-gray-900", className)}
     >
-      <div className="flex w-full items-center overflow-x-auto px-1 sm:px-4 sm:pl-1">
+      <div className="flex w-full items-center overflow-x-auto px-4 pl-1">
         <ul className="flex flex-row gap-4">
           {navigation.map(
-            ({ label, href, segment, tag, disabled, limited, clickedPlan, highlightItem }) => (
+            ({ label, href, segment, tag, disabled, limited }) => (
               <NavItem
                 key={label}
                 label={label}
@@ -48,8 +46,6 @@ export const NavMenu: React.FC<React.PropsWithChildren<Props>> = ({
                 tag={tag}
                 disabled={disabled}
                 limited={limited}
-                clickedPlan={clickedPlan}
-                highlightItem={highlightItem}
               />
             ),
           )}
@@ -67,8 +63,6 @@ const NavItem: React.FC<Props["navigation"][0]> = ({
   tag,
   disabled,
   limited,
-  clickedPlan,
-  highlightItem,
 }) => {
   const router = useRouter();
   // active is true if the segment included in the pathname, but not if it's the root pathname. unless the segment is the root pathname.
@@ -107,9 +101,9 @@ const NavItem: React.FC<Props["navigation"][0]> = ({
       {limited ? (
         <UpgradePlanModal
           key={label}
-          clickedPlan={clickedPlan ?? PlanEnum.DataRoomsPlus}
+          clickedPlan={PlanEnum.DataRoomsPlus}
           trigger={label}
-          highlightItem={highlightItem}
+          highlightItem={["qa"]}
         >
           <div className="text-content-subtle hover:bg-background-subtle -mx-3 flex items-center gap-1 rounded-lg px-3 py-2 text-sm font-medium hover:bg-muted hover:text-primary">
             {label}

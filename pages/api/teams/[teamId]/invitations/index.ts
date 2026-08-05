@@ -22,12 +22,10 @@ export default async function handle(
 
     try {
       // check if currentUser is part of the team with the teamId
-      const userTeam = await prisma.userTeam.findUnique({
+      const userTeam = await prisma.userTeam.findFirst({
         where: {
-          userId_teamId: {
-            userId: (session.user as CustomUser).id,
-            teamId,
-          },
+          teamId,
+          userId: (session.user as CustomUser).id,
         },
       });
 
@@ -68,21 +66,15 @@ export default async function handle(
 
     try {
       // check if currentUser is part of the team with the teamId
-      const userTeam = await prisma.userTeam.findUnique({
+      const userTeam = await prisma.userTeam.findFirst({
         where: {
-          userId_teamId: {
-            userId: (session.user as CustomUser).id,
-            teamId,
-          },
+          teamId,
+          userId: (session.user as CustomUser).id,
         },
       });
 
       if (!userTeam) {
         return res.status(403).json("You are not part of this team");
-      }
-
-      if (userTeam.role !== "ADMIN") {
-        return res.status(403).json("Only admins can revoke invitations");
       }
 
       // delete invitation

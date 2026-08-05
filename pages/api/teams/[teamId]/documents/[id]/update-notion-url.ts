@@ -5,7 +5,6 @@ import { getServerSession } from "next-auth/next";
 
 import prisma from "@/lib/prisma";
 import { CustomUser } from "@/lib/types";
-import { notionUrlUpdateSchema } from "@/lib/zod/url-validation";
 
 export default async function handle(
   req: NextApiRequest,
@@ -25,25 +24,37 @@ export default async function handle(
     teamId: string;
     id: string;
   };
-  const { notionUrl: url } = req.body as { notionUrl: string };
+  const { notionUrl } = req.body as { notionUrl: string };
 
-  const validationResult = await notionUrlUpdateSchema.safeParseAsync(url);
-  if (!validationResult.success) {
-    return res.status(400).json({ message: validationResult.error.message });
+  // Basic URL validation
+  if (!notionUrl || typeof notionUrl !== "string") {
+    return res.status(400).json({ message: "Valid Notion URL is required" });
   }
 
-  const notionUrl = validationResult.data;
+  // Validate that it's a Notion URL
+  try {
+    const url = new URL(notionUrl);
+    if (!url.hostname.includes("notion.")) {
+      return res.status(400).json({ message: "Invalid Notion URL" });
+    }
+  } catch (error) {
+    return res.status(400).json({ message: "Invalid URL format" });
+  }
 
   try {
-    const teamAccess = await prisma.userTeam.findUnique({
+    // Check if user has access to the team
+    const team = await prisma.team.findUnique({
       where: {
-        userId_teamId: {
-          userId: userId,
-          teamId: teamId,
+        id: teamId,
+        users: {
+          some: {
+            userId: userId,
+          },
         },
       },
     });
-    if (!teamAccess) {
+
+    if (!team) {
       return res.status(401).json({ message: "Unauthorized" });
     }
 
@@ -51,9 +62,6 @@ export default async function handle(
       where: {
         documentId: documentId,
         isPrimary: true,
-        document: {
-          teamId: teamId,
-        },
       },
       select: {
         id: true,
@@ -75,7 +83,7 @@ export default async function handle(
     // Preserve any existing query parameters from the old URL (like dark mode)
     const oldUrl = new URL(documentVersion.file);
     const newUrl = new URL(notionUrl);
-
+    
     // Copy over the mode parameter if it exists
     const mode = oldUrl.searchParams.get("mode");
     if (mode) {
@@ -83,16 +91,17 @@ export default async function handle(
     }
 
     // Update document version
-    await prisma.documentVersion.update({
+    await prisma.documentVersion.updateMany({
       where: {
-        id: documentVersion.id,
+        documentId: documentId,
+        isPrimary: true,
       },
       data: {
         file: newUrl.toString(),
       },
     });
 
-    return res.status(200).json({
+    return res.status(200).json({ 
       message: "Notion URL updated successfully",
       newUrl: newUrl.toString(),
     });

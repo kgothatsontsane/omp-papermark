@@ -4,7 +4,7 @@ import { useTeam } from "@/context/team-context";
 import { toast } from "sonner";
 import useSWR from "swr";
 
-import { fetcher, sanitizeList, validateList } from "@/lib/utils";
+import { fetcher, sanitizeList } from "@/lib/utils";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -38,7 +38,14 @@ export default function GlobalBlockListForm() {
     }
   }, [blockList]);
 
-  const { invalid: invalidEntries } = validateList(blockListInput, "both");
+  const allEntered = blockListInput
+    .split("\n")
+    .map((d) => d.trim())
+    .filter(Boolean);
+  const validEntries = sanitizeList(blockListInput, "both");
+  const invalidEntries = allEntered.filter(
+    (d) => !validEntries.includes(d.toLowerCase()),
+  );
 
   const saveDisabled = useMemo(() => {
     return (
@@ -61,7 +68,7 @@ export default function GlobalBlockListForm() {
     }).then(async (res) => {
       if (!res.ok) {
         const { error } = await res.json();
-        throw new Error(error || "Failed to update block list.");
+        throw new Error(error?.message || "Failed to update block list.");
       }
       await mutate();
       return res.json();
@@ -94,19 +101,14 @@ export default function GlobalBlockListForm() {
         <Textarea
           className="focus:ring-inset"
           rows={5}
-          placeholder={`Enter emails or domains separated by comma, semicolon, or new line, e.g.\n@company.io\nuser@example.com`}
+          placeholder={`Enter one email or domain per line, e.g.\n@company.io\nuser@example.com`}
           value={blockListInput}
           onChange={(e) => setBlockListInput(e.target.value)}
-          aria-invalid={invalidEntries.length > 0}
         />
-        {invalidEntries.length > 0 ? (
+        {invalidEntries.length > 0 && (
           <p className="mt-2 text-sm text-destructive">
-            The following entries are not valid and must be fixed before
-            saving: {invalidEntries.join(", ")}
-          </p>
-        ) : (
-          <p className="mt-2 text-xs text-muted-foreground">
-            Separate multiple entries with a comma, semicolon, or new line.
+            The following entries are not valid and will be ignored:{" "}
+            {invalidEntries.join(", ")}
           </p>
         )}
       </CardContent>

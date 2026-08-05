@@ -15,14 +15,34 @@ import {
 import { UpgradeButton } from "@/components/ui/upgrade-button";
 
 interface FeaturePreviewProps {
+  /**
+   * The title displayed in the preview card
+   */
   title: string;
+  /**
+   * The description/subtitle displayed in the preview card
+   */
   description: string;
+  /**
+   * The plan required to access this feature
+   */
   requiredPlan: PlanEnum;
+  /**
+   * Analytics trigger identifier for tracking upgrade clicks
+   */
   trigger: string;
+  /**
+   * The mock content to show as a preview (will be behind a gradient overlay)
+   */
   children: React.ReactNode;
+  /**
+   * Additional CSS classes for the container
+   */
   className?: string;
+  /**
+   * Custom upgrade button text
+   */
   upgradeButtonText?: string;
-  highlightItem?: string[];
 }
 
 /**
@@ -48,7 +68,6 @@ export function FeaturePreview({
   children,
   className,
   upgradeButtonText = "Unlock",
-  highlightItem,
 }: FeaturePreviewProps) {
   return (
     <div className={cn("relative", className)}>
@@ -75,7 +94,6 @@ export function FeaturePreview({
               text={upgradeButtonText}
               clickedPlan={requiredPlan}
               trigger={trigger}
-              highlightItem={highlightItem}
               size="lg"
               className="w-full"
             />

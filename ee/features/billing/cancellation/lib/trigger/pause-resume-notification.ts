@@ -1,4 +1,4 @@
-import { logger, task } from "@trigger.dev/sdk";
+import { logger, task } from "@trigger.dev/sdk/v3";
 
 import prisma from "@/lib/prisma";
 

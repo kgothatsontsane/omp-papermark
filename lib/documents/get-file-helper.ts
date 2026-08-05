@@ -1,32 +1,17 @@
 import { getFile } from "@/lib/files/get-file";
 import prisma from "@/lib/prisma";
 
-type GetFileForDocumentPageParams = {
-  pageNumber: number;
-  documentId: string;
-  userId: string;
-  versionNumber?: number;
-};
-
-export const getFileForDocumentPage = async ({
-  pageNumber,
-  documentId,
-  userId,
-  versionNumber,
-}: GetFileForDocumentPageParams): Promise<string> => {
-  const documentVersion = await prisma.documentVersion.findFirst({
+export const getFileForDocumentPage = async (
+  pageNumber: number,
+  documentId: string,
+  versionNumber?: number,
+): Promise<string> => {
+  const documentVersions = await prisma.documentVersion.findMany({
     where: {
-      documentId,
-      document: {
-        team: {
-          users: {
-            some: {
-              userId,
-            },
-          },
-        },
-      },
-      ...(versionNumber !== undefined ? { versionNumber } : { isPrimary: true }),
+      documentId: documentId,
+      ...(versionNumber
+        ? { versionNumber: versionNumber }
+        : { isPrimary: true }),
     },
     select: {
       id: true,
@@ -34,13 +19,16 @@ export const getFileForDocumentPage = async ({
     orderBy: {
       versionNumber: "desc",
     },
+    take: 1,
   });
 
-  if (!documentVersion) {
+  if (documentVersions.length === 0) {
     throw new Error(
-      `Document version from document id ${documentId} not found`,
+      `Latest document version from document id ${documentId} with document id ${documentId} not found`,
     );
   }
+
+  const documentVersion = documentVersions[0];
 
   const documentPage = await prisma.documentPage.findUnique({
     where: {

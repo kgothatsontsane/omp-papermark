@@ -11,19 +11,16 @@ const CustomTooltip = ({
   payload: any;
   active: boolean | undefined;
 }) => {
-  const router = useRouter();
-  const routerDocumentId = router.query.id as string;
+  const router = useRouter(); // Call useRouter at the top level
+  const documentId = router.query.id as string;
 
+  // Default pageNumber to 0 or a sensible default if payload is not available
   const pageNumber =
     payload && payload.length > 0 ? parseInt(payload[0].payload.pageNumber) : 0;
 
-  const documentId =
-    payload && payload.length > 0 && payload[0].payload.documentId
-      ? (payload[0].payload.documentId as string)
-      : routerDocumentId;
-
+  // Default versionNumber to 0 or a sensible default if payload is not available
   const versionNumber =
-    payload && payload.length > 0 && !isNaN(parseInt(payload[0].payload.versionNumber))
+    payload && payload.length > 0
       ? parseInt(payload[0].payload.versionNumber)
       : 1;
   const { data, error } = useDocumentThumbnail(

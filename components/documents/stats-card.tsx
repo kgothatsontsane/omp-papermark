@@ -1,8 +1,8 @@
 import ErrorPage from "next/error";
 
-import { TStatsData } from "@/lib/swr/use-stats";
-
 import { Skeleton } from "@/components/ui/skeleton";
+
+import { TStatsData } from "@/lib/swr/use-stats";
 
 import StatsElement from "./stats-element";
 
@@ -19,36 +19,40 @@ export default function StatsCard({
 
   if (loading) {
     return (
-      <div className="grid grid-cols-3 gap-1.5 border-foreground/5 sm:gap-2 lg:gap-3">
+      <div className="grid grid-cols-1 space-y-2 border-foreground/5 sm:grid-cols-3 sm:space-x-2 sm:space-y-0 lg:grid-cols-3 lg:space-x-3">
         {Array.from({ length: 3 }).map((_, i) => (
           <div
-            className="rounded-lg border border-foreground/5 px-2 py-2 sm:px-6 sm:py-6 lg:px-8"
+            className="rounded-lg border border-foreground/5 px-4 py-6 sm:px-6 lg:px-8"
             key={i}
           >
-            <Skeleton className="h-3 w-[85%] rounded-sm sm:h-6 sm:w-[80%]" />
-            <Skeleton className="mt-2 h-6 w-8 rounded-sm sm:mt-4 sm:h-8 sm:w-9" />
+            <Skeleton className="h-6 w-[80%] rounded-sm" />
+            <Skeleton className="mt-4 h-8 w-9" />
           </div>
         ))}
       </div>
     );
   }
 
+  const groupedReactionsTotal =
+    stats?.groupedReactions
+      .reduce((accumulator, item) => {
+        return accumulator + item._count.type;
+      }, 0)
+      .toString() ?? "0";
+
   const statistics = [
     {
-      name: "Number of views",
-      shortName: "Views",
+      name: "Number of visits",
       value: stats?.totalViews.toString() ?? "0",
       active: true,
     },
     {
-      name: "Average view completion",
-      shortName: "Avg. completion",
-      value: `${stats?.avgCompletionRate ?? 0}%`,
+      name: "Number of reactions",
+      value: groupedReactionsTotal,
       active: true,
     },
     {
       name: "Total average view duration",
-      shortName: "Duration",
       value:
         stats?.total_duration == null
           ? "46"
@@ -65,7 +69,7 @@ export default function StatsCard({
   ];
 
   return stats && stats.views.length > 0 ? (
-    <div className="grid grid-cols-3 gap-1.5 border-foreground/5 sm:gap-2 lg:gap-3">
+    <div className="grid grid-cols-1 space-y-2 border-foreground/5 sm:grid-cols-3 sm:space-x-2 sm:space-y-0 lg:grid-cols-3 lg:space-x-3">
       {statistics.map((stat, statIdx) => (
         <StatsElement key={statIdx} stat={stat} statIdx={statIdx} />
       ))}

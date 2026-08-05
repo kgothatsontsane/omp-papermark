@@ -8,8 +8,6 @@ import { E164Number } from "libphonenumber-js";
 import { toast } from "sonner";
 import { mutate } from "swr";
 
-import { useAnalytics } from "@/lib/analytics";
-
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -22,6 +20,8 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+
+import { useAnalytics } from "@/lib/analytics";
 
 import { UpgradePlanModal } from "../billing/upgrade-plan-modal";
 import { PhoneInput } from "../ui/phone-input";
@@ -55,26 +55,6 @@ export function DataroomTrialModal({
   const teamInfo = useTeam();
   const analytics = useAnalytics();
 
-  // Helper function to convert industry to proper dataroom name
-  const getDataroomName = (industryValue: string) => {
-    const industryNames: Record<string, string> = {
-      "finance-banking": "Finance and Banking Data Room",
-      legal: "Legal Data Room",
-      "real-estate": "Real Estate Data Room",
-      technology: "Technology Data Room",
-      pharmaceuticals: "Pharmaceuticals Data Room",
-      energy: "Energy Data Room",
-      manufacturing: "Manufacturing Data Room",
-      healthcare: "Healthcare Data Room",
-      consulting: "Consulting and Professional Services Data Room",
-      government: "Government and Public Sector Data Room",
-      entertainment: "Entertainment and Media Data Room",
-      other: "Data Room",
-    };
-
-    return industryNames[industryValue] || "Data Room";
-  };
-
   const handleSubmit = async (event: any) => {
     event.preventDefault();
     event.stopPropagation();
@@ -86,8 +66,6 @@ export function DataroomTrialModal({
 
     setLoading(true);
 
-    const dataroomName = getDataroomName(industry);
-
     try {
       const response = await fetch(
         `/api/teams/${teamInfo?.currentTeam?.id}/datarooms/trial`,
@@ -97,7 +75,7 @@ export function DataroomTrialModal({
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            name: dataroomName,
+            name: "Dataroom #1",
             fullName: name,
             companyName,
             industry,
@@ -115,16 +93,13 @@ export function DataroomTrialModal({
       }
 
       analytics.capture("Dataroom Trial Created", {
-        dataroomName: dataroomName,
+        dataroomName: "Dataroom #1",
         industry,
         companySize,
       });
-      toast.success("Free trial started! 🎉");
+      toast.success("Dataroom successfully created! 🎉");
 
-      await Promise.all([
-        mutate(`/api/teams/${teamInfo?.currentTeam?.id}/datarooms`),
-        mutate(`/api/teams/${teamInfo?.currentTeam?.id}/datarooms?simple=true`),
-      ]);
+      await mutate(`/api/teams/${teamInfo?.currentTeam?.id}/datarooms`);
       router.push("/datarooms");
     } catch (error) {
       setLoading(false);
@@ -151,7 +126,7 @@ export function DataroomTrialModal({
       <DialogTrigger asChild>{children}</DialogTrigger>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader className="text-start">
-          <DialogTitle>Start a 7-day free trial</DialogTitle>
+          <DialogTitle>Dataroom Trial for 7 days</DialogTitle>
           <DialogDescription>No credit card required.</DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -265,7 +240,7 @@ export function DataroomTrialModal({
                 <UpgradePlanModal clickedPlan={PlanEnum.Business}>
                   <button className="underline">Papermark Business</button>
                 </UpgradePlanModal>{" "}
-                to continue using advanced data room features.
+                to continue using data rooms.
               </div>
             </div>
           </DialogFooter>

@@ -1,17 +1,16 @@
 import { NextApiRequest, NextApiResponse } from "next";
 
-import { tasks } from "@trigger.dev/sdk";
-
+import { DocumentStorageType } from "@prisma/client";
 import { getServerSession } from "next-auth/next";
 
 import { errorhandler } from "@/lib/errorHandler";
 import prisma from "@/lib/prisma";
-import type { convertFilesToPdfTask } from "@/ee/features/conversions/lib/trigger/convert-files";
+import { getTeamWithUsersAndDocument } from "@/lib/team/helper";
+import { convertFilesToPdfTask } from "@/lib/trigger/convert-files";
 import { convertPdfToImageRoute } from "@/lib/trigger/pdf-to-image-route";
 import { CustomUser } from "@/lib/types";
 import { getExtension, log, serializeFileSize } from "@/lib/utils";
-import { conversionQueueName } from "@/lib/utils/trigger-utils";
-import { documentUploadSchema } from "@/lib/zod/url-validation";
+import { conversionQueue } from "@/lib/utils/trigger-utils";
 
 import { authOptions } from "../../../auth/[...nextauth]";
 
@@ -31,51 +30,35 @@ export default async function handle(
 
     const userId = (session.user as CustomUser).id;
 
-    // Validate request body using Zod schema for security
-    const validationResult = await documentUploadSchema.safeParseAsync({
-      ...req.body,
-      // Ensure type field is provided for validation
-      type: req.body.type || getExtension(req.body.name),
-    });
-
-    if (!validationResult.success) {
-      log({
-        message: `Agreement document validation failed for teamId: ${teamId}. Errors: ${JSON.stringify(validationResult.error.errors)}`,
-        type: "error",
-      });
-      return res.status(400).json({
-        error: "Invalid agreement document data",
-        details: validationResult.error.errors,
-      });
-    }
-
+    // Assuming data is an object with `name` and `description` properties
     const {
       name,
       url: fileUrl,
       storageType,
       numPages,
-      type,
+      type: fileType,
       folderPathName,
       fileSize,
       contentType,
-    } = validationResult.data;
+    } = req.body as {
+      name: string;
+      url: string;
+      storageType: DocumentStorageType;
+      numPages?: number;
+      type?: string;
+      folderPathName?: string;
+      fileSize?: number;
+      contentType: string;
+    };
 
     try {
-      const team = await prisma.team.findUnique({
-        where: {
-          id: teamId,
-          users: {
-            some: {
-              userId,
-            },
-          },
-        },
-        select: { plan: true },
+      const { team } = await getTeamWithUsersAndDocument({
+        teamId,
+        userId,
       });
 
-      if (!team) {
-        return res.status(401).end("Unauthorized");
-      }
+      // Get passed type property or alternatively, the file extension and save it as the type
+      const type = fileType || getExtension(name);
 
       const folder = await prisma.folder.findUnique({
         where: {
@@ -97,7 +80,7 @@ export default async function handle(
           file: fileUrl,
           originalFile: fileUrl,
           contentType,
-          type,
+          type: type,
           storageType,
           ownerId: (session.user as CustomUser).id,
           teamId: teamId,
@@ -114,7 +97,7 @@ export default async function handle(
           versions: {
             create: {
               file: fileUrl,
-              type,
+              type: type,
               storageType,
               originalFile: fileUrl,
               contentType,
@@ -132,12 +115,8 @@ export default async function handle(
         },
       });
 
-      const isDownloadOnlyByExtension =
-        /\.(log|err|prj|jgw|tif|tiff|ecw|bak)$/i.test(name);
-
-      if (type === "docs" && !isDownloadOnlyByExtension) {
-        await tasks.trigger<typeof convertFilesToPdfTask>(
-          "convert-files-to-pdf",
+      if (type === "docs") {
+        await convertFilesToPdfTask.trigger(
           {
             documentId: document.id,
             documentVersionId: document.versions[0].id,
@@ -150,7 +129,7 @@ export default async function handle(
               `document_${document.id}`,
               `version:${document.versions[0].id}`,
             ],
-            queue: conversionQueueName(team.plan),
+            queue: conversionQueue(team.plan),
             concurrencyKey: teamId,
           },
         );
@@ -171,7 +150,7 @@ export default async function handle(
               `document_${document.id}`,
               `version:${document.versions[0].id}`,
             ],
-            queue: conversionQueueName(team.plan),
+            queue: conversionQueue(team.plan),
             concurrencyKey: teamId,
           },
         );

@@ -1,7 +1,6 @@
 enum LinkType {
   DOCUMENT_LINK
   DATAROOM_LINK
-  WORKFLOW_LINK
 }
 
 enum LinkAudienceType {
@@ -28,7 +27,6 @@ model Link {
   emailAuthenticated         Boolean    @default(false) // Optional email authentication flag
   allowDownload              Boolean?   @default(false) // Optional give user a option to allow to download the document
   isArchived                 Boolean    @default(false) // Indicates if the link is archived
-  deletedAt                  DateTime? // Soft delete timestamp
   views                      View[]
   domain                     Domain?    @relation(fields: [domainId], references: [id], onDelete: SetNull)
   domainId                   String? // This can be nullable, representing links without custom domains
@@ -39,7 +37,6 @@ model Link {
   enableFeedback             Boolean?   @default(false) // Optional give user a option to enable the reactions toolbar
   enableQuestion             Boolean?   @default(false) // Optional give user a option to enable the question feedback
   enableScreenshotProtection Boolean?   @default(false) // Optional give user a option to enable the screenshot protection
-  enableConfidentialView     Boolean?   @default(false) // Optional give user a option to enable the confidential view
   feedback                   Feedback?
   enableAgreement            Boolean?   @default(false) // Optional give user a option to enable the terms and conditions
   agreement                  Agreement? @relation(fields: [agreementId], references: [id], onDelete: SetNull)
@@ -64,30 +61,14 @@ model Link {
   metaFavicon         String? // This will be the meta favicon of the link
   enableCustomMetatag Boolean? @default(false) // Optional give user a option to enable the custom metatag
 
-  // custom welcome message (overrides brand welcome message)
-  welcomeMessage String? // Custom welcome message for this specific link
-
   // conversation
   enableConversation Boolean        @default(false) // Controls if conversations are allowed on this link
   conversations      Conversation[]
 
-  // Buy-side Q&A: question assignments routed to this link
-  questionAssignments DataroomQuestionAssignment[]
-
-  // FAQ system
-  dataroomFaqItems DataroomFaqItem[]
-
-  // AI chats
-  enableAIAgents Boolean? @default(false) // Enable AI agents for this link
-  chats          Chat[]
-
   // upload
   enableUpload      Boolean? @default(false) // Optional give user a option to enable the upload document function
   isFileRequestOnly Boolean? @default(false) // Optional give user a option to enable the file request only
-  /// Deprecated: replaced by `uploadFolderIds`. Retained in the DB only so old
-  /// rows can be inspected; no application code reads or writes this column.
-  uploadFolderId    String?
-  uploadFolderIds   String[] @default([]) // Allow-list of dataroom folder ids where visitors may upload. Empty = no restriction (visitor chooses).
+  uploadFolderId    String? // This can be nullable, indicating upload to root folder, either document folder or dataroom folder
   enableIndexFile   Boolean? @default(false)
 
   uploadedDocuments DocumentUpload[]
@@ -95,30 +76,13 @@ model Link {
   teamId String?
   team   Team?   @relation(fields: [teamId], references: [id], onDelete: Cascade)
 
-  ownerId String?
-  owner   User?   @relation("LinkOwner", fields: [ownerId], references: [id], onDelete: SetNull)
-
   customFields CustomField[]
 
-  tags              TagItem[]
-  viewerInvitations ViewerInvitation[]
-
-  // visitor groups for allow-list
-  visitorGroups LinkVisitorGroup[]
-
-  // request list (task system) — link-targeted assignments
-  taskAssignments TaskAssignment[]
-
-  // workflow entry link
-  workflow Workflow?
+  tags TagItem[]
 
   @@unique([domainSlug, slug])
   @@index([documentId])
   @@index([teamId])
-  @@index([documentId, isArchived]) // Performance optimization for active links filtering
-  @@index([permissionGroupId]) // Performance optimization for permission group queries
-  @@index([deletedAt]) // Performance optimization for filtering deleted links
-  @@index([ownerId]) // Performance optimization for link owner queries
 }
 
 model LinkPreset {
@@ -144,7 +108,6 @@ model LinkPreset {
   denyList                   String[]
   expiresIn                  Int? // how many days from link creation until it expires in seconds
   enableScreenshotProtection Boolean?  @default(false)
-  enableConfidentialView     Boolean?  @default(false)
   expiresAt                  DateTime?
   enablePassword             Boolean?  @default(false)
   password                   String?
@@ -156,10 +119,6 @@ model LinkPreset {
 
   enableCustomFields Boolean? @default(false)
   customFields       Json? //[{type: "SHORT_TEXT", identifier: "name", label: "Name", required: true}]
-
-  showBanner Boolean? @default(false) // Optional give user a option to show the "Powered by Papermark" banner
-
-  welcomeMessage String? // Custom welcome message for links created from this preset
 
   isDefault Boolean @default(false)
 
@@ -178,36 +137,6 @@ enum CustomFieldType {
   CHECKBOX
   SELECT
   MULTI_SELECT
-}
-
-model VisitorGroup {
-  id     String   @id @default(cuid())
-  name   String
-  emails String[] // List of emails and domains (e.g., "user@example.com", "@example.org")
-
-  teamId String
-  team   Team   @relation(fields: [teamId], references: [id], onDelete: Cascade)
-
-  links LinkVisitorGroup[]
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@index([teamId])
-}
-
-model LinkVisitorGroup {
-  id             String       @id @default(cuid())
-  linkId         String
-  link           Link         @relation(fields: [linkId], references: [id], onDelete: Cascade)
-  visitorGroupId String
-  visitorGroup   VisitorGroup @relation(fields: [visitorGroupId], references: [id], onDelete: Cascade)
-
-  createdAt DateTime @default(now())
-
-  @@unique([linkId, visitorGroupId])
-  @@index([linkId])
-  @@index([visitorGroupId])
 }
 
 model CustomField {

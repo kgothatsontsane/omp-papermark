@@ -55,6 +55,17 @@ export default function WatermarkSection({
     }
   }, [presets, isAllowed]);
 
+  const handleWatermarkToggle = () => {
+    const updatedWatermark = !enabled;
+
+    setData({
+      ...data,
+      enableWatermark: updatedWatermark,
+      watermarkConfig: watermarkConfig || null,
+    });
+    setEnabled(updatedWatermark);
+  };
+
   const initialconfig: WatermarkConfig = {
     text: watermarkConfig?.text ?? "",
     isTiled: watermarkConfig?.isTiled ?? false,
@@ -63,19 +74,6 @@ export default function WatermarkSection({
     fontSize: watermarkConfig?.fontSize ?? 24,
     rotation: watermarkConfig?.rotation ?? 45,
     position: watermarkConfig?.position ?? "middle-center",
-  };
-
-  const handleWatermarkToggle = () => {
-    const updatedWatermark = !enabled;
-
-    setData({
-      ...data,
-      enableWatermark: updatedWatermark,
-      watermarkConfig: updatedWatermark
-        ? watermarkConfig || initialconfig
-        : null,
-    });
-    setEnabled(updatedWatermark);
   };
 
   const handleConfigSave = (config: WatermarkConfig) => {
@@ -88,7 +86,7 @@ export default function WatermarkSection({
   return (
     <div className="pb-5">
       <LinkItem
-        title="Dynamic watermarking"
+        title="Apply Watermark"
         link="https://www.papermark.com/help/article/document-watermark"
         tooltipContent="Add a dynamic watermark to your content."
         enabled={enabled}
@@ -135,7 +133,6 @@ export default function WatermarkSection({
                 {["email", "date", "time", "link", "ipAddress"].map((item) => (
                   <Button
                     key={item}
-                    type="button"
                     size="sm"
                     variant="outline"
                     className="h-7 rounded-3xl bg-muted text-sm font-normal text-foreground/80 hover:bg-muted/70"
@@ -164,7 +161,6 @@ export default function WatermarkSection({
               {(1 - initialconfig.opacity) * 100}% transparent
             </p>
             <Button
-              type="button"
               onClick={(e) => {
                 e.preventDefault();
                 e.stopPropagation();

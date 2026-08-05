@@ -4,24 +4,21 @@ import { useEffect, useState } from "react";
 
 import NotFound from "@/pages/404";
 
-import { useAnalytics } from "@/lib/analytics";
-import { useUrlPasscode } from "@/lib/hooks/use-url-passcode";
-
 import LoadingSpinner from "@/components/ui/loading-spinner";
 import DataroomView from "@/components/view/dataroom/dataroom-view";
 import DocumentView from "@/components/view/document-view";
-import { ViewerI18nProvider } from "@/components/view/viewer-i18n-provider";
+
+import { useAnalytics } from "@/lib/analytics";
 
 import { ViewPageProps } from "./index";
 
 // Reuse the same getStaticProps and getStaticPaths from the main view page
 export { getStaticProps, getStaticPaths } from "./index";
 
-function EmbedPageInner(props: ViewPageProps) {
+export default function EmbedPage(props: ViewPageProps) {
   const router = useRouter();
   const [isEmbedded, setIsEmbedded] = useState<boolean | null>(null);
   const analytics = useAnalytics();
-  const urlPasscode = useUrlPasscode();
 
   useEffect(() => {
     // Only run when router is ready and linkId is present
@@ -74,12 +71,10 @@ function EmbedPageInner(props: ViewPageProps) {
     d: string;
     previewToken?: string;
   };
-  const disableEditPassword = !!disableEditEmail && !!urlPasscode;
-  const { linkType, brand } = props.linkData;
+  const { linkType, link, brand } = props.linkData;
 
   // Render the document view for DOCUMENT_LINK
   if (linkType === "DOCUMENT_LINK") {
-    const { link } = props.linkData;
     if (!props.linkData || router.isFallback) {
       return (
         <div className="flex h-screen items-center justify-center">
@@ -124,9 +119,7 @@ function EmbedPageInner(props: ViewPageProps) {
           useAdvancedExcelViewer={props.useAdvancedExcelViewer}
           previewToken={previewToken}
           disableEditEmail={!!disableEditEmail}
-          urlPasscode={urlPasscode}
-          disableEditPassword={disableEditPassword}
-          hideFooterOnAccessForm={props.hideFooterOnAccessForm}
+          useCustomAccessForm={props.useCustomAccessForm}
           verifiedEmail={verifiedEmail}
           isEmbedded
         />
@@ -136,7 +129,6 @@ function EmbedPageInner(props: ViewPageProps) {
 
   // Render the dataroom view for DATAROOM_LINK
   if (linkType === "DATAROOM_LINK") {
-    const { link } = props.linkData;
     if (!link || router.isFallback) {
       return (
         <div className="flex h-screen items-center justify-center">
@@ -177,23 +169,11 @@ function EmbedPageInner(props: ViewPageProps) {
           brand={brand}
           previewToken={previewToken}
           disableEditEmail={!!disableEditEmail}
-          urlPasscode={urlPasscode}
-          disableEditPassword={disableEditPassword}
-          hideFooterOnAccessForm={props.hideFooterOnAccessForm}
+          useCustomAccessForm={props.useCustomAccessForm}
           verifiedEmail={verifiedEmail}
           isEmbedded
         />
       </div>
     );
   }
-}
-
-export default function EmbedPage(props: ViewPageProps) {
-  const locale = props.i18n?.locale ?? "en";
-  const resources = props.i18n?.resources ?? {};
-  return (
-    <ViewerI18nProvider locale={locale} resources={resources}>
-      <EmbedPageInner {...props} />
-    </ViewerI18nProvider>
-  );
 }

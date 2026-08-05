@@ -23,7 +23,8 @@ export default async function handle(
     }
 
     if (req.method === "GET") {
-      return res.redirect(`/notification-preferences?token=${token}`);
+      // For GET requests, redirect to the unsubscribe page
+      return res.redirect(`/unsubscribe?type=dataroom&token=${token}`);
     }
 
     // Rate limit the unsubscribe request

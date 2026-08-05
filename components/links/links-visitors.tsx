@@ -1,15 +1,10 @@
-import Link from "next/link";
-
-import { AlertTriangleIcon } from "lucide-react";
-
-import { usePlan } from "@/lib/swr/use-billing";
-import { useLinkVisits } from "@/lib/swr/use-link";
-import { durationFormat, timeAgo } from "@/lib/utils";
-
 import { Gauge } from "@/components/ui/gauge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { TableCell, TableRow } from "@/components/ui/table";
 import { VisitorAvatar } from "@/components/visitors/visitor-avatar";
+
+import { useLinkVisits } from "@/lib/swr/use-link";
+import { durationFormat, timeAgo } from "@/lib/utils";
 
 export default function LinksVisitors({
   linkId,
@@ -18,32 +13,10 @@ export default function LinksVisitors({
   linkId: string;
   linkName: string;
 }) {
-  const { views, hiddenFromPause } = useLinkVisits(linkId);
-  const { isPaused } = usePlan();
+  const { views } = useLinkVisits(linkId);
 
   return (
     <>
-      {views && isPaused && hiddenFromPause > 0 && (
-        <TableRow>
-          <TableCell colSpan={5} className="text-left sm:text-center">
-            <div className="flex flex-col items-start justify-center gap-2 sm:flex-row sm:items-center">
-              <span className="flex items-center gap-x-1">
-                <AlertTriangleIcon className="inline-block h-4 w-4 text-orange-500" />
-                {hiddenFromPause} visit
-                {hiddenFromPause !== 1 ? "s" : ""} occurred while your
-                subscription was paused and{" "}
-                {hiddenFromPause !== 1 ? "are" : "is"} hidden.
-              </span>
-              <Link
-                href="/settings/billing"
-                className="font-medium text-orange-600 underline hover:text-orange-700"
-              >
-                Unpause subscription to see all visits
-              </Link>
-            </div>
-          </TableCell>
-        </TableRow>
-      )}
       {views ? (
         views.map((view) => (
           <TableRow key={view.id}>

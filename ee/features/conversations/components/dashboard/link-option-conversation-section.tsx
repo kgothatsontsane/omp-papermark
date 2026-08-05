@@ -60,7 +60,6 @@ export default function ConversationSection({
             state: true,
             trigger: "link_sheet_conversation_section",
             plan: "Data Rooms Plus",
-            highlightItem: ["qa"],
           })
         }
       />

@@ -2,31 +2,12 @@ import { NextApiRequest, NextApiResponse } from "next";
 
 import { authOptions } from "@/pages/api/auth/[...nextauth]";
 import { ItemType } from "@prisma/client";
-import cuid from "cuid";
 import { getServerSession } from "next-auth/next";
 import { z } from "zod";
 
-import { revalidateLinksForPermissionGroup } from "@/lib/api/links/revalidate";
-import {
-  buildBulkUpsertPermissionsSql,
-  buildDeletePermissionsNotInPayloadSql,
-  buildFindAncestorFolderIdsSql,
-  buildUpsertAncestorVisibilitySql,
-  extractVisibleItemIds,
-  type AncestorUpsertRow,
-  type PermissionUpsertRow,
-} from "@/lib/dataroom/permissions-sql";
 import { errorhandler } from "@/lib/errorHandler";
 import prisma from "@/lib/prisma";
 import { CustomUser } from "@/lib/types";
-
-// PUT can save thousands of permission rows in a single payload (think
-// "select all" on a large dataroom). With the bulk-SQL path below this is
-// now ~3-4 round-trips total, but we still bump the platform timeout to be
-// safe — same as the neighbouring `groups/[groupId]/permissions.ts`.
-export const config = {
-  maxDuration: 300,
-};
 
 // Zod schema for validating permissions
 const itemPermissionSchema = z.object({
@@ -41,6 +22,121 @@ const patchPermissionGroupSchema = z.object({
   name: z.string().optional(),
   description: z.string().optional(),
 });
+
+// Helper function to get parent folder IDs for a given document in a dataroom
+async function getParentFolderIds(
+  dataroomId: string,
+  documentId: string,
+): Promise<string[]> {
+  // Get the dataroom document to find which folder it's in
+  const dataroomDocument = await prisma.dataroomDocument.findUnique({
+    where: { id: documentId },
+    select: { folderId: true },
+  });
+
+  if (!dataroomDocument?.folderId) {
+    return []; // Document is at root level
+  }
+
+  // Get the folder and walk up the hierarchy
+  const parentFolders: string[] = [];
+  let currentFolderId: string | null = dataroomDocument.folderId;
+
+  while (currentFolderId) {
+    parentFolders.push(currentFolderId);
+
+    const folder: { parentId: string | null } | null =
+      await prisma.dataroomFolder.findUnique({
+        where: { id: currentFolderId },
+        select: { parentId: true },
+      });
+
+    currentFolderId = folder?.parentId || null;
+  }
+
+  return parentFolders;
+}
+
+// Helper function to ensure parent folders are visible when child documents are made visible
+async function ensureParentFoldersVisible(
+  dataroomId: string,
+  groupId: string,
+  permissions: Record<
+    string,
+    { itemType: ItemType; view: boolean; download: boolean }
+  >,
+): Promise<void> {
+  const foldersToMakeVisible = new Set<string>();
+
+  // Find all documents that are being made visible
+  const visibleDocuments = Object.entries(permissions)
+    .filter(
+      ([_, perm]) => perm.itemType === ItemType.DATAROOM_DOCUMENT && perm.view,
+    )
+    .map(([itemId, _]) => itemId);
+
+  // Get parent folder IDs for all visible documents
+  for (const documentId of visibleDocuments) {
+    const parentFolders = await getParentFolderIds(dataroomId, documentId);
+    parentFolders.forEach((folderId) => foldersToMakeVisible.add(folderId));
+  }
+
+  // Also handle folders that are being made visible - ensure their parent folders are visible too
+  const visibleFolders = Object.entries(permissions)
+    .filter(
+      ([_, perm]) => perm.itemType === ItemType.DATAROOM_FOLDER && perm.view,
+    )
+    .map(([itemId, _]) => itemId);
+
+  for (const folderId of visibleFolders) {
+    let currentFolderId: string | null = folderId;
+
+    while (currentFolderId) {
+      const folder: { parentId: string | null } | null =
+        await prisma.dataroomFolder.findUnique({
+          where: { id: currentFolderId },
+          select: { parentId: true },
+        });
+
+      if (folder?.parentId) {
+        foldersToMakeVisible.add(folder.parentId);
+        currentFolderId = folder.parentId;
+      } else {
+        break;
+      }
+    }
+  }
+
+  // Update or create permissions for parent folders to make them visible
+  if (foldersToMakeVisible.size > 0) {
+    const foldersToUpdate = Array.from(foldersToMakeVisible);
+
+    await prisma.$transaction(async (tx) => {
+      for (const folderId of foldersToUpdate) {
+        await tx.permissionGroupAccessControls.upsert({
+          where: {
+            groupId_itemId: {
+              groupId: groupId,
+              itemId: folderId,
+            },
+          },
+          create: {
+            groupId: groupId,
+            itemId: folderId,
+            itemType: ItemType.DATAROOM_FOLDER,
+            canView: true,
+            canDownload: false,
+            canDownloadOriginal: false,
+          },
+          update: {
+            canView: true, // Always ensure parent folders are visible
+            // Don't change canDownload - preserve existing setting
+          },
+        });
+      }
+    });
+  }
+}
 
 export default async function handle(
   req: NextApiRequest,
@@ -262,6 +358,7 @@ export default async function handle(
         return res.status(400).json({ error: "Permissions are required" });
       }
 
+      // Validate schema structure
       const validationResult = permissionsSchema.safeParse(permissions);
       if (!validationResult.success) {
         return res.status(400).json({
@@ -272,100 +369,126 @@ export default async function handle(
 
       const validatedPermissions = validationResult.data;
 
-      // Build the bulk-SQL plan. The link-permission UI posts the
-      // *complete* desired state (it merges existing rows with pending
-      // changes before calling us), so we treat the payload as
-      // authoritative: anything in DB but not in (payload ∪ ancestor
-      // expansion) is removed.
-      const upsertRows: PermissionUpsertRow[] = Object.entries(
-        validatedPermissions,
-      ).map(([itemId, perm]) => ({
-        id: cuid(),
-        itemId,
-        itemType: perm.itemType,
-        canView: perm.view,
-        canDownload: perm.download,
-      }));
+      const updatedPermissionGroup = await prisma.$transaction(async (tx) => {
+        // Get existing permissions for comparison
+        const existingPermissions =
+          await tx.permissionGroupAccessControls.findMany({
+            where: {
+              groupId: permissionGroupId,
+            },
+          });
 
-      const bulkUpsertSql = buildBulkUpsertPermissionsSql(
-        "PermissionGroupAccessControls",
-        permissionGroupId,
-        upsertRows,
-      );
+        // Create maps for efficient lookup
+        const existingMap = new Map(
+          existingPermissions.map((p) => [`${p.itemId}-${p.itemType}`, p]),
+        );
 
-      const { visibleDocumentIds, visibleFolderIds } =
-        extractVisibleItemIds(validatedPermissions);
+        // Categorize permissions into updates vs creates
+        const toUpdate: Array<{
+          itemId: string;
+          itemType: ItemType;
+          canView: boolean;
+          canDownload: boolean;
+          canDownloadOriginal: boolean;
+        }> = [];
 
-      const findAncestorsSql = buildFindAncestorFolderIdsSql(
-        dataroomId,
-        visibleDocumentIds,
-        visibleFolderIds,
-      );
+        const toCreate: Array<{
+          groupId: string;
+          itemId: string;
+          itemType: ItemType;
+          canView: boolean;
+          canDownload: boolean;
+          canDownloadOriginal: boolean;
+        }> = [];
 
-      await prisma.$transaction(async (tx) => {
-        if (bulkUpsertSql) {
-          await tx.$executeRaw(bulkUpsertSql);
-        }
+        // Categorize permissions into updates vs creates
+        Object.entries(validatedPermissions).forEach(([itemId, permission]) => {
+          const key = `${itemId}-${permission.itemType}`;
+          const existing = existingMap.get(key);
 
-        // Server-side safety net for the "visible item ⇒ visible
-        // ancestors" invariant. Defence-in-depth: the client already
-        // includes ancestors in its payload via `collectChangesForItem`,
-        // but a buggy/old client or external API caller might not.
-        const ancestorIds = new Set<string>();
-        if (findAncestorsSql) {
-          const ancestorRows = await tx.$queryRaw<{ folder_id: string }[]>(
-            findAncestorsSql,
-          );
-          for (const r of ancestorRows) ancestorIds.add(r.folder_id);
+          const permissionData = {
+            itemId,
+            itemType: permission.itemType,
+            canView: permission.view,
+            canDownload: permission.download,
+            canDownloadOriginal: false,
+          };
 
-          if (ancestorRows.length > 0) {
-            const ancestors: AncestorUpsertRow[] = ancestorRows.map((r) => ({
-              id: cuid(),
-              folderId: r.folder_id,
-            }));
-
-            const ancestorUpsertSql = buildUpsertAncestorVisibilitySql(
-              "PermissionGroupAccessControls",
-              permissionGroupId,
-              ancestors,
-            );
-            if (ancestorUpsertSql) {
-              await tx.$executeRaw(ancestorUpsertSql);
+          if (existing) {
+            // Check if anything actually changed
+            if (
+              existing.canView !== permission.view ||
+              existing.canDownload !== permission.download
+            ) {
+              toUpdate.push(permissionData);
             }
+          } else {
+            toCreate.push({
+              groupId: permissionGroupId,
+              ...permissionData,
+            });
           }
+        });
+
+        // Perform updates
+        if (toUpdate.length > 0) {
+          await Promise.all(
+            toUpdate.map((item) =>
+              tx.permissionGroupAccessControls.updateMany({
+                where: {
+                  groupId: permissionGroupId,
+                  itemId: item.itemId,
+                  itemType: item.itemType,
+                },
+                data: {
+                  canView: item.canView,
+                  canDownload: item.canDownload,
+                  canDownloadOriginal: item.canDownloadOriginal,
+                },
+              }),
+            ),
+          );
         }
 
-        // Set-everything semantic: drop any DB row whose itemId is no
-        // longer in the desired state. We keep both the explicit payload
-        // ids *and* the ancestor folder ids so the visibility safety net
-        // we just upserted isn't immediately deleted again.
-        const keepItemIds = [
-          ...Object.keys(validatedPermissions),
-          ...ancestorIds,
-        ];
-
-        if (keepItemIds.length > 0) {
-          const deleteSql = buildDeletePermissionsNotInPayloadSql(
-            "PermissionGroupAccessControls",
-            permissionGroupId,
-            keepItemIds,
-          );
-          if (deleteSql) {
-            await tx.$executeRaw(deleteSql);
-          }
-        } else {
-          // Empty payload + no ancestors → user is clearing all
-          // permissions. Delete every row for this group.
-          await tx.permissionGroupAccessControls.deleteMany({
-            where: { groupId: permissionGroupId },
+        // Perform creates
+        if (toCreate.length > 0) {
+          await tx.permissionGroupAccessControls.createMany({
+            data: toCreate,
           });
         }
+
+        // Remove permissions that are no longer in the new set
+        const newItemKeys = new Set(
+          Object.entries(validatedPermissions).map(
+            ([itemId, permission]) => `${itemId}-${permission.itemType}`,
+          ),
+        );
+
+        const toDelete = existingPermissions.filter(
+          (p) => !newItemKeys.has(`${p.itemId}-${p.itemType}`),
+        );
+
+        if (toDelete.length > 0) {
+          await tx.permissionGroupAccessControls.deleteMany({
+            where: {
+              id: {
+                in: toDelete.map((p) => p.id),
+              },
+            },
+          });
+        }
+
+        return permissionGroup;
       });
 
-      // Revalidate ISR pages so viewers see the updated file list
-      await revalidateLinksForPermissionGroup(permissionGroupId);
+      // After saving permissions, ensure parent folders are visible for any items that were made visible
+      await ensureParentFoldersVisible(
+        dataroomId,
+        permissionGroupId,
+        validatedPermissions,
+      );
 
-      return res.status(200).json({ permissionGroup });
+      return res.status(200).json({ permissionGroup: updatedPermissionGroup });
     } catch (error) {
       return errorhandler(error, res);
     }
@@ -428,33 +551,12 @@ export default async function handle(
         return res.status(404).json({ error: "Permission group not found" });
       }
 
-      // Find linked links before deletion (FK onDelete: SetNull clears the reference)
-      const linkedLinks = await prisma.link.findMany({
-        where: { permissionGroupId, deletedAt: null },
-        select: { id: true, domainId: true },
-      });
-
       // Delete the permission group (this will cascade delete access controls)
       await prisma.permissionGroup.delete({
         where: {
           id: permissionGroupId,
         },
       });
-
-      // Revalidate ISR pages so viewers see all files again (no restrictions)
-      const revalidateUrl = process.env.NEXTAUTH_URL;
-      const revalidateToken = process.env.REVALIDATE_TOKEN;
-      if (revalidateUrl && revalidateToken && linkedLinks.length > 0) {
-        await Promise.all(
-          linkedLinks.map((link) =>
-            fetch(
-              `${revalidateUrl}/api/revalidate?secret=${revalidateToken}&linkId=${link.id}&hasDomain=${link.domainId ? "true" : "false"}`,
-            ).catch((err) =>
-              console.error(`Error revalidating link ${link.id}:`, err),
-            ),
-          ),
-        );
-      }
 
       return res.status(200).json({ message: "Permission group deleted" });
     } catch (error) {

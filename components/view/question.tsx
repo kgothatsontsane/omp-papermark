@@ -1,12 +1,11 @@
 import { useState } from "react";
-import type { CSSProperties } from "react";
 
 import { ThumbsDownIcon, ThumbsUpIcon } from "lucide-react";
 import { motion } from "motion/react";
 
 import { STAGGER_CHILD_VARIANTS } from "@/lib/constants";
 import { cn } from "@/lib/utils";
-import { createAdaptiveSurfacePalette } from "@/lib/utils/create-adaptive-surface-palette";
+import { determineTextColor } from "@/lib/utils/determine-text-color";
 
 export default function Question({
   feedback,
@@ -24,7 +23,6 @@ export default function Question({
   accentColor?: string | null;
 }) {
   const [answer, setAnswer] = useState<"yes" | "no" | "">("");
-  const palette = createAdaptiveSurfacePalette(accentColor);
 
   const handleQuestionSubmit = async (answer: string) => {
     if (answer === "") return;
@@ -77,7 +75,9 @@ export default function Question({
         >
           <h1
             className="font-display max-w-lg text-3xl font-semibold transition-colors sm:text-4xl"
-            style={{ color: palette.textColor }}
+            style={{
+              color: accentColor ? determineTextColor(accentColor) : "white",
+            }}
           >
             Thanks for your feedback!
           </h1>
@@ -110,7 +110,9 @@ export default function Question({
       >
         <h1
           className="font-display max-w-xl text-3xl font-semibold transition-colors sm:text-4xl"
-          style={{ color: palette.textColor }}
+          style={{
+            color: accentColor ? determineTextColor(accentColor) : "white",
+          }}
         >
           {feedback.data.question}
         </h1>
@@ -119,22 +121,25 @@ export default function Question({
         variants={STAGGER_CHILD_VARIANTS}
         className="grid w-full max-w-sm grid-cols-1 divide-y rounded-md border border-border md:grid-cols-2 md:divide-x md:divide-y-0"
         style={{
-          color: palette.textColor,
-          borderColor: palette.panelBorderColor,
+          color: accentColor ? determineTextColor(accentColor) : "white",
+          borderColor: accentColor
+            ? determineTextColor(accentColor)
+            : "hsl(var(--border))",
         }}
       >
         <button
           onClick={() => handleQuestionSubmit("yes")}
           className={cn(
-            "flex min-h-[200px] flex-col items-center justify-center space-y-5 overflow-hidden p-5 transition-colors hover:bg-[var(--feedback-hover-bg)] md:p-10",
-            answer === "yes" ? "bg-[var(--feedback-active-bg)]" : "",
+            "flex min-h-[200px] flex-col items-center justify-center space-y-5 overflow-hidden p-5 transition-colors md:p-10",
+            determineTextColor(accentColor) === "black"
+              ? "hover:bg-gray-800 hover:text-gray-200"
+              : "hover:bg-gray-200 hover:text-gray-800",
+            answer === "yes"
+              ? determineTextColor(accentColor) === "black"
+                ? "bg-gray-800 text-gray-200"
+                : "bg-gray-200 text-gray-800"
+              : "",
           )}
-          style={
-            {
-              "--feedback-hover-bg": palette.panelHoverBgColor,
-              "--feedback-active-bg": palette.panelActiveBgColor,
-            } as CSSProperties
-          }
         >
           <ThumbsUpIcon
             className="pointer-events-none h-auto w-12 sm:w-12"
@@ -145,15 +150,16 @@ export default function Question({
         <button
           onClick={() => handleQuestionSubmit("no")}
           className={cn(
-            "flex min-h-[200px] flex-col items-center justify-center space-y-5 overflow-hidden p-5 transition-colors hover:bg-[var(--feedback-hover-bg)] md:p-10",
-            answer === "no" ? "bg-[var(--feedback-active-bg)]" : "",
+            "flex min-h-[200px] flex-col items-center justify-center space-y-5 overflow-hidden p-5 transition-colors md:p-10",
+            determineTextColor(accentColor) === "black"
+              ? "hover:bg-gray-800 hover:text-gray-200"
+              : "hover:bg-gray-200 hover:text-gray-800",
+            answer === "no"
+              ? determineTextColor(accentColor) === "black"
+                ? "bg-gray-800 text-gray-200"
+                : "bg-gray-200 text-gray-800"
+              : "",
           )}
-          style={
-            {
-              "--feedback-hover-bg": palette.panelHoverBgColor,
-              "--feedback-active-bg": palette.panelActiveBgColor,
-            } as CSSProperties
-          }
         >
           <ThumbsDownIcon
             className="pointer-events-none h-auto w-12 sm:w-12"

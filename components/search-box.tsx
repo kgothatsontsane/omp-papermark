@@ -3,7 +3,6 @@
 import { useRouter } from "next/router";
 
 import {
-  memo,
   forwardRef,
   useCallback,
   useEffect,
@@ -27,8 +26,6 @@ type SearchBoxProps = {
   onChangeDebounced?: (value: string) => void;
   debounceTimeoutMs?: number;
   inputClassName?: string;
-  leftIconClassName?: string;
-  clearIconClassName?: string;
   placeholder?: string;
 };
 
@@ -42,8 +39,6 @@ const SearchBox = forwardRef(
       onChangeDebounced,
       debounceTimeoutMs = 500,
       inputClassName,
-      leftIconClassName,
-      clearIconClassName,
       placeholder = "Search...",
     }: SearchBoxProps,
     forwardedRef,
@@ -58,17 +53,6 @@ const SearchBox = forwardRef(
 
     const onKeyDown = useCallback((e: KeyboardEvent) => {
       const target = e.target as HTMLElement;
-
-      // Cmd+K (macOS) / Ctrl+K (Windows/Linux) focuses the search input and
-      // selects any existing text so the field is highlighted. This works
-      // even while typing in another input, just like a global command.
-      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
-        e.preventDefault();
-        inputRef.current?.focus();
-        inputRef.current?.select();
-        return;
-      }
-
       // only focus on filter input when:
       // - user is not typing in an input or textarea
       // - there is no existing modal backdrop (i.e. no other modal is open)
@@ -93,16 +77,14 @@ const SearchBox = forwardRef(
           {loading && value.length > 0 ? (
             <LoadingSpinner className="h-4 w-4" />
           ) : (
-            <SearchIcon
-              className={cn("h-4 w-4 text-muted-foreground", leftIconClassName)}
-            />
+            <SearchIcon className="h-4 w-4 text-muted-foreground" />
           )}
         </div>
         <input
           ref={inputRef}
           type="text"
           className={cn(
-            "peer w-full cursor-text rounded-md border border-border bg-white px-10 text-foreground outline-none placeholder:text-muted-foreground dark:bg-gray-800 sm:text-sm",
+            "peer w-full rounded-md border border-border bg-white px-10 text-foreground outline-none placeholder:text-muted-foreground dark:bg-gray-800 sm:text-sm",
             "transition-all focus:border-gray-500 focus:ring-0",
             inputClassName,
           )}
@@ -122,9 +104,7 @@ const SearchBox = forwardRef(
             }}
             className="pointer-events-auto absolute inset-y-0 right-0 flex items-center pr-4"
           >
-            <CircleXIcon
-              className={cn("h-4 w-4 text-muted-foreground", clearIconClassName)}
-            />
+            <CircleXIcon className="h-4 w-4 text-muted-foreground" />
           </button>
         )}
       </div>
@@ -132,7 +112,6 @@ const SearchBox = forwardRef(
   },
 );
 SearchBox.displayName = "SearchBox";
-const MemoizedSearchBox = memo(SearchBox);
 
 export function SearchBoxPersisted({
   urlParam = "search",
@@ -148,20 +127,6 @@ export function SearchBoxPersisted({
   const [debouncedValue, setDebouncedValue] = useState(initial);
 
   useEffect(() => {
-    // Wait until the router has hydrated its dynamic route params (e.g. [id],
-    // [...name]). Pushing to `router.pathname` while `router.query` is still
-    // empty would leave the dynamic segments un-interpolated and throw a
-    // Next.js "href interpolation failed" error on dynamic routes.
-    if (!router.isReady) return;
-
-    const currentValue =
-      typeof router.query[urlParam] === "string"
-        ? (router.query[urlParam] as string)
-        : "";
-
-    // Skip no-op pushes (also avoids a redundant push on initial mount).
-    if (currentValue === debouncedValue) return;
-
     const currentQuery = { ...router.query };
 
     if (debouncedValue === "") {
@@ -172,22 +137,15 @@ export function SearchBoxPersisted({
       currentQuery[urlParam] = debouncedValue;
     }
 
-    // For custom domains, preserve the clean URL structure
-    const isCustomDomain = !!(router.query.domain && router.query.slug);
-
     router.push(
       {
         pathname: router.pathname,
         query: currentQuery,
       },
-      isCustomDomain ? `/${router.query.slug}` : undefined, // Preserve custom domain URL
+      undefined,
       { shallow: true },
     );
-    // This is intentionally keyed on the debounced input value and the router
-    // ready state. Adding the full router/query objects can cause feedback
-    // loops with shallow routing.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [debouncedValue, router.isReady]);
+  }, [debouncedValue]);
 
   useEffect(() => {
     const queryValue =
@@ -196,12 +154,10 @@ export function SearchBoxPersisted({
       setValue(queryValue);
       setDebouncedValue(queryValue);
     }
-    // Keep this tied to the specific URL param only.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [queryParams[urlParam]]);
 
   return (
-    <MemoizedSearchBox
+    <SearchBox
       value={value}
       onChange={setValue}
       onChangeDebounced={setDebouncedValue}

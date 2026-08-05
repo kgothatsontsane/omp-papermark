@@ -1,18 +1,16 @@
 import { NextApiRequest, NextApiResponse } from "next";
 
-import { ViewType } from "@prisma/client";
+import { getTeamStorageConfigById } from "@/ee/features/storage/config";
+import { InvocationType, InvokeCommand } from "@aws-sdk/client-lambda";
+import { ItemType, ViewType } from "@prisma/client";
+import slugify from "@sindresorhus/slugify";
 
-import { verifyDataroomSessionInPagesRouter } from "@/lib/auth/dataroom-auth";
+import { getLambdaClientForTeam } from "@/lib/files/aws-client";
 import prisma from "@/lib/prisma";
-import { downloadJobStore } from "@/lib/redis-download-job-store";
-import { bulkDownloadTask } from "@/lib/trigger/bulk-download";
 import { getIpAddress } from "@/lib/utils/ip";
 
 export const config = {
-  // Lightweight handler: validate access + create job + trigger task. The
-  // heavy folder/document/permission queries and view inserts run inside the
-  // trigger task so the viewer never sees a request timeout.
-  maxDuration: 60,
+  maxDuration: 300,
 };
 
 export default async function handler(
@@ -25,31 +23,21 @@ export default async function handler(
   }
 
   try {
-    const { folderId, dataroomId, linkId, emailNotification } =
-      req.body as {
-        folderId: string;
-        dataroomId: string;
-        linkId: string;
-        emailNotification?: boolean;
-      };
+    const { folderId, dataroomId, viewId, linkId } = req.body as {
+      folderId: string;
+      dataroomId: string;
+      viewId: string;
+      linkId: string;
+    };
     if (!folderId) {
       return res
         .status(400)
         .json({ error: "folderId is required in request body" });
     }
 
-    const session = await verifyDataroomSessionInPagesRouter(
-      req,
-      linkId,
-      dataroomId,
-    );
-    if (!session) {
-      return res.status(401).json({ error: "Session required to download" });
-    }
-
     const view = await prisma.view.findUnique({
       where: {
-        id: session.viewId,
+        id: viewId,
         linkId: linkId,
         viewType: { equals: ViewType.DATAROOM_VIEW },
       },
@@ -57,15 +45,12 @@ export default async function handler(
         id: true,
         viewedAt: true,
         viewerEmail: true,
-        viewerId: true,
-        verified: true,
         link: {
           select: {
             teamId: true,
             allowDownload: true,
             expiresAt: true,
             isArchived: true,
-            deletedAt: true,
             enableWatermark: true,
             watermarkConfig: true,
             name: true,
@@ -76,42 +61,27 @@ export default async function handler(
       },
     });
 
+    // if view does not exist, we should not allow the download
     if (!view) {
       return res.status(404).json({ error: "Error downloading" });
     }
 
-    // Verified session and email are only required when the viewer requested email notification
-    if (emailNotification) {
-      if (!view.viewerEmail) {
-        return res.status(400).json({
-          error:
-            "Email is required to receive download notifications. Enter your email in the dataroom.",
-        });
-      }
-      if (!session.verified) {
-        return res.status(403).json({
-          error:
-            "Verify your email with the one-time code to receive a notification when the download is ready.",
-        });
-      }
-    }
-
+    // if link does not allow download, we should not allow the download
     if (!view.link.allowDownload) {
       return res.status(403).json({ error: "Error downloading" });
     }
 
+    // if link is archived, we should not allow the download
     if (view.link.isArchived) {
       return res.status(403).json({ error: "Error downloading" });
     }
 
-    if (view.link.deletedAt) {
-      return res.status(403).json({ error: "Error downloading" });
-    }
-
+    // if link is expired, we should not allow the download
     if (view.link.expiresAt && view.link.expiresAt < new Date()) {
       return res.status(403).json({ error: "Error downloading" });
     }
 
+    // if viewedAt is longer than 23 hours ago, we should not allow the download
     if (
       view.viewedAt &&
       view.viewedAt < new Date(Date.now() - 23 * 60 * 60 * 1000)
@@ -119,116 +89,255 @@ export default async function handler(
       return res.status(403).json({ error: "Error downloading" });
     }
 
-    // Cheap existence check: confirm the folder belongs to this dataroom and
-    // grab the dataroom name in one round trip. The task will reload the
-    // folder hierarchy itself.
     const rootFolder = await prisma.dataroomFolder.findUnique({
-      where: { id: folderId, dataroomId },
-      select: {
-        id: true,
-        name: true,
-        dataroom: { select: { name: true } },
+      where: {
+        id: folderId,
+        dataroomId,
       },
+      select: { id: true, name: true, path: true },
     });
 
     if (!rootFolder) {
       return res.status(404).json({ error: "Folder not found" });
     }
 
-    const teamId = view.link.teamId!;
-    const dataroomName = rootFolder.dataroom?.name ?? "Dataroom";
-    const sendEmail =
-      !!emailNotification && !!view.viewerEmail && !!session.verified;
-
-    const job = await downloadJobStore.createJob({
-      type: "folder",
-      status: "PENDING",
-      dataroomId,
-      dataroomName,
-      folderName: rootFolder.name,
-      // The task fills in the real total once it finishes building the
-      // folder structure; we don't know it yet without doing the heavy
-      // queries the task is meant to perform.
-      totalFiles: 0,
-      processedFiles: 0,
-      progress: 0,
-      teamId,
-      userId: view.viewerId ?? view.viewerEmail ?? "viewer",
-      linkId,
-      viewerId: view.viewerId ?? undefined,
-      viewerEmail: view.viewerEmail ?? undefined,
-      emailNotification: sendEmail,
-      emailAddress: sendEmail ? (view.viewerEmail ?? undefined) : undefined,
+    const subfolders = await prisma.dataroomFolder.findMany({
+      where: {
+        dataroomId,
+        path: { startsWith: rootFolder.path + "/" },
+      },
+      select: { id: true, name: true, path: true },
     });
 
-    const handle = await bulkDownloadTask.trigger(
-      {
-        jobId: job.id,
+    let allFolders = [rootFolder, ...subfolders];
+    let allDocuments = await prisma.dataroomDocument.findMany({
+      where: {
         dataroomId,
-        dataroomName,
-        teamId,
+        folderId: {
+          in: allFolders.map((f) => f.id),
+        },
+      },
+      select: {
+        id: true,
+        folderId: true,
+        document: {
+          select: {
+            name: true,
+            versions: {
+              where: { isPrimary: true },
+              select: {
+                type: true,
+                file: true,
+                storageType: true,
+                originalFile: true,
+                numPages: true,
+                contentType: true,
+              },
+              take: 1,
+            },
+          },
+        },
+      },
+    });
+
+    // Check permissions based on groupId (ViewerGroup) or permissionGroupId (PermissionGroup)
+    const effectiveGroupId = view.groupId || view.link.permissionGroupId;
+
+    if (effectiveGroupId) {
+      let groupPermissions: any[] = [];
+
+      if (view.groupId) {
+        // This is a ViewerGroup (legacy behavior)
+        groupPermissions = await prisma.viewerGroupAccessControls.findMany({
+          where: { groupId: view.groupId, canDownload: true },
+        });
+      } else if (view.link.permissionGroupId) {
+        // This is a PermissionGroup (new behavior)
+        groupPermissions = await prisma.permissionGroupAccessControls.findMany({
+          where: { groupId: view.link.permissionGroupId, canDownload: true },
+        });
+      }
+
+      const permittedFolderIds = groupPermissions
+        .filter(
+          (permission) => permission.itemType === ItemType.DATAROOM_FOLDER,
+        )
+        .map((permission) => permission.itemId);
+      const permittedDocumentIds = groupPermissions
+        .filter(
+          (permission) => permission.itemType === ItemType.DATAROOM_DOCUMENT,
+        )
+        .map((permission) => permission.itemId);
+
+      allFolders = allFolders.filter((folder) =>
+        permittedFolderIds.includes(folder.id),
+      );
+      allDocuments = allDocuments.filter((doc) =>
+        permittedDocumentIds.includes(doc.id),
+      );
+    }
+
+    const folderStructure: {
+      [key: string]: {
+        name: string;
+        path: string;
+        files: {
+          name: string;
+          key: string;
+          type?: string;
+          numPages?: number;
+          needsWatermark?: boolean;
+        }[];
+      };
+    } = {};
+
+    const fileKeys: string[] = [];
+
+    const addFileToStructure = (
+      fullPath: string,
+      rootFolder: { name: string; path: string },
+      fileName: string,
+      fileKey: string,
+      fileType?: string,
+      numPages?: number,
+    ) => {
+      let relativePath = "";
+      if (fullPath !== rootFolder.path) {
+        const pathRegex = new RegExp(`^${rootFolder.path}/(.*)$`);
+        const match = fullPath.match(pathRegex);
+        relativePath = match ? match[1] : "";
+      }
+
+      const pathParts = [slugify(rootFolder.name)];
+      if (relativePath) {
+        pathParts.push(
+          ...relativePath
+            .split("/")
+            .filter(Boolean)
+            .map((part) => slugify(part)),
+        );
+      }
+
+      let currentPath = "";
+      for (const part of pathParts) {
+        currentPath += "/" + part;
+        if (!folderStructure[currentPath]) {
+          folderStructure[currentPath] = {
+            name: part,
+            path: currentPath,
+            files: [],
+          };
+        }
+      }
+
+      if (fileName && fileKey) {
+        const needsWatermark =
+          view.link.enableWatermark &&
+          (fileType === "pdf" || fileType === "image");
+
+        folderStructure[currentPath].files.push({
+          name: fileName,
+          key: fileKey,
+          type: fileType,
+          numPages: numPages,
+          needsWatermark: needsWatermark ?? undefined,
+        });
+        fileKeys.push(fileKey);
+      }
+    };
+
+    for (const folder of allFolders) {
+      const docs = allDocuments.filter((doc) => doc.folderId === folder.id);
+
+      if (docs.length === 0) {
+        addFileToStructure(
+          folder.path,
+          rootFolder,
+          "",
+          "",
+          undefined,
+          undefined,
+        );
+        continue;
+      }
+
+      for (const doc of docs) {
+        const version = doc.document.versions[0];
+        if (
+          !version ||
+          version.type === "notion" ||
+          version.storageType === "VERCEL_BLOB"
+        )
+          continue;
+
+        // Use .file if watermark is enabled and document is PDF, otherwise use .originalFile
+        const fileKey =
+          view.link.enableWatermark && version.type === "pdf"
+            ? version.file
+            : (version.originalFile ?? version.file);
+        addFileToStructure(
+          folder.path,
+          rootFolder,
+          doc.document.name,
+          fileKey,
+          version.type ?? undefined,
+          version.numPages ?? undefined,
+        );
+      }
+    }
+
+    const rootPath = "/" + slugify(rootFolder.name);
+    if (!folderStructure[rootPath]) {
+      folderStructure[rootPath] = {
+        name: slugify(rootFolder.name),
+        path: rootPath,
+        files: [],
+      };
+    }
+
+    // Get team-specific storage configuration
+    const [client, storageConfig] = await Promise.all([
+      getLambdaClientForTeam(view.link.teamId!),
+      getTeamStorageConfigById(view.link.teamId!),
+    ]);
+
+    const params = {
+      FunctionName: `bulk-download-zip-creator-${process.env.NODE_ENV === "development" ? "dev" : "prod"}`,
+      InvocationType: InvocationType.RequestResponse,
+      Payload: JSON.stringify({
+        sourceBucket: storageConfig.bucket,
+        fileKeys,
+        folderStructure,
         watermarkConfig: view.link.enableWatermark
           ? {
               enabled: true,
               config: view.link.watermarkConfig,
               viewerData: {
                 email: view.viewerEmail,
-                date: new Date(
-                  view.viewedAt ? view.viewedAt : new Date(),
-                ).toLocaleDateString(),
-                time: new Date(
-                  view.viewedAt ? view.viewedAt : new Date(),
-                ).toLocaleTimeString(),
+                date: new Date(view.viewedAt).toLocaleDateString(),
+                time: new Date(view.viewedAt).toLocaleTimeString(),
                 link: view.link.name,
                 ipAddress: getIpAddress(req.headers),
               },
             }
           : { enabled: false },
-        viewId: view.id,
-        viewerId: view.viewerId ?? undefined,
-        viewerEmail: view.viewerEmail ?? undefined,
-        linkId,
-        emailNotification: sendEmail,
-        emailAddress: sendEmail ? (view.viewerEmail ?? undefined) : undefined,
-        folderName: rootFolder.name,
-        sourceContext: {
-          type: "folder",
-          folderId,
-          linkId,
-          viewId: view.id,
-          viewerId: view.viewerId ?? undefined,
-          viewerEmail: view.viewerEmail ?? undefined,
-          groupId: view.groupId ?? undefined,
-          permissionGroupId: view.link.permissionGroupId ?? undefined,
-          verified: view.verified ?? false,
-          enableWatermark: !!view.link.enableWatermark,
-          notifySlack: true,
-        },
-      },
-      {
-        idempotencyKey: job.id,
-        tags: [
-          `team_${teamId}`,
-          `dataroom_${dataroomId}`,
-          `job_${job.id}`,
-          `link_${linkId}`,
-        ],
-      },
-    );
+      }),
+    };
 
-    await downloadJobStore.updateJob(job.id, { triggerRunId: handle.id });
+    const command = new InvokeCommand(params);
+    const response = await client.send(command);
 
-    return res.status(202).json({
-      jobId: job.id,
-      status: "PENDING",
-      message: sendEmail
-        ? "Download started. We'll email you when it's ready."
-        : "Download started. Check the downloads page for status.",
-    });
+    if (!response.Payload) throw new Error("Lambda returned empty payload");
+
+    const parsed = JSON.parse(new TextDecoder().decode(response.Payload));
+    const { downloadUrl } = JSON.parse(parsed.body);
+
+    res.status(200).json({ downloadUrl });
   } catch (error) {
     console.error("Download error:", error);
     return res.status(500).json({
       message: "Internal Server Error",
+      error: (error as Error).message,
     });
   }
 }

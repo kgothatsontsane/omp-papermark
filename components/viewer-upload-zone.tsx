@@ -1,4 +1,4 @@
-import { useCallback } from "react";
+import { useCallback, useRef, useState } from "react";
 
 import { DocumentStorageType } from "@prisma/client";
 import { FileRejection, useDropzone } from "react-dropzone";
@@ -7,7 +7,6 @@ import { toast } from "sonner";
 import { VIEWER_ACCEPTED_FILE_TYPES } from "@/lib/constants";
 import { DocumentData } from "@/lib/documents/create-document";
 import { viewerUpload } from "@/lib/files/viewer-tus-upload";
-import { newId } from "@/lib/id-helper";
 import { cn } from "@/lib/utils";
 import { getSupportedContentType } from "@/lib/utils/get-content-type";
 import { getPagesCount } from "@/lib/utils/get-page-number-count";
@@ -23,16 +22,12 @@ export default function ViewerUploadZone({
   onUploadRejected,
   viewerData,
   teamId,
-  taskId,
-  maxFileSize = 350, // 350 MB default, matches paid admin document limits
-  disabled = false,
+  maxFileSize = 30, // 30 MB default
 }: {
   children: React.ReactNode;
-  onUploadStart: (
-    uploads: { uploadId: string; fileName: string; progress: number }[],
-  ) => void;
-  onUploadProgress: (uploadId: string, progress: number) => void;
-  onUploadComplete: (documentData: DocumentData, uploadId: string) => void;
+  onUploadStart: (uploads: { fileName: string; progress: number }[]) => void;
+  onUploadProgress: (index: number, progress: number) => void;
+  onUploadComplete: (documentData: DocumentData) => void;
   onUploadRejected: (rejected: { fileName: string; message: string }[]) => void;
   viewerData: {
     id: string;
@@ -40,12 +35,11 @@ export default function ViewerUploadZone({
     dataroomId?: string;
   };
   teamId: string;
-  /** When set, uploads fulfill a Request List task and bypass the link's
-   *  generic upload toggle (gated by task assignment server-side). */
-  taskId?: string;
   maxFileSize?: number;
-  disabled?: boolean;
 }) {
+  const [progress, setProgress] = useState<number>(0);
+  const uploadProgress = useRef<number[]>([]);
+
   const onDropRejected = useCallback(
     (rejectedFiles: FileRejection[]) => {
       const rejected = rejectedFiles.map(({ file, errors }) => {
@@ -53,7 +47,7 @@ export default function ViewerUploadZone({
         if (errors.find(({ code }) => code === "file-too-large")) {
           message = `File size too big (max. ${maxFileSize} MB).`;
         } else if (errors.find(({ code }) => code === "file-invalid-type")) {
-          message = `File type not supported.`;
+          message = `File type not supported. Please upload PDF or Excel files.`;
         }
         return { fileName: file.name, message };
       });
@@ -64,20 +58,14 @@ export default function ViewerUploadZone({
 
   const onDrop = useCallback(
     async (acceptedFiles: File[]) => {
-      const trackedFiles = acceptedFiles.map((file) => ({
-        uploadId: newId("pending"),
-        file,
-      }));
-
-      const newUploads = trackedFiles.map(({ uploadId, file }) => ({
-        uploadId,
+      const newUploads = acceptedFiles.map((file) => ({
         fileName: file.name,
         progress: 0,
       }));
 
       onUploadStart(newUploads);
 
-      const uploadPromises = trackedFiles.map(async ({ uploadId, file }) => {
+      const uploadPromises = acceptedFiles.map(async (file, index) => {
         // count the number of pages in the file
         let numPages = 1;
         if (file.type === "application/pdf") {
@@ -88,11 +76,18 @@ export default function ViewerUploadZone({
         const { complete } = await viewerUpload({
           file,
           onProgress: (bytesUploaded, bytesTotal) => {
-            const progress = Math.min(
-              Math.round((bytesUploaded / bytesTotal) * 100),
-              99,
+            uploadProgress.current[index] = (bytesUploaded / bytesTotal) * 100;
+            onUploadProgress(
+              index,
+              Math.min(Math.round(uploadProgress.current[index]), 99),
             );
-            onUploadProgress(uploadId, progress);
+
+            const _progress = uploadProgress.current.reduce(
+              (acc, progress) => acc + progress,
+              0,
+            );
+
+            setProgress(Math.round(_progress / acceptedFiles.length));
           },
           onError: (error) => {
             console.error("Upload error:", error);
@@ -101,7 +96,6 @@ export default function ViewerUploadZone({
           viewerData,
           teamId,
           numPages,
-          taskId,
         });
 
         const uploadResult = await complete;
@@ -110,11 +104,11 @@ export default function ViewerUploadZone({
         let supportedFileType = getSupportedContentType(contentType) ?? "";
 
         if (
-          uploadResult.fileName.toLowerCase().endsWith(".md") ||
-          uploadResult.fileName.toLowerCase().endsWith(".markdown")
+          uploadResult.fileName.endsWith(".dwg") ||
+          uploadResult.fileName.endsWith(".dxf")
         ) {
-          supportedFileType = "docs";
-          contentType = "text/markdown";
+          supportedFileType = "cad";
+          contentType = `image/vnd.${uploadResult.fileName.split(".").pop()}`;
         }
 
         if (uploadResult.fileName.endsWith(".xlsm")) {
@@ -123,21 +117,11 @@ export default function ViewerUploadZone({
         }
 
         if (
-          uploadResult.fileName.endsWith(".tif") ||
-          uploadResult.fileName.endsWith(".tiff")
+          uploadResult.fileName.endsWith(".kml") ||
+          uploadResult.fileName.endsWith(".kmz")
         ) {
-          supportedFileType = "other";
-          contentType = "image/tiff";
-        }
-
-        if (uploadResult.fileName.endsWith(".ecw")) {
-          supportedFileType = "other";
-          contentType = "image/x-ecw";
-        }
-
-        if (uploadResult.fileName.endsWith(".bak")) {
-          supportedFileType = "other";
-          contentType = "application/x-bak";
+          supportedFileType = "map";
+          contentType = `application/vnd.google-earth.${uploadResult.fileName.endsWith(".kml") ? "kml+xml" : "kmz"}`;
         }
 
         const documentData: DocumentData = {
@@ -150,9 +134,10 @@ export default function ViewerUploadZone({
           numPages: numPages,
         };
 
-        onUploadComplete(documentData, uploadId);
+        // Complete the upload by calling the provided callback
+        onUploadComplete(documentData);
 
-        onUploadProgress(uploadId, 100); // Mark upload as complete
+        onUploadProgress(index, 100); // Mark upload as complete
 
         return uploadResult;
       });
@@ -165,14 +150,7 @@ export default function ViewerUploadZone({
         toast.error("An error occurred during upload");
       }
     },
-    [
-      onUploadStart,
-      onUploadProgress,
-      onUploadComplete,
-      viewerData,
-      teamId,
-      taskId,
-    ],
+    [onUploadStart, onUploadProgress, onUploadComplete, viewerData, teamId],
   );
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
@@ -181,11 +159,10 @@ export default function ViewerUploadZone({
     maxSize: maxFileSize * 1024 * 1024,
     onDrop,
     onDropRejected,
-    disabled,
   });
 
   return (
-    <div {...getRootProps()} className="relative min-w-0 min-h-[200px]">
+    <div {...getRootProps()} className="relative min-h-[200px]">
       <div
         className={cn(
           "absolute inset-0 z-40 -m-1 rounded-lg border-2 border-dashed",
@@ -202,14 +179,16 @@ export default function ViewerUploadZone({
         />
 
         {isDragActive && (
-          <div className="flex h-full items-center justify-center">
-            <div className="inline-flex flex-col rounded-lg bg-background/95 px-6 py-4 text-center ring-1 ring-gray-900/5 dark:bg-gray-900/95 dark:ring-white/10">
-              <span className="font-medium text-foreground">
-                Drop your file(s) here
-              </span>
-              <p className="mt-1 text-xs leading-5 text-muted-foreground">
-                PDF, Office, images, ZIP, and more
-              </p>
+          <div className="sticky top-1/2 z-50 -translate-y-1/2 px-2">
+            <div className="flex justify-center">
+              <div className="inline-flex flex-col rounded-lg bg-background/95 px-6 py-4 text-center ring-1 ring-gray-900/5 dark:bg-gray-900/95 dark:ring-white/10">
+                <span className="font-medium text-foreground">
+                  Drop your file(s) here
+                </span>
+                <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                  Only *.pdf, *.xls, *.xlsx, *.csv, *.ods files
+                </p>
+              </div>
             </div>
           </div>
         )}

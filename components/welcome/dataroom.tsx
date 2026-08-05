@@ -39,13 +39,12 @@ export default function Dataroom() {
       </motion.div>
       <motion.div
         variants={STAGGER_CHILD_VARIANTS}
-        className="mx-auto mt-24 w-full overflow-hidden rounded-md bg-white [&>video]:[mask-image:radial-gradient(white,black)]"
+        className="mx-auto mt-24 w-full"
       >
         <video
           width="100%"
           id="video1"
-          className="block"
-          style={{ WebkitMaskImage: "radial-gradient(white, black)" }}
+          style={{ borderRadius: "6px" }}
           aria-hidden="true"
           playsInline
           autoPlay
@@ -54,7 +53,7 @@ export default function Dataroom() {
           controls
         >
           <source
-            src="https://img.papermarkassets.com/upload/file_EwRRKYFSgWcxPjGYF31QWe-Create-data-room-product-video-2.mp4"
+            src="https://assets.papermark.io/upload/file_A4qNV68jr3MAUayMNi3WmY-Data-Room-demo-2.mp4"
             type="video/mp4"
           />
         </video>
@@ -74,10 +73,10 @@ export default function Dataroom() {
             })
           }
         >
-          Get a Data Rooms Plus trial
+          Get a data room trial
         </Button>
         <span className="text-xs text-muted-foreground">
-          Data rooms are available on our Data Rooms Plus plan and higher.{" "}
+          Data rooms are available on our `Business` and `Data Rooms` plans.{" "}
           <br />
           You receive a 7-day trial.
         </span>

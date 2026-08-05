@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import React from "react";
 
-import { ConfidentialViewOverlay } from "@/ee/features/permissions/components/confidential-view/confidential-view-overlay";
 import "@/public/vendor/handsontable/handsontable.full.min.css";
 import { Brand, DataroomBrand } from "@prisma/client";
 
@@ -28,13 +27,11 @@ export default function ExcelViewer({
   versionNumber,
   sheetData,
   screenshotProtectionEnabled,
-  confidentialViewEnabled,
   navData,
 }: {
   versionNumber: number;
   sheetData: SheetData[];
   screenshotProtectionEnabled: boolean;
-  confidentialViewEnabled?: boolean;
   navData: TNavData;
 }) {
   const [availableWidth, setAvailableWidth] = useState<number>(200);
@@ -316,7 +313,6 @@ export default function ExcelViewer({
           ))}
         </div>
         {screenshotProtectionEnabled ? <ScreenProtector /> : null}
-        {confidentialViewEnabled ? <ConfidentialViewOverlay /> : null}
         <AwayPoster
           isVisible={isInactive}
           inactivityThreshold={

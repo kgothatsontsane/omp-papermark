@@ -48,9 +48,6 @@ export default async function handle(
       where: {
         documentId: documentId,
         isPrimary: true,
-        document: {
-          teamId: teamId,
-        },
       },
       select: {
         file: true,

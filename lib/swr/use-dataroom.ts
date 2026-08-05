@@ -18,36 +18,22 @@ export type DataroomFolderWithCount = DataroomFolder & {
   };
 };
 
-export function useDataroom(dataroomId?: string) {
+export function useDataroom() {
   const router = useRouter();
 
-  const { id: routerId } = router.query as {
+  const { id } = router.query as {
     id: string;
   };
-
-  const id = dataroomId ?? routerId;
 
   const teamInfo = useTeam();
   const teamId = teamInfo?.currentTeam?.id;
 
-  // When dataroomId is explicitly provided, skip the pathname check
-  const isDataroomPage =
-    dataroomId || router.pathname.startsWith("/datarooms");
+  // Only make the API call if we're on a dataroom page
+  const isDataroomPage = router.pathname.startsWith("/datarooms");
   const shouldFetch = teamId && id && isDataroomPage;
 
   const { data: dataroom, error } = useSWR<
-    Dataroom & {
-      _count?: { viewerGroups: number; permissionGroups: number };
-      frozenByUser?: { name: string | null; email: string | null } | null;
-      tags?: {
-        tag: {
-          id: string;
-          name: string;
-          color: string;
-          description: string | null;
-        };
-      }[];
-    }
+    Dataroom & { _count?: { viewerGroups: number; permissionGroups: number } }
   >(shouldFetch ? `/api/teams/${teamId}/datarooms/${id}` : null, fetcher, {
     dedupingInterval: 10000,
     onError: (err) => {
@@ -123,7 +109,7 @@ export function useDataroomItems({
   >(
     teamId &&
       id &&
-      `/api/teams/${teamId}/datarooms/${id}${name ? `/folder-documents/${name.join("/")}` : "/documents"}`,
+      `/api/teams/${teamId}/datarooms/${id}${name ? `/folders/documents/${name.join("/")}` : "/documents"}`,
 
     fetcher,
     {
@@ -227,7 +213,6 @@ export type DataroomFolderWithDocuments = DataroomFolder & {
     orderIndex: number | null;
     id: string;
     folderId: string;
-    hierarchicalIndex: string | null;
     document: {
       id: string;
       name: string;
@@ -248,7 +233,6 @@ export function useDataroomFoldersTree({
 
   const { data: folders, error } = useSWR<DataroomFolderWithDocuments[]>(
     teamId &&
-      dataroomId &&
       `/api/teams/${teamId}/datarooms/${dataroomId}/folders${include_documents ? "?include_documents=true" : ""}`,
     fetcher,
     {
@@ -298,7 +282,6 @@ export type DataroomFolderDocument = DataroomDocument & {
     id: string;
     name: string;
     type: string;
-    advancedExcelEnabled?: boolean;
     versions?: { id: string; hasPages: boolean }[];
     isExternalUpload?: boolean;
     _count: {
@@ -322,7 +305,7 @@ export function useDataroomFolderDocuments({ name }: { name: string[] }) {
     teamId &&
       id &&
       name &&
-      `/api/teams/${teamId}/datarooms/${id}/folder-documents/${name.join("/")}`,
+      `/api/teams/${teamId}/datarooms/${id}/folders/documents/${name.join("/")}`,
     fetcher,
     {
       revalidateOnFocus: false,
@@ -358,11 +341,6 @@ export function useDataroomViewers({ dataroomId }: { dataroomId: string }) {
   };
 }
 
-type DataroomVisitsResponse = {
-  views: any[];
-  hiddenFromPause: number;
-};
-
 export function useDataroomVisits({
   dataroomId,
   groupId,
@@ -373,7 +351,7 @@ export function useDataroomVisits({
   const teamInfo = useTeam();
   const teamId = teamInfo?.currentTeam?.id;
 
-  const { data, error } = useSWR<DataroomVisitsResponse>(
+  const { data: views, error } = useSWR<any[]>(
     teamId &&
       dataroomId &&
       `/api/teams/${teamId}/datarooms/${dataroomId}${groupId ? `/groups/${groupId}` : ""}/views`,
@@ -384,9 +362,8 @@ export function useDataroomVisits({
   );
 
   return {
-    views: data?.views,
-    hiddenFromPause: data?.hiddenFromPause ?? 0,
-    loading: !error && !data,
+    views,
+    loading: !error && !views,
     error,
   };
 }
@@ -395,17 +372,6 @@ type DataroomDocumentViewHistory = {
   id: string;
   downloadedAt: string;
   viewedAt: string;
-  downloadType?: "SINGLE" | "BULK" | "FOLDER";
-  downloadMetadata?: {
-    folderName?: string;
-    folderPath?: string;
-    dataroomName?: string;
-    documentCount?: number;
-    documents?: {
-      id: string;
-      name: string;
-    }[];
-  };
   document: {
     id: string;
     name: string;
@@ -445,46 +411,6 @@ export function useDataroomVisitHistory({
     documentViews: data?.documentViews,
     uploadedDocumentViews: data?.uploadedDocumentViews,
     loading: !error && !data,
-    error,
-  };
-}
-
-export type DataroomFolderWithCountAndPath = DataroomFolderWithCount & {
-  folderPath: string[];
-};
-
-export type DataroomFolderDocumentWithPath = DataroomFolderDocument & {
-  folderPath: string[];
-};
-
-export function useDataroomSearch({ query }: { query: string }) {
-  const router = useRouter();
-  const { id } = router.query as { id: string };
-  const teamInfo = useTeam();
-  const teamId = teamInfo?.currentTeam?.id;
-
-  const { data, error } = useSWR<{
-    documents: DataroomFolderDocumentWithPath[];
-    folders: DataroomFolderWithCountAndPath[];
-  }>(
-    teamId &&
-      id &&
-      query &&
-      query.trim().length > 0 &&
-      `/api/teams/${teamId}/datarooms/${id}/search?query=${encodeURIComponent(query.trim())}`,
-    fetcher,
-    {
-      revalidateOnFocus: false,
-      dedupingInterval: 10000,
-    },
-  );
-
-  const isLoading = query.trim().length > 0 && !data && !error;
-
-  return {
-    documents: data?.documents || [],
-    folders: data?.folders || [],
-    isLoading,
     error,
   };
 }

@@ -5,7 +5,7 @@ export type DocumentData = {
   name: string;
   key: string;
   storageType: DocumentStorageType;
-  contentType: string | null; // actual file mime type
+  contentType: string; // actual file mime type
   supportedFileType: string; // papermark types: "pdf", "sheet", "docs", "slides", "map", "zip"
   fileSize: number | undefined; // file size in bytes
   numPages?: number;
@@ -100,28 +100,21 @@ export const createNewDocumentVersion = async ({
   documentId,
   teamId,
   numPages,
-  token,
 }: {
   documentData: DocumentData;
   documentId: string;
   teamId: string;
   numPages?: number;
-  token?: string;
 }) => {
   try {
     const documentIdParsed = z.string().cuid().parse(documentId);
 
-    // Use absolute URL when a token is provided (server-side / webhook context),
-    // otherwise use a relative URL (client-side context).
-    const baseUrl = token ? process.env.NEXT_PUBLIC_BASE_URL : "";
-
     const response = await fetch(
-      `${baseUrl}/api/teams/${teamId}/documents/${documentIdParsed}/versions`,
+      `/api/teams/${teamId}/documents/${documentIdParsed}/versions`,
       {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
         body: JSON.stringify({
           url: documentData.key,

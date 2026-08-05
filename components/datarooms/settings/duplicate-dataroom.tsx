@@ -19,7 +19,7 @@ import {
 } from "@/components/ui/card";
 
 import { usePlan } from "@/lib/swr/use-billing";
-import useDataroomsSimple from "@/lib/swr/use-datarooms-simple";
+import useDatarooms from "@/lib/swr/use-datarooms";
 
 export default function DuplicateDataroom({
   dataroomId,
@@ -33,7 +33,7 @@ export default function DuplicateDataroom({
   const [planModalOpen, setPlanModalOpen] = useState<boolean>(false);
   const { limits } = useLimits();
   const { isBusiness, isDatarooms, isDataroomsPlus, isTrial } = usePlan();
-  const { datarooms: dataRooms } = useDataroomsSimple();
+  const { datarooms: dataRooms } = useDatarooms();
   const numDatarooms = dataRooms?.length ?? 0;
   const limitDatarooms = limits?.datarooms ?? 1;
 
@@ -75,7 +75,6 @@ export default function DuplicateDataroom({
           loading: "Copying dataroom...",
           success: (dataroom) => {
             mutate(`/api/teams/${teamId}/datarooms`);
-            mutate(`/api/teams/${teamId}/datarooms?simple=true`);
             router.push(`/datarooms/${dataroom.id}/documents`);
             return "Dataroom copied successfully.";
           },

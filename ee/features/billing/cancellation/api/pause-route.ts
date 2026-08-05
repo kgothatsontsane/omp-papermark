@@ -1,10 +1,8 @@
 import { NextApiRequest, NextApiResponse } from "next";
 
-import { PAUSE_COUPON_ID } from "@/ee/features/billing/cancellation/constants";
 import { sendPauseResumeNotificationTask } from "@/ee/features/billing/cancellation/lib/trigger/pause-resume-notification";
-import { automaticUnpauseTask } from "@/ee/features/billing/cancellation/lib/trigger/unpause-task";
 import { stripeInstance } from "@/ee/stripe";
-import { authOptions } from "@/lib/auth/auth-options";
+import { authOptions } from "@/pages/api/auth/[...nextauth]";
 import { waitUntil } from "@vercel/functions";
 import { getServerSession } from "next-auth/next";
 
@@ -64,43 +62,23 @@ export async function handleRoute(req: NextApiRequest, res: NextApiResponse) {
       const isOldAccount = team.plan.includes("+old");
       const stripe = stripeInstance(isOldAccount);
 
-      // Fetch the subscription from Stripe to get the actual current_period_end
-      // This ensures we don't use stale data from the database
-      const subscription = await stripe.subscriptions.retrieve(
-        team.subscriptionId,
-      );
-
-      // Use the actual current_period_end from Stripe, ensuring pause starts at next billing cycle
-      // Never allow retroactive pausing - pauseStartsAt must be in the future
-      const now = new Date();
-      const stripePeriodEnd = new Date(subscription.current_period_end * 1000);
-      const pauseStartsAt = stripePeriodEnd > now ? stripePeriodEnd : now;
-
+      const pauseStartsAt = team.endsAt ? new Date(team.endsAt) : new Date();
       const pauseEndsAt = new Date(pauseStartsAt);
-      // Use 3 calendar months instead of 90 days to properly align with billing cycles
-      pauseEndsAt.setMonth(pauseStartsAt.getMonth() + 3);
+      pauseEndsAt.setDate(pauseStartsAt.getDate() + 90);
       const reminderAt = new Date(pauseEndsAt);
       reminderAt.setDate(pauseEndsAt.getDate() - 3);
 
       // Pause the subscription in Stripe
       await stripe.subscriptions.update(team.subscriptionId, {
-        discounts: [
-          {
-            coupon:
-              PAUSE_COUPON_ID[isOldAccount ? "old" : "new"][
-                process.env.VERCEL_ENV === "production" ? "prod" : "test"
-              ],
-          },
-        ],
+        pause_collection: {
+          behavior: "mark_uncollectible",
+          resumes_at: Math.floor(pauseEndsAt.getTime() / 1000), // seconds (int)
+        },
         metadata: {
           pause_starts_at: pauseStartsAt.toISOString(),
           pause_ends_at: pauseEndsAt.toISOString(),
           paused_reason: "user_request",
           original_plan: team.plan,
-          pause_coupon_id:
-            PAUSE_COUPON_ID[isOldAccount ? "old" : "new"][
-              process.env.VERCEL_ENV === "production" ? "prod" : "test"
-            ],
         },
       });
 
@@ -124,16 +102,8 @@ export async function handleRoute(req: NextApiRequest, res: NextApiResponse) {
               idempotencyKey: `pause-resume-${teamId}-${new Date().getTime()}`,
             },
           ),
-          // Schedule automatic unpause when the 3-month pause period ends
-          automaticUnpauseTask.trigger(
-            { teamId },
-            {
-              delay: pauseEndsAt, // Exactly when pause period ends
-              tags: [`team_${teamId}`],
-              idempotencyKey: `automatic-unpause-${teamId}-${new Date().getTime()}`,
-            },
-          ),
-
+          // Remove the existing discounts from the subscription
+          stripe.subscriptions.deleteDiscount(team.subscriptionId),
           log({
             message: `Team ${teamId} (${team.plan}) paused their subscription for 3 months.`,
             type: "info",
@@ -144,8 +114,6 @@ export async function handleRoute(req: NextApiRequest, res: NextApiResponse) {
       res.status(200).json({
         success: true,
         message: "Subscription paused successfully",
-        pauseStartsAt: pauseStartsAt.toISOString(),
-        pauseEndsAt: pauseEndsAt.toISOString(),
       });
     } catch (error) {
       console.error("Error pausing subscription:", error);

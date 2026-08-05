@@ -31,40 +31,29 @@ export default async function handle(
     const userId = (session.user as CustomUser).id;
 
     try {
-      const teamAccess = await prisma.userTeam.findUnique({
+      const team = await prisma.team.findUnique({
         where: {
-          userId_teamId: {
-            userId: userId,
-            teamId: teamId,
+          id: teamId,
+          users: {
+            some: {
+              userId: (session.user as CustomUser).id,
+            },
           },
-        },
-      });
-      if (!teamAccess) {
-        return res.status(403).end("Unauthorized to access this team");
-      }
-
-      const group = await prisma.viewerGroup.findFirst({
-        where: {
-          id: groupId,
-          dataroomId,
-          teamId,
         },
         select: {
           id: true,
         },
       });
 
-      if (!group) {
-        return res.status(404).json({ message: "Group not found" });
+      if (!team) {
+        return res.status(403).end("Unauthorized to access this team");
       }
 
       let links = await prisma.link.findMany({
         where: {
-          groupId,
-          dataroomId,
-          teamId,
+          groupId: groupId,
+          dataroomId: dataroomId,
           linkType: "DATAROOM_LINK",
-          deletedAt: null,
         },
         orderBy: {
           createdAt: "desc",
@@ -80,9 +69,6 @@ export default async function handle(
             take: 1,
           },
           customFields: true,
-          visitorGroups: {
-            select: { visitorGroupId: true },
-          },
           _count: {
             select: { views: { where: { viewType: "DATAROOM_VIEW" } } },
           },
@@ -97,27 +83,17 @@ export default async function handle(
             if (link.password !== null) {
               link.password = decryptEncrpytedPassword(link.password);
             }
-            // Resolve the upload-folder allow-list when restricted.
-            if (link.enableUpload) {
-              const allowedIds = Array.isArray(link.uploadFolderIds)
-                ? link.uploadFolderIds.filter(
-                    (id): id is string => typeof id === "string" && !!id,
-                  )
-                : [];
-
-              if (allowedIds.length > 0) {
-                const folders = await prisma.dataroomFolder.findMany({
-                  where: {
-                    id: { in: allowedIds },
-                    dataroomId,
-                  },
-                  select: { id: true, name: true, path: true },
-                });
-                const byId = new Map(folders.map((f) => [f.id, f]));
-                link.uploadFolders = allowedIds
-                  .map((id) => byId.get(id))
-                  .filter((f): f is (typeof folders)[number] => !!f);
-              }
+            // Get the upload folder name if it exists
+            if (link.enableUpload && link.uploadFolderId !== null) {
+              const folder = await prisma.dataroomFolder.findUnique({
+                where: {
+                  id: link.uploadFolderId,
+                },
+                select: {
+                  name: true,
+                },
+              });
+              link.uploadFolderName = folder?.name;
             }
             // Get the tags for the link
             const tags = await prisma.tag.findMany({

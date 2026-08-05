@@ -35,16 +35,18 @@ export default async function handle(
 
     try {
       // Check if the user is part of the team
-      const teamAccess = await prisma.userTeam.findUnique({
+      const team = await prisma.team.findUnique({
         where: {
-          userId_teamId: {
-            userId: userId,
-            teamId: teamId,
+          id: teamId,
+          users: {
+            some: {
+              userId: userId,
+            },
           },
         },
       });
 
-      if (!teamAccess) {
+      if (!team) {
         return res.status(401).end("Unauthorized");
       }
 

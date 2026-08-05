@@ -13,9 +13,6 @@ type ViewerUploadParams = {
   };
   teamId: string;
   numPages: number;
-  /** When set, the upload fulfills a Request List task. Task uploads are gated
-   *  by assignment rather than the link's generic upload toggle. */
-  taskId?: string;
 };
 
 type UploadResult = {
@@ -37,7 +34,6 @@ export function viewerUpload({
   viewerData,
   teamId,
   numPages,
-  taskId,
 }: ViewerUploadParams) {
   return new Promise<{ upload: tus.Upload; complete: Promise<UploadResult> }>(
     (resolve, reject) => {
@@ -48,34 +44,11 @@ export function viewerUpload({
         completeResolve = res;
       });
 
-      // Scope resumable uploads to this viewer/link/task so findPreviousUploads()
-      // never reuses an upload created for a different task or viewer. The default
-      // fingerprint only covers file name/type/size, which collides across tasks.
-      const uploadScope = [
-        teamId,
-        viewerData.id,
-        viewerData.linkId,
-        viewerData.dataroomId || "",
-        taskId || "",
-      ].join(":");
-
       const upload = new tus.Upload(file, {
         endpoint: `${process.env.NEXT_PUBLIC_BASE_URL}/api/file/tus-viewer`,
         retryDelays: [0, 3000, 5000, 10000],
         uploadDataDuringCreation: true,
         removeFingerprintOnSuccess: true,
-        fingerprint: (file, options) =>
-          Promise.resolve(
-            [
-              "tus-viewer",
-              file.name,
-              file.type,
-              file.size,
-              file.lastModified,
-              options.endpoint,
-              uploadScope,
-            ].join("-"),
-          ),
         metadata: {
           fileName: file.name,
           contentType: file.type,
@@ -84,7 +57,6 @@ export function viewerUpload({
           viewerId: viewerData.id,
           linkId: viewerData.linkId,
           dataroomId: viewerData.dataroomId || "",
-          ...(taskId ? { taskId } : {}),
         },
         chunkSize: 4 * 1024 * 1024,
         onError: (error) => {
@@ -128,16 +100,9 @@ export function viewerUpload({
       upload
         .findPreviousUploads()
         .then((previousUploads) => {
-          // Only resume an upload whose stored metadata matches the current
-          // task and viewer, so we never append to another task's upload.
-          const resumable = previousUploads.find(
-            (previous) =>
-              (previous.metadata.taskId || "") === (taskId || "") &&
-              previous.metadata.viewerId === viewerData.id &&
-              previous.metadata.linkId === viewerData.linkId,
-          );
-          if (resumable) {
-            upload.resumeFromPreviousUpload(resumable);
+          // Found previous uploads so we select the first one.
+          if (previousUploads.length) {
+            upload.resumeFromPreviousUpload(previousUploads[0]);
           }
 
           upload.start();

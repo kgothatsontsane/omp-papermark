@@ -1,8 +1,8 @@
 import { GetObjectCommand } from "@aws-sdk/client-s3";
 import type { S3Client } from "@aws-sdk/client-s3";
+import fetch from "node-fetch";
 import { PassThrough } from "stream";
-import { Readable } from "stream";
-import { ReadableStream } from "stream/web";
+import type { Readable } from "stream";
 
 export class S3DownloadService {
   constructor(private s3: S3Client) {}
@@ -72,9 +72,7 @@ export class S3DownloadService {
         );
         return;
       }
-
-      const nodeReadable = Readable.fromWeb(response.body as ReadableStream);
-      nodeReadable
+      response.body
         .on("error", (err: any) => stream.emit("error", err))
         .pipe(stream);
     } catch (e) {
