@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import React from "react";
 
 import { useTeam } from "@/context/team-context";
+import { getStripe } from "@/ee/stripe/client";
 import { PLANS } from "@/ee/stripe/utils";
 import { CheckIcon } from "lucide-react";
 
@@ -40,7 +41,7 @@ export function UpgradePlanModal({
   const [period, setPeriod] = useState<"yearly" | "monthly">("yearly");
   const [clicked, setClicked] = useState<boolean>(false);
   const teamInfo = useTeam();
-  const { plan: teamPlan, trial, isCustomer } = usePlan();
+  const { plan: teamPlan, trial, isCustomer, isOldAccount } = usePlan();
   const analytics = useAnalytics();
 
   const isTrial = !!trial;
@@ -262,9 +263,9 @@ export function UpgradePlanModal({
               )
                 .then(async (res) => {
                   const data = await res.json();
-                  if (data.url) {
-                    window.location.href = data.url;
-                  }
+                  const { id: sessionId } = data;
+                  const stripe = await getStripe(isOldAccount);
+                  stripe?.redirectToCheckout({ sessionId });
                 })
                 .catch((err) => {
                   alert(err);

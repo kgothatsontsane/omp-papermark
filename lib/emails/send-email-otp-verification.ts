@@ -1,7 +1,6 @@
-import { type ResolvedBrandLogo } from "@/ee/features/branding/lib/brand-logo";
-
 import { getCustomEmail } from "@/lib/edge-config/custom-email";
-import { readCachedBrandLogo } from "@/lib/redis/brand-logo-cache";
+import prisma from "@/lib/prisma";
+import { redis } from "@/lib/redis";
 import { sendEmail } from "@/lib/resend";
 
 import OtpEmailVerification from "@/components/emails/otp-verification";
@@ -12,28 +11,28 @@ export const sendOtpVerificationEmail = async (
   isDataroom: boolean = false,
   teamId: string,
 ) => {
-  let logo: ResolvedBrandLogo | undefined;
+  let logo: string | null = null;
   let from: string | undefined;
 
   const customEmail = await getCustomEmail(teamId);
 
   if (customEmail && teamId) {
     from = customEmail;
-    logo = await readCachedBrandLogo(teamId);
+    logo = await redis.get(`brand:logo:${teamId}`);
   }
 
   const emailTemplate = OtpEmailVerification({
     email,
     code,
     isDataroom,
-    logo,
+    logo: logo ?? undefined,
   });
 
   try {
     await sendEmail({
       from,
       to: email,
-      subject: `${code} is your verification code`,
+      subject: `One-time passcode to access the ${isDataroom ? "dataroom" : "document"}`,
       react: emailTemplate,
       test: process.env.NODE_ENV === "development",
       verify: true,

@@ -11,7 +11,6 @@ import {
 interface GenerateIndexOptions {
   format?: IndexFileFormat;
   baseUrl?: string;
-  showHierarchicalIndex?: boolean;
 }
 
 interface DataroomDocumentWithVersion {
@@ -20,7 +19,6 @@ interface DataroomDocumentWithVersion {
   orderIndex: number | null;
   updatedAt: Date;
   createdAt: Date;
-  hierarchicalIndex: string | null;
   document: {
     id: string;
     name: string;
@@ -50,7 +48,7 @@ export async function generateDataroomIndex(
   link: LinkWithDataroom,
   options: GenerateIndexOptions = {},
 ): Promise<{ data: Buffer; filename: string; mimeType: string }> {
-  const { format = "excel", baseUrl, showHierarchicalIndex = false } = options;
+  const { format = "excel", baseUrl } = options;
 
   // Generate the index data structure
   const indexData: DataroomIndex = {
@@ -76,9 +74,6 @@ export async function generateDataroomIndex(
 
     // Add folder entry
     entries.push({
-      hierarchicalIndex: showHierarchicalIndex
-        ? folder.hierarchicalIndex
-        : undefined,
       name: folder.name,
       type: "Folder",
       path: currentPath.split("/").slice(0, -1).join("/") || "/",
@@ -96,9 +91,6 @@ export async function generateDataroomIndex(
       const latestVersion =
         doc.document.versions[doc.document.versions.length - 1];
       const entry: DataroomIndexEntry = {
-        hierarchicalIndex: showHierarchicalIndex
-          ? doc.hierarchicalIndex
-          : undefined,
         name: doc.document.name,
         type: "File",
         path: `${currentPath}/`,
@@ -136,7 +128,6 @@ export async function generateDataroomIndex(
 
   // Add root dataroom entry
   indexData.entries.push({
-    hierarchicalIndex: showHierarchicalIndex ? "0" : undefined,
     name: link.dataroom.name,
     type: "Root Folder",
     path: "",
@@ -155,9 +146,6 @@ export async function generateDataroomIndex(
     const latestVersion =
       doc.document.versions[doc.document.versions.length - 1];
     indexData.entries.push({
-      hierarchicalIndex: showHierarchicalIndex
-        ? doc.hierarchicalIndex
-        : undefined,
       name: doc.document.name,
       type: "File",
       path: "/",
@@ -192,11 +180,8 @@ export async function generateDataroomIndex(
       const workbook = new ExcelJS.Workbook();
       const worksheet = workbook.addWorksheet("Dataroom Index");
 
-      // Define columns with their configuration
-      const columns = [
-        ...(showHierarchicalIndex
-          ? [{ header: "Index", key: "hierarchicalIndex", width: 10 }]
-          : []),
+      // Set column widths and properties
+      worksheet.columns = [
         { header: "Name", key: "name", width: 30 },
         { header: "Type", key: "type", width: 10 },
         { header: "Path", key: "path", width: 40 },
@@ -208,18 +193,6 @@ export async function generateDataroomIndex(
         { header: "Added At", key: "createdAt", width: 20 },
         { header: "Last Updated At", key: "lastUpdated", width: 20 },
       ];
-
-      // Set column widths and properties
-      worksheet.columns = columns;
-
-      // Find the index of the onlineUrl column (1-based for ExcelJS)
-      const onlineUrlColumnIndex =
-        columns.findIndex((col) => col.key === "onlineUrl") + 1;
-
-      // Validate that the column was found
-      if (onlineUrlColumnIndex === 0) {
-        throw new Error("onlineUrl column not found in column definitions");
-      }
 
       // Add title rows
       worksheet.spliceRows(
@@ -277,7 +250,6 @@ export async function generateDataroomIndex(
       // Add data rows
       indexData.entries.forEach((entry, index) => {
         const row = worksheet.addRow([
-          ...(showHierarchicalIndex ? [entry.hierarchicalIndex] : []),
           entry.name,
           entry.type,
           entry.path,
@@ -301,7 +273,7 @@ export async function generateDataroomIndex(
 
         // Add hyperlink to Online URL
         if (entry.onlineUrl) {
-          const cell = row.getCell(onlineUrlColumnIndex); // dynamically found online link column
+          const cell = row.getCell(7); // online link column
           cell.value = {
             text: entry.onlineUrl,
             hyperlink: entry.onlineUrl,
@@ -353,7 +325,6 @@ export async function generateDataroomIndex(
     case "csv": {
       const csvRows = [
         [
-          ...(showHierarchicalIndex ? ["Index"] : []),
           "Name",
           "Type",
           "Path",
@@ -366,7 +337,6 @@ export async function generateDataroomIndex(
           "Last Updated At",
         ],
         ...indexData.entries.map((entry) => [
-          ...(showHierarchicalIndex ? [entry.hierarchicalIndex] : []),
           entry.name,
           entry.type,
           entry.path,

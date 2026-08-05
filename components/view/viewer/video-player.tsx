@@ -8,19 +8,19 @@ import {
 
 import { cn } from "@/lib/utils";
 
-interface MediaPlayerProps {
-  mediaSrc: string;
+interface VideoPlayerProps {
+  videoSrc: string;
   onError?: (error: Error) => void;
   controls?: boolean;
   className?: string;
   preventDownload?: boolean;
 }
 
-export const MediaPlayer = memo(
-  forwardRef<HTMLVideoElement, MediaPlayerProps>(
+export const VideoPlayer = memo(
+  forwardRef<HTMLVideoElement, VideoPlayerProps>(
     (
       {
-        mediaSrc,
+        videoSrc,
         onError,
         controls = true,
         className = "",
@@ -37,8 +37,8 @@ export const MediaPlayer = memo(
         if (!video) return;
 
         const handleError = (e: ErrorEvent) => {
-          console.error("Media playback error:", e);
-          onError?.(new Error("Failed to play media"));
+          console.error("Video playback error:", e);
+          onError?.(new Error("Failed to play video"));
         };
 
         video.addEventListener("error", handleError);
@@ -61,17 +61,14 @@ export const MediaPlayer = memo(
           onContextMenu={
             preventDownload ? (e) => e.preventDefault() : undefined
           }
-          src={mediaSrc}
+          src={videoSrc}
         >
-          <source src={mediaSrc} />
-          Your browser does not support the media tag.
+          <source src={videoSrc} type="video/mp4" />
+          Your browser does not support the video tag.
         </video>
       );
     },
   ),
 );
 
-MediaPlayer.displayName = "MediaPlayer";
-
-// Keep the old VideoPlayer export for backward compatibility
-export const VideoPlayer = MediaPlayer;
+VideoPlayer.displayName = "VideoPlayer";

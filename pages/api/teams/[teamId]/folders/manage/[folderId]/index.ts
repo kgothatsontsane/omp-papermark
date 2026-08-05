@@ -16,7 +16,8 @@ export default async function handle(
     // DELETE /api/teams/:teamId/folders/manage/:folderId
     const session = await getServerSession(req, res, authOptions);
     if (!session) {
-      return res.status(401).json({ message: "Unauthorized" });
+      res.status(401).end("Unauthorized");
+      return;
     }
 
     const { teamId, folderId } = req.query as {
@@ -27,27 +28,19 @@ export default async function handle(
     const userId = (session.user as CustomUser).id;
 
     try {
-      const teamAccess = await prisma.userTeam.findUnique({
+      const team = await prisma.team.findUnique({
         where: {
-          userId_teamId: {
-            userId: userId,
-            teamId: teamId,
+          id: teamId,
+          users: {
+            some: {
+              userId: userId,
+            },
           },
-        },
-        select: {
-          role: true,
         },
       });
 
-      if (!teamAccess) {
-        return res.status(401).json({ message: "Unauthorized" });
-      }
-
-      if (teamAccess.role !== "ADMIN" && teamAccess.role !== "MANAGER") {
-        return res.status(403).json({
-          message:
-            "You are not permitted to perform this action. Only admin and managers can delete folders.",
-        });
+      if (!team) {
+        return res.status(401).end("Unauthorized");
       }
 
       const folder = await prisma.folder.findUnique({
@@ -78,11 +71,9 @@ export default async function handle(
       errorhandler(error, res);
     }
   } else {
-    // We only allow DELETE requests
+    // We only allow GET, PUT and DELETE requests
     res.setHeader("Allow", ["DELETE"]);
-    return res
-      .status(405)
-      .json({ message: `Method ${req.method} Not Allowed` });
+    return res.status(405).end(`Method ${req.method} Not Allowed`);
   }
 }
 
@@ -97,14 +88,12 @@ async function deleteFolderAndContents(folderId: string, teamId: string) {
     await deleteFolderAndContents(childFolder.id, teamId);
   }
 
-  // Delete all documents in the folder. Notion and web-link documents store an
-  // external URL rather than a real storage object, so they're excluded from
-  // the storage cleanup below (deleteFile would fail on their URL).
+  // Delete all documents in the folder
   const documents = await prisma.document.findMany({
     where: {
       folderId: folderId,
       type: {
-        notIn: ["notion", "link"],
+        not: "notion",
       },
     },
     include: {

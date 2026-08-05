@@ -5,15 +5,13 @@ import { isOldAccount } from "@/ee/stripe/utils";
 import { DocumentStorageType } from "@prisma/client";
 import { getServerSession } from "next-auth";
 
-import { deleteDomainRedirectUrl } from "@/lib/api/domains/redis";
 import { removeDomainFromVercelProject } from "@/lib/domains";
 import { errorhandler } from "@/lib/errorHandler";
 import { deleteFiles } from "@/lib/files/delete-team-files-server";
 import prisma from "@/lib/prisma";
-import { clearCachedBrandLogo } from "@/lib/redis/brand-logo-cache";
-
+import { redis } from "@/lib/redis";
 import { CustomUser } from "@/lib/types";
-import { unsubscribe } from "@/lib/resend";
+import { unsubscribe } from "@/lib/unsend";
 
 import { authOptions } from "../../auth/[...nextauth]";
 
@@ -74,14 +72,7 @@ export default async function handle(
         return res.status(403).end("Unauthorized to access this team");
       }
 
-      // Attach per-member dataroom assignments so the client can render the
-      // scoped-member editor and derive the current user's allowed rooms.
-      const userDatarooms = await prisma.userDataroom.findMany({
-        where: { teamId },
-        select: { userId: true, dataroomId: true },
-      });
-
-      return res.status(200).json({ ...team, userDatarooms });
+      return res.status(200).json(team);
     } catch (error) {
       errorhandler(error, res);
     }
@@ -171,6 +162,7 @@ export default async function handle(
 
       if (documentsUsingBlob) {
         hasBlobDocuments = true;
+        // flatten documents and extract file fields
         files = documentsUsingBlob.flatMap((doc) => [
           doc.file,
           ...doc.versions.flatMap((version) => [
@@ -212,13 +204,12 @@ export default async function handle(
         },
       });
 
-      // prepare a list of promises to delete domains and their Redis redirect entries
-      let domainPromises: Promise<unknown>[] = [];
+      // prepare a list of promises to delete domains
+      let domainPromises: void[] = [];
       if (team.domains) {
-        domainPromises = team.domains.flatMap((domain) => [
-          removeDomainFromVercelProject(domain.slug),
-          deleteDomainRedirectUrl(domain.slug),
-        ]);
+        domainPromises = team.domains.map((domain) => {
+          removeDomainFromVercelProject(domain.slug);
+        });
       }
 
       await Promise.all([
@@ -226,19 +217,18 @@ export default async function handle(
         team.domains && domainPromises,
         // delete subscription, if exists on team
         team.stripeId &&
-        cancelSubscription(team.stripeId, isOldAccount(team.plan)),
+          cancelSubscription(team.stripeId, isOldAccount(team.plan)),
         // delete user from contact book
         unsubscribe((session.user as CustomUser).email ?? ""),
         // delete user, if no other teams
         userTeams.length === 1 &&
-        prisma.user.delete({
-          where: {
-            id: (session.user as CustomUser).id,
-          },
-        }),
+          prisma.user.delete({
+            where: {
+              id: (session.user as CustomUser).id,
+            },
+          }),
         // delete team branding from redis
-        clearCachedBrandLogo(teamId),
-
+        redis.del(`brand:logo:${teamId}`),
         // delete team
         prisma.team.delete({
           where: {

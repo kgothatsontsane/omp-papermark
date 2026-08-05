@@ -19,7 +19,6 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ContactsDocumentsTable } from "@/components/visitors/contacts-document-table";
-import { VisitorAccessCard } from "@/components/visitors/visitor-access-card";
 import { VisitorAvatar } from "@/components/visitors/visitor-avatar";
 
 export default function VisitorDetailPage() {
@@ -75,10 +74,6 @@ export default function VisitorDetailPage() {
                 {viewer.email}
               </h2>
             </div>
-
-            {viewer.access ? (
-              <VisitorAccessCard access={viewer.access} />
-            ) : null}
           </section>
         ) : (
           <VisitorDetailHeaderSkeleton />

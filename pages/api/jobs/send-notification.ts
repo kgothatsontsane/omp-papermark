@@ -1,16 +1,9 @@
 import { NextApiRequest, NextApiResponse } from "next";
 
-import { isTeamPausedById } from "@/ee/features/billing/cancellation/lib/is-team-paused";
-
 import { sendViewedDataroomEmail } from "@/lib/emails/send-viewed-dataroom";
-import { sendViewedDataroomPausedEmail } from "@/lib/emails/send-viewed-dataroom-paused";
 import { sendViewedDocumentEmail } from "@/lib/emails/send-viewed-document";
-import { sendViewedDocumentPausedEmail } from "@/lib/emails/send-viewed-document-paused";
-import { dispatchNotification } from "@/lib/notifications/dispatch";
-import type { NotificationRecipient } from "@/lib/notifications/resolve-recipients";
 import prisma from "@/lib/prisma";
 import { log } from "@/lib/utils";
-import type { TeamNotificationType } from "@/lib/zod/schemas/notifications";
 
 export const config = {
   maxDuration: 60,
@@ -20,14 +13,17 @@ export default async function handle(
   req: NextApiRequest,
   res: NextApiResponse,
 ) {
+  // We only allow POST requests
   if (req.method !== "POST") {
     res.status(405).json({ message: "Method Not Allowed" });
     return;
   }
 
+  // Extract the API Key from the Authorization header
   const authHeader = req.headers.authorization;
-  const token = authHeader?.split(" ")[1];
+  const token = authHeader?.split(" ")[1]; // Assuming the format is "Bearer [token]"
 
+  // Check if the API Key matches
   if (token !== process.env.INTERNAL_API_KEY) {
     res.status(401).json({ message: "Unauthorized" });
     return;
@@ -47,7 +43,7 @@ export default async function handle(
     viewType: "DOCUMENT_VIEW" | "DATAROOM_VIEW";
     viewerEmail: string | null;
     linkId: string;
-    link: { name: string | null; ownerId: string | null } | null;
+    link: { name: string | null } | null;
     document: {
       teamId: string | null;
       id: string;
@@ -62,24 +58,44 @@ export default async function handle(
     team: {
       plan: string | null;
       ignoredDomains: string[] | null;
-      pauseStartsAt: Date | null;
     } | null;
   } | null;
 
   try {
+    // Fetch the view with data
     view = await prisma.view.findUnique({
-      where: { id: viewId },
+      where: {
+        id: viewId,
+      },
       select: {
         viewType: true,
         viewerEmail: true,
         linkId: true,
-        link: { select: { name: true, ownerId: true } },
-        document: {
-          select: { teamId: true, id: true, name: true, ownerId: true },
+        link: {
+          select: {
+            name: true,
+          },
         },
-        dataroom: { select: { teamId: true, id: true, name: true } },
+        document: {
+          select: {
+            teamId: true,
+            id: true,
+            name: true,
+            ownerId: true,
+          },
+        },
+        dataroom: {
+          select: {
+            teamId: true,
+            id: true,
+            name: true,
+          },
+        },
         team: {
-          select: { plan: true, ignoredDomains: true, pauseStartsAt: true },
+          select: {
+            plan: true,
+            ignoredDomains: true,
+          },
         },
       },
     });
@@ -105,23 +121,61 @@ export default async function handle(
 
   if (view.viewerEmail) {
     const viewerDomain = view.viewerEmail.split("@").pop();
-    if (viewerDomain && view?.team?.ignoredDomains) {
-      const ignoredDomainList = view.team.ignoredDomains.map((d) =>
-        d.startsWith("@") ? d.substring(1) : d,
-      );
-      if (ignoredDomainList.includes(viewerDomain)) {
-        return res.status(200).json({
-          message: "Notification skipped for ignored domain.",
-          viewId,
-        });
+    if (viewerDomain) {
+      if (view?.team?.ignoredDomains) {
+        const ignoredDomainList = view.team.ignoredDomains.map((d) =>
+          d.startsWith("@") ? d.substring(1) : d,
+        );
+
+        if (ignoredDomainList.includes(viewerDomain)) {
+          return res.status(200).json({
+            message: "Notification skipped for ignored domain.",
+            viewId,
+          });
+        }
       }
     }
   }
 
-  const notificationType: TeamNotificationType =
-    view.viewType === "DOCUMENT_VIEW" ? "DOCUMENT_VIEW" : "DATAROOM_VIEW";
+  // Get all active team members who are admins or managers to be notified
+  const users = await prisma.userTeam.findMany({
+    where: {
+      role: { in: ["ADMIN", "MANAGER"] },
+      status: "ACTIVE",
+      teamId: teamId,
+    },
+    select: {
+      role: true,
+      user: {
+        select: {
+          email: true,
+        },
+      },
+    },
+  });
 
-  const linkName = view.link!.name || `Link #${view.linkId.slice(-5)}`;
+  // Get the active owner of the document
+  let ownerEmail: string | null = null;
+  if (view.document?.ownerId) {
+    const ownerUser = await prisma.userTeam.findUnique({
+      where: {
+        userId_teamId: {
+          userId: view.document!.ownerId!,
+          teamId: teamId,
+        },
+        status: "ACTIVE",
+      },
+      select: {
+        user: {
+          select: {
+            email: true,
+          },
+        },
+      },
+    });
+
+    ownerEmail = ownerUser?.user.email || null;
+  }
 
   const includeLocation =
     !view.team?.plan?.includes("free") &&
@@ -133,35 +187,48 @@ export default async function handle(
       ? `${locationData.city}, ${locationData.region}, ${locationData.country}`
       : `${locationData.city}, ${locationData.country}`;
 
+  // POST /api/jobs/send-notification
   try {
-    const recipients = await dispatchNotification({
-      teamId,
-      notificationType,
-      linkOwnerId: view.link?.ownerId,
-      documentOwnerId: view.document?.ownerId,
-    });
+    const adminEmail = users.find((user) => user.role === "ADMIN")?.user.email;
 
-    if (recipients.length === 0) {
-      return res
-        .status(200)
-        .json({ message: "No recipients", viewId });
+    if (view.viewType === "DOCUMENT_VIEW") {
+      const teamMembers = users
+        .map((user) => user.user.email!)
+        .filter((email) => email !== adminEmail);
+
+      // Add ownerEmail to teamMembers if it exists and isn't already included
+      if (
+        ownerEmail &&
+        ownerEmail !== adminEmail &&
+        !teamMembers.includes(ownerEmail)
+      ) {
+        teamMembers.push(ownerEmail);
+      }
+
+      // send email to document owner that document
+      await sendViewedDocumentEmail({
+        ownerEmail: adminEmail!,
+        documentId: view.document!.id,
+        documentName: view.document!.name,
+        linkName: view.link!.name || `Link #${view.linkId.slice(-5)}`,
+        viewerEmail: view.viewerEmail,
+        teamMembers,
+        locationString: includeLocation ? locationString : undefined,
+      });
+    } else {
+      // send email to dataroom owner that dataroom
+      await sendViewedDataroomEmail({
+        ownerEmail: adminEmail!,
+        dataroomId: view.dataroom!.id,
+        dataroomName: view.dataroom!.name,
+        viewerEmail: view.viewerEmail,
+        linkName: view.link!.name || `Link #${view.linkId.slice(-5)}`,
+        teamMembers: users
+          .map((user) => user.user.email!)
+          .filter((email) => email !== adminEmail),
+        locationString: includeLocation ? locationString : undefined,
+      });
     }
-
-    const teamIsPaused = await isTeamPausedById(teamId);
-    const primaryRecipient = recipients[0];
-    const ccRecipients = recipients
-      .slice(1)
-      .map((r) => r.email);
-
-    await sendImmediateEmail({
-      view,
-      teamIsPaused,
-      primaryRecipient,
-      ccRecipients,
-      linkName,
-      includeLocation,
-      locationString,
-    });
 
     res.status(200).json({ message: "Successfully sent notification", viewId });
     return;
@@ -172,69 +239,5 @@ export default async function handle(
       mention: true,
     });
     return res.status(500).json({ message: (error as Error).message });
-  }
-}
-
-async function sendImmediateEmail({
-  view,
-  teamIsPaused,
-  primaryRecipient,
-  ccRecipients,
-  linkName,
-  includeLocation,
-  locationString,
-}: {
-  view: {
-    viewType: string;
-    viewerEmail: string | null;
-    linkId: string;
-    document: { id: string; name: string } | null;
-    dataroom: { id: string; name: string } | null;
-  };
-  teamIsPaused: boolean;
-  primaryRecipient: NotificationRecipient;
-  ccRecipients: string[];
-  linkName: string;
-  includeLocation: boolean;
-  locationString: string;
-}) {
-  if (view.viewType === "DOCUMENT_VIEW") {
-    if (teamIsPaused) {
-      await sendViewedDocumentPausedEmail({
-        ownerEmail: primaryRecipient.email,
-        documentName: view.document!.name,
-        linkName,
-        teamMembers: ccRecipients,
-      });
-    } else {
-      await sendViewedDocumentEmail({
-        ownerEmail: primaryRecipient.email,
-        documentId: view.document!.id,
-        documentName: view.document!.name,
-        linkName,
-        viewerEmail: view.viewerEmail,
-        teamMembers: ccRecipients,
-        locationString: includeLocation ? locationString : undefined,
-      });
-    }
-  } else {
-    if (teamIsPaused) {
-      await sendViewedDataroomPausedEmail({
-        ownerEmail: primaryRecipient.email,
-        dataroomName: view.dataroom!.name,
-        linkName,
-        teamMembers: ccRecipients,
-      });
-    } else {
-      await sendViewedDataroomEmail({
-        ownerEmail: primaryRecipient.email,
-        dataroomId: view.dataroom!.id,
-        dataroomName: view.dataroom!.name,
-        viewerEmail: view.viewerEmail,
-        linkName,
-        teamMembers: ccRecipients,
-        locationString: includeLocation ? locationString : undefined,
-      });
-    }
   }
 }

@@ -1,51 +1,40 @@
-import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useRouter } from "next/router";
 
 import { useEffect, useRef, useState } from "react";
 
 import { useTeam } from "@/context/team-context";
-import { DocumentAIDialog } from "@/ee/features/ai/components/document-ai-dialog";
 import { PlanEnum } from "@/ee/stripe/constants";
 import { Document, DocumentVersion } from "@prisma/client";
 import {
-  ArchiveXIcon,
   ArrowRightIcon,
   BetweenHorizontalStartIcon,
   ChevronRight,
   CloudDownloadIcon,
   DownloadIcon,
   FileDownIcon,
-  FileSpreadsheetIcon,
   FolderIcon,
-  FolderInputIcon,
   MoonIcon,
-  ScanEyeIcon,
   ServerIcon,
   SheetIcon,
   SunIcon,
   TrashIcon,
   ViewIcon,
 } from "lucide-react";
+import { usePlausible } from "next-plausible";
 import { useTheme } from "next-themes";
 import { toast } from "sonner";
 import { mutate } from "swr";
 
 import { getFile } from "@/lib/files/get-file";
-import { useFeatureFlags } from "@/lib/hooks/use-feature-flags";
-import { useSelfMembership } from "@/lib/hooks/use-self-membership";
 import { usePlan } from "@/lib/swr/use-billing";
-import useDataroomsSimple from "@/lib/swr/use-datarooms-simple";
-import { useTeamAI } from "@/lib/swr/use-team-ai";
+import useDatarooms from "@/lib/swr/use-datarooms";
 import {
   DocumentWithLinksAndLinkCountAndViewCount,
   DocumentWithVersion,
 } from "@/lib/types";
 import { cn } from "@/lib/utils";
-import {
-  ensureFileExtension,
-  supportsAdvancedExcelMode,
-} from "@/lib/utils/get-content-type";
+import { supportsAdvancedExcelMode } from "@/lib/utils/get-content-type";
 import { fileIcon } from "@/lib/utils/get-file-icon";
 
 import FileUp from "@/components/shared/icons/file-up";
@@ -69,24 +58,6 @@ import {
 
 import PlanBadge from "../billing/plan-badge";
 import { UpgradePlanModal } from "../billing/upgrade-plan-modal";
-
-// Redaction dialogs are only opened on demand from the 3-dot menu. Dynamic
-// imports keep their (lucide + radix + feature code) off the document-page
-// initial bundle.
-const RedactionJobsDialog = dynamic(
-  () =>
-    import("@/ee/features/redaction/components/redaction-jobs-dialog").then(
-      (mod) => ({ default: mod.RedactionJobsDialog }),
-    ),
-  { ssr: false },
-);
-const RedactionConfigDialog = dynamic(
-  () =>
-    import("@/ee/features/redaction/components/redaction-config-dialog").then(
-      (mod) => ({ default: mod.RedactionConfigDialog }),
-    ),
-  { ssr: false },
-);
 import AdvancedSheet from "../shared/icons/advanced-sheet";
 import PortraitLandscape from "../shared/icons/portrait-landscape";
 import LoadingSpinner from "../ui/loading-spinner";
@@ -95,60 +66,36 @@ import { AddDocumentModal } from "./add-document-modal";
 import { AddToDataroomModal } from "./add-document-to-dataroom-modal";
 import AlertBanner from "./alert";
 import { ExportVisitsModal } from "./export-visits-modal";
-import { MoveToFolderModal } from "./move-folder-modal";
 
 export default function DocumentHeader({
   prismaDocument,
   primaryVersion,
   teamId,
   actions,
-  onBulkImportLinks,
-  dataroomId,
-  dataroomDocumentId,
 }: {
   prismaDocument: DocumentWithVersion;
   primaryVersion: DocumentVersion;
   teamId: string;
   actions?: React.ReactNode[];
-  onBulkImportLinks?: () => void;
-  /**
-   * When the header is rendered inside a data room (the dataroom document
-   * page), these identify the DataroomDocument so dataroom members can remove
-   * it from the room instead of deleting the underlying document.
-   */
-  dataroomId?: string;
-  dataroomDocumentId?: string;
 }) {
   const router = useRouter();
   const teamInfo = useTeam();
-  const { datarooms } = useDataroomsSimple();
-  const { isDataroomMember } = useSelfMembership();
-  // Data room members may only remove a document from the room, never delete
-  // the underlying document. Requires the dataroom context to be provided.
-  const canRemoveFromDataroom = Boolean(dataroomId && dataroomDocumentId);
-  const showRemoveFromDataroom = isDataroomMember && canRemoveFromDataroom;
+  const { datarooms: datarooms } = useDatarooms();
   const { theme, systemTheme } = useTheme();
   const isLight =
     theme === "light" || (theme === "system" && systemTheme === "light");
   const { isPro, isFree, isTrial, isBusiness, isDatarooms } = usePlan();
-  const { canUseAI, isAIEnabled } = useTeamAI();
-  const { isFeatureEnabled } = useFeatureFlags();
-  const isRedactionEnabled = isFeatureEnabled("redaction");
   const [isEditingName, setIsEditingName] = useState<boolean>(false);
   const [menuOpen, setMenuOpen] = useState<boolean>(false);
   const [isFirstClick, setIsFirstClick] = useState<boolean>(false);
   const [orientationLoading, setOrientationLoading] = useState<boolean>(false);
   const [addDataRoomOpen, setAddDataRoomOpen] = useState<boolean>(false);
-  const [moveFolderOpen, setMoveFolderOpen] = useState<boolean>(false);
   const [addDocumentVersion, setAddDocumentVersion] = useState<boolean>(false);
   const [openAddDocModal, setOpenAddDocModal] = useState<boolean>(false);
-  const [redactionJobsOpen, setRedactionJobsOpen] = useState<boolean>(false);
-  const [redactionConfigOpen, setRedactionConfigOpen] = useState<boolean>(false);
   const [planModalOpen, setPlanModalOpen] = useState<boolean>(false);
   const [planModalTrigger, setPlanModalTrigger] = useState<string>("");
   const [selectedPlan, setSelectedPlan] = useState<PlanEnum>(PlanEnum.Pro);
   const [exportModalOpen, setExportModalOpen] = useState<boolean>(false);
-  const [aiDialogOpen, setAiDialogOpen] = useState<boolean>(false);
   const nameRef = useRef<HTMLHeadingElement>(null);
   const enterPressedRef = useRef<boolean>(false);
   const dropdownRef = useRef<HTMLDivElement | null>(null);
@@ -189,6 +136,8 @@ export default function DocumentHeader({
     "-" +
     String(currentTime.getMinutes()).padStart(2, "0");
   "-" + String(currentTime.getSeconds()).padStart(2, "0");
+
+  const plausible = usePlausible();
 
   // https://github.com/radix-ui/primitives/issues/1241#issuecomment-1888232392
   useEffect(() => {
@@ -247,77 +196,59 @@ export default function DocumentHeader({
     }
   };
 
-  const [enablingAI, setEnablingAI] = useState<boolean>(false);
-
-  // Enable AI agents and automatically index the document
-  const enableAIAgents = async () => {
-    if (!canUseAI) {
-      toast.error(
-        "AI agents are not available. Please enable them in team settings first.",
-      );
-      return;
-    }
-
-    setEnablingAI(true);
-
-    try {
-      // Step 1: Enable AI agents on the document
-      const enableResponse = await fetch(
-        `/api/teams/${teamId}/documents/${prismaDocument.id}`,
-        {
-          method: "PATCH",
+  const activateOrRedirectAssistant = async (document: Document) => {
+    if (document.assistantEnabled) {
+      router.push(`/documents/${document.id}/chat`);
+    } else {
+      toast.promise(
+        fetch("/api/assistants", {
+          method: "POST",
           headers: {
             "Content-Type": "application/json",
           },
-          body: JSON.stringify({ agentsEnabled: true }),
-        },
-      );
+          body: JSON.stringify({
+            documentId: document.id,
+          }),
+        }).then(() => {
+          // Once the assistant is activated, redirect to the chat
+          plausible("assistantEnabled", { props: { documentId: document.id } }); // track the event
 
-      if (!enableResponse.ok) {
-        throw new Error("Failed to enable AI agents");
-      }
+          // refetch to fix the UI delay
+          mutate(`/api/teams/${teamId}/documents/${document.id}`);
 
-      // Step 2: Index the document automatically
-      const indexResponse = await fetch(
-        `/api/ai/store/teams/${teamId}/documents/${prismaDocument.id}`,
+          router.push(`/documents/${document.id}/chat`);
+        }),
         {
-          method: "POST",
+          loading: "Activating Assistant...",
+          success: "Papermark Assistant successfully activated.",
+          error: "Activation failed. Please try again.",
         },
       );
-
-      if (!indexResponse.ok) {
-        // If indexing fails, still keep AI enabled but show warning
-        let errorMessage =
-          "AI enabled, but document indexing failed. You can re-index from settings.";
-        try {
-          const error = await indexResponse.json();
-          if (error.error) {
-            errorMessage = error.error;
-          }
-        } catch {
-          // JSON parsing failed, try to get raw text
-          try {
-            const text = await indexResponse.text();
-            if (text) {
-              errorMessage = text;
-            }
-          } catch {
-            // Ignore text parsing errors, use default message
-          }
-        }
-        toast.warning(errorMessage);
-      } else {
-        toast.success("AI agents enabled and document indexed successfully");
-      }
-
-      // Refresh document data
-      mutate(`/api/teams/${teamId}/documents/${prismaDocument.id}`);
-    } catch (error) {
-      console.error("Error enabling AI agents:", error);
-      toast.error("Failed to enable AI agents. Please try again.");
-    } finally {
-      setEnablingAI(false);
     }
+  };
+
+  const activateOrDeactivateAssistant = async (
+    active: boolean,
+    prismaDocumentId: string,
+  ) => {
+    const fetchPromise = fetch("/api/assistants", {
+      method: active ? "POST" : "DELETE",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        documentId: prismaDocumentId,
+      }),
+    }).then(() => {
+      // refetch to fix the UI delay
+      mutate(`/api/teams/${teamId}/documents/${prismaDocumentId}`);
+    });
+
+    toast.promise(fetchPromise, {
+      loading: `${active ? "Activating" : "Deactivating"} Assistant...`,
+      success: `Papermark Assistant successfully ${active ? "activated" : "deactivated"}.`,
+      error: `${active ? "Activation" : "Deactivation"} failed. Please try again.`,
+    });
   };
 
   const changeDocumentOrientation = async () => {
@@ -358,34 +289,29 @@ export default function DocumentHeader({
     }
   };
 
-  const toggleAdvancedExcel = async (document: Document, enabled: boolean) => {
+  const enableAdvancedExcel = async (document: Document) => {
     toast.promise(
       fetch(`/api/teams/${teamId}/documents/${document.id}/advanced-mode`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ enabled }),
       }).then(async (response) => {
         if (!response.ok) {
           const { message } = await response.json();
           throw new Error(message);
         }
         const { message } = await response.json();
+        plausible("advancedExcelEnabled", {
+          props: { documentId: document.id },
+        }); // track the event
         mutate(`/api/teams/${teamId}/documents/${document.id}`);
-        if (enabled) {
-          handleCloseAlert("enable-advanced-excel-alert");
-        }
+        handleCloseAlert("enable-advanced-excel-alert");
         return message;
       }),
       {
-        loading: enabled
-          ? "Enabling advanced Excel mode..."
-          : "Disabling advanced Excel mode...",
+        loading: "Enabling advanced Excel mode...",
         success: (message) => message,
         error: (error) =>
-          error.message ||
-          (enabled
-            ? "Failed to enable advanced Excel mode"
-            : "Failed to disable advanced Excel mode"),
+          error.message || "Failed to enable advanced Excel mode",
       },
     );
   };
@@ -480,11 +406,7 @@ export default function DocumentHeader({
     toast.promise(
       fetch(`/api/teams/${teamId}/documents/${documentId}`, {
         method: "DELETE",
-      }).then(async (res) => {
-        if (!res.ok) {
-          const error = await res.json();
-          throw new Error(error.message || "Failed to delete document");
-        }
+      }).then(() => {
         mutate(`/api/teams/${teamInfo?.currentTeam?.id}/documents`, null, {
           populateCache: (_, docs) => {
             return docs.filter(
@@ -501,48 +423,9 @@ export default function DocumentHeader({
       {
         loading: "Deleting document...",
         success: "Document deleted successfully.",
-        error: (err) => err.message || "Failed to delete document. Try again.",
+        error: "Failed to delete document. Try again.",
       },
     );
-  };
-
-  const handleRemoveFromDataroom = async () => {
-    if (!dataroomId || !dataroomDocumentId) return;
-
-    toast.promise(
-      fetch(
-        `/api/teams/${teamId}/datarooms/${dataroomId}/documents/${dataroomDocumentId}`,
-        {
-          method: "DELETE",
-        },
-      ).then(async (res) => {
-        if (!res.ok) {
-          const error = await res.json().catch(() => ({}));
-          throw new Error(error.message || "Failed to remove document");
-        }
-        setIsFirstClick(false);
-        setMenuOpen(false);
-        router.push(`/datarooms/${dataroomId}/documents`);
-      }),
-      {
-        loading: "Removing document...",
-        success: "Document removed from data room.",
-        error: (err) => err.message || "Failed to remove document. Try again.",
-      },
-    );
-  };
-
-  const handleRemoveButtonClick = (event: any) => {
-    event.stopPropagation();
-    event.preventDefault();
-
-    if (isFirstClick) {
-      handleRemoveFromDataroom();
-      setIsFirstClick(false);
-      setMenuOpen(false);
-    } else {
-      setIsFirstClick(true);
-    }
   };
 
   const handleMenuStateChange = (open: boolean) => {
@@ -592,11 +475,7 @@ export default function DocumentHeader({
         const url = window.URL.createObjectURL(blob);
         const a = document.createElement("a");
         a.href = url;
-        a.download = ensureFileExtension({
-          name: prismaDocument.name,
-          contentType: documentVersion.contentType,
-          type: documentVersion.type,
-        });
+        a.download = prismaDocument.name;
         document.body.appendChild(a);
         a.click();
         window.URL.revokeObjectURL(url);
@@ -612,17 +491,17 @@ export default function DocumentHeader({
 
   return (
     <header className="flex flex-col gap-y-4">
-      <div className="flex items-center justify-between gap-x-2 sm:gap-x-8">
-        <div className="flex min-w-0 items-center space-x-2">
+      <div className="flex items-center justify-between gap-x-8">
+        <div className="flex items-center space-x-2">
           {fileIcon({
             fileType: prismaDocument.type ?? "",
-            className: "size-7 shrink-0 sm:size-8",
+            className: "size-7 sm:size-8",
             isLight,
           })}
 
-          <div className="mt-1 flex min-w-0 flex-col lg:mt-0">
+          <div className="mt-1 flex flex-col lg:mt-0">
             <h2
-              className="truncate rounded-md border border-transparent px-1 py-0.5 text-base font-semibold tracking-tight text-foreground duration-200 hover:cursor-text hover:border hover:border-border focus-visible:text-base sm:text-lg sm:focus-visible:text-lg lg:px-3 lg:py-1 lg:text-xl lg:focus-visible:text-xl xl:text-2xl"
+              className="rounded-md border border-transparent px-1 py-0.5 text-lg font-semibold tracking-tight text-foreground duration-200 hover:cursor-text hover:border hover:border-border focus-visible:text-lg lg:px-3 lg:py-1 lg:text-xl lg:focus-visible:text-xl xl:text-2xl"
               ref={nameRef}
               contentEditable={true}
               onFocus={() => setIsEditingName(true)}
@@ -657,9 +536,8 @@ export default function DocumentHeader({
           )}
         </div>
 
-        <div className="flex shrink-0 items-center gap-x-1 sm:gap-x-4 md:gap-x-2">
+        <div className="flex items-center gap-x-4 md:gap-x-2">
           {primaryVersion.type !== "notion" &&
-            primaryVersion.type !== "link" &&
             primaryVersion.type !== "sheet" &&
             primaryVersion.type !== "zip" &&
             primaryVersion.type !== "video" &&
@@ -686,64 +564,45 @@ export default function DocumentHeader({
               </div>
             ))}
 
-          {primaryVersion.type !== "notion" &&
-            primaryVersion.type !== "link" && (
-              <AddDocumentModal
-                newVersion
-                documentId={prismaDocument.id}
-                openModal={openAddDocModal}
-                setAddDocumentModalOpen={setOpenAddDocModal}
-              >
-                <ButtonTooltip content="Upload new version">
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setOpenAddDocModal(true);
-                    }}
-                    className="hidden size-8 md:flex lg:size-9"
-                  >
-                    <FileUp className="h-6 w-6" />
-                  </Button>
-                </ButtonTooltip>
-              </AddDocumentModal>
-            )}
+          {primaryVersion.type !== "notion" && (
+            <AddDocumentModal
+              newVersion
+              openModal={openAddDocModal}
+              setAddDocumentModalOpen={setOpenAddDocModal}
+            >
+              <ButtonTooltip content="Upload new version">
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setOpenAddDocModal(true);
+                  }}
+                  className="hidden size-8 md:flex lg:size-9"
+                >
+                  <FileUp className="h-6 w-6" />
+                </Button>
+              </ButtonTooltip>
+            </AddDocumentModal>
+          )}
 
-          {/* AI Agents Button */}
-          {isAIEnabled &&
-            prismaDocument.type !== "notion" &&
-            primaryVersion.type !== "link" &&
+          {/* TODO: Assistant feature temporarily disabled. Will be re-enabled in a future update */}
+          {/* {prismaDocument.type !== "notion" &&
+            prismaDocument.type !== "sheet" &&
             prismaDocument.type !== "zip" &&
-            primaryVersion.type !== "video" &&
-            (prismaDocument.agentsEnabled ? (
-              <ButtonTooltip content="AI Agents Settings">
-                <Button
-                  variant="outline"
-                  size="icon"
-                  className="hidden size-8 md:flex lg:size-9"
-                  onClick={() => setAiDialogOpen(true)}
-                >
-                  <PapermarkSparkle className="h-5 w-5 text-emerald-500" />
-                </Button>
-              </ButtonTooltip>
-            ) : (
-              <ButtonTooltip content="Enable AI Agents">
-                <Button
-                  variant="outline"
-                  size="icon"
-                  className="hidden size-8 md:flex lg:size-9"
-                  onClick={enableAIAgents}
-                  disabled={enablingAI}
-                >
-                  {enablingAI ? (
-                    <LoadingSpinner className="h-5 w-5" />
-                  ) : (
-                    <PapermarkSparkle className="h-5 w-5" />
-                  )}
-                </Button>
-              </ButtonTooltip>
-            ))}
+            prismaDocument.type !== "video" &&
+            prismaDocument.assistantEnabled && (
+              <Button
+                className="group hidden h-8 space-x-1 whitespace-nowrap bg-gradient-to-r from-[#16222A] via-emerald-500 to-[#16222A] text-xs duration-200 ease-linear hover:bg-right md:flex lg:h-9 lg:text-sm"
+                variant={"special"}
+                size={"icon"}
+                style={{ backgroundSize: "200% auto" }}
+                onClick={() => activateOrRedirectAssistant(prismaDocument)}
+                title="Open AI Assistant"
+              >
+                <PapermarkSparkle className="h-5 w-5" />
+              </Button>
+            )} */}
 
           <div className="flex items-center gap-x-1">
             {actionRows.map((row, i) => (
@@ -780,7 +639,6 @@ export default function DocumentHeader({
                     <DropdownMenuItem>
                       <AddDocumentModal
                         newVersion
-                        documentId={prismaDocument.id}
                         setAddDocumentModalOpen={setAddDocumentVersion}
                       >
                         <button
@@ -797,38 +655,71 @@ export default function DocumentHeader({
                     </DropdownMenuItem>
                   )}
 
+                {/* TODO: Assistant feature temporarily disabled. Will be re-enabled in a future update */}
+                {/* {prismaDocument.type !== "notion" &&
+                  prismaDocument.type !== "sheet" &&
+                  prismaDocument.type !== "zip" &&
+                  primaryVersion.type !== "video" && (
+                    <>
+                      <DropdownMenuItem
+                        onClick={() => changeDocumentOrientation()}
+                      >
+                        <PortraitLandscape
+                          className={cn(
+                            "mr-2 h-4 w-4",
+                            !primaryVersion.isVertical &&
+                              "-rotate-90 transform",
+                          )}
+                        />
+                        Change orientation
+                      </DropdownMenuItem>
+
+                      <DropdownMenuItem
+                        onClick={() =>
+                          activateOrRedirectAssistant(prismaDocument)
+                        }
+                      >
+                        <PapermarkSparkle className="mr-2 h-4 w-4" />
+                        Open AI Assistant
+                      </DropdownMenuItem>
+                    </>
+                  )} */}
+
                 <DropdownMenuSeparator />
               </DropdownMenuGroup>
+              {/* TODO: Assistant feature temporarily disabled. Will be re-enabled in a future update */}
+              {/* {primaryVersion.type !== "notion" &&
+                primaryVersion.type !== "sheet" &&
+                primaryVersion.type !== "zip" &&
+                primaryVersion.type !== "video" &&
+                (!prismaDocument.assistantEnabled ? (
+                  <DropdownMenuItem
+                    onClick={() =>
+                      activateOrDeactivateAssistant(true, prismaDocument.id)
+                    }
+                  >
+                    <Sparkles className="mr-2 h-4 w-4" /> Activate Assistant
+                  </DropdownMenuItem>
+                ) : (
+                  <DropdownMenuItem
+                    onClick={() =>
+                      activateOrDeactivateAssistant(false, prismaDocument.id)
+                    }
+                  >
+                    <Sparkles className="mr-2 h-4 w-4" /> Disable Assistant
+                  </DropdownMenuItem>
+                ))} */}
               {prismaDocument.type === "sheet" &&
+                !prismaDocument.advancedExcelEnabled &&
                 supportsAdvancedExcelMode(primaryVersion.contentType) &&
                 (isPro || isBusiness || isDatarooms || isTrial) && (
                   <DropdownMenuItem
-                    onClick={() =>
-                      toggleAdvancedExcel(
-                        prismaDocument,
-                        !prismaDocument.advancedExcelEnabled,
-                      )
-                    }
+                    onClick={() => enableAdvancedExcel(prismaDocument)}
                   >
                     <SheetIcon className="mr-2 h-4 w-4" />
-                    {prismaDocument.advancedExcelEnabled
-                      ? "Disable Advanced Mode"
-                      : "Enable Advanced Mode"}
+                    Enable Advanced Mode
                   </DropdownMenuItem>
                 )}
-              {!dataroomId && !isDataroomMember && (
-                <DropdownMenuItem
-                  onClick={() => {
-                    setIsFirstClick(false);
-                    setMenuOpen(false);
-                    setMoveFolderOpen(true);
-                  }}
-                >
-                  <FolderInputIcon className="mr-2 h-4 w-4" />
-                  Move to folder
-                </DropdownMenuItem>
-              )}
-
               {datarooms && datarooms.length !== 0 && (
                 <DropdownMenuItem onClick={() => setAddDataRoomOpen(true)}>
                   <BetweenHorizontalStartIcon className="mr-2 h-4 w-4" />
@@ -836,62 +727,7 @@ export default function DocumentHeader({
                 </DropdownMenuItem>
               )}
 
-              {/* Redaction jobs - beta, PDFs only */}
-              {isRedactionEnabled && primaryVersion.type === "pdf" ? (
-                <DropdownMenuItem
-                  onClick={() => {
-                    setRedactionJobsOpen(true);
-                    setMenuOpen(false);
-                  }}
-                >
-                  <ScanEyeIcon className="mr-2 h-4 w-4" />
-                  Redaction jobs
-                </DropdownMenuItem>
-              ) : null}
-
-              {onBulkImportLinks && (
-                <DropdownMenuItem
-                  onClick={() => {
-                    onBulkImportLinks();
-                    setMenuOpen(false);
-                  }}
-                >
-                  <FileSpreadsheetIcon className="mr-2 h-4 w-4" />
-                  Bulk import links from CSV
-                </DropdownMenuItem>
-              )}
-
-              {/* AI Agents - only show when team has AI enabled */}
-              {isAIEnabled &&
-                prismaDocument.type !== "notion" &&
-                primaryVersion.type !== "link" &&
-                prismaDocument.type !== "zip" &&
-                primaryVersion.type !== "video" &&
-                (prismaDocument.agentsEnabled ? (
-                  <DropdownMenuItem
-                    onClick={() => {
-                      setAiDialogOpen(true);
-                      setMenuOpen(false);
-                    }}
-                  >
-                    <PapermarkSparkle className="mr-2 h-4 w-4 text-emerald-500" />
-                    AI Agents Settings
-                  </DropdownMenuItem>
-                ) : (
-                  <DropdownMenuItem
-                    onClick={() => {
-                      enableAIAgents();
-                      setMenuOpen(false);
-                    }}
-                    disabled={enablingAI}
-                  >
-                    <PapermarkSparkle className="mr-2 h-4 w-4" />
-                    {enablingAI ? "Enabling AI..." : "Enable AI Agents"}
-                  </DropdownMenuItem>
-                ))}
-
               {primaryVersion.type !== "notion" &&
-                primaryVersion.type !== "link" &&
                 primaryVersion.type !== "zip" &&
                 primaryVersion.type !== "map" &&
                 primaryVersion.type !== "email" && (
@@ -951,13 +787,13 @@ export default function DocumentHeader({
                 }
               >
                 <FileDownIcon className="mr-2 h-4 w-4" />
-                Export views{" "}
+                Export visits{" "}
                 {isFree && <PlanBadge className="ml-2" plan="pro" />}
               </DropdownMenuItem>
 
               {/* Download latest version */}
               {primaryVersion.type !== "notion" &&
-                primaryVersion.type !== "link" && (
+                primaryVersion.type !== "video" && (
                   <DropdownMenuItem
                     onClick={() => downloadDocument(primaryVersion)}
                   >
@@ -968,29 +804,13 @@ export default function DocumentHeader({
 
               <DropdownMenuSeparator />
 
-              {isDataroomMember ? (
-                // Data room members can only remove a document from the room,
-                // never delete the underlying document for the whole team.
-                showRemoveFromDataroom ? (
-                  <DropdownMenuItem
-                    className="text-destructive focus:bg-destructive focus:text-destructive-foreground"
-                    onClick={handleRemoveButtonClick}
-                  >
-                    <ArchiveXIcon className="mr-2 h-4 w-4" />
-                    {isFirstClick ? "Really remove?" : "Remove from data room"}
-                  </DropdownMenuItem>
-                ) : null
-              ) : (
-                <DropdownMenuItem
-                  className="text-destructive focus:bg-destructive focus:text-destructive-foreground"
-                  onClick={(event) =>
-                    handleButtonClick(event, prismaDocument.id)
-                  }
-                >
-                  <TrashIcon className="mr-2 h-4 w-4" />
-                  {isFirstClick ? "Really delete?" : "Delete document"}
-                </DropdownMenuItem>
-              )}
+              <DropdownMenuItem
+                className="text-destructive focus:bg-destructive focus:text-destructive-foreground"
+                onClick={(event) => handleButtonClick(event, prismaDocument.id)}
+              >
+                <TrashIcon className="mr-2 h-4 w-4" />
+                {isFirstClick ? "Really delete?" : "Delete document"}
+              </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
@@ -1057,21 +877,20 @@ export default function DocumentHeader({
       {isFree && prismaDocument.hasPageLinks && (
         <AlertBanner
           id="in-document-links-alert"
-          variant="default"
+          variant="destructive"
           title="In-document links detected"
-          iconClassName="h-4 w-4 text-foreground"
           description={
             <>
-              In-document links are disabled for viewers on the free plan.{" "}
+              External in-document links are not available on the free plan.{" "}
               <span
-                className="cursor-pointer font-bold text-[#fb7a00] underline underline-offset-4 hover:text-[#fb7a00]/80"
+                className="cursor-pointer underline underline-offset-4 hover:text-destructive/80"
                 onClick={() =>
                   handleUpgradeClick(PlanEnum.Pro, "in-document-links")
                 }
               >
                 Upgrade
               </span>{" "}
-              to make them clickable.
+              to a higher plan to use this feature.
             </>
           }
           onClose={() => handleCloseAlert("in-document-links-alert")}
@@ -1139,16 +958,6 @@ export default function DocumentHeader({
         />
       ) : null}
 
-      {moveFolderOpen ? (
-        <MoveToFolderModal
-          open={moveFolderOpen}
-          setOpen={setMoveFolderOpen}
-          documentIds={[prismaDocument.id]}
-          itemName={prismaDocument.name}
-          folderParentId={prismaDocument.folderId!}
-        />
-      ) : null}
-
       {planModalOpen ? (
         <UpgradePlanModal
           clickedPlan={selectedPlan}
@@ -1165,38 +974,6 @@ export default function DocumentHeader({
           onClose={() => setExportModalOpen(false)}
         />
       )}
-
-      {/* AI Agents Dialog */}
-      <DocumentAIDialog
-        open={aiDialogOpen}
-        onOpenChange={setAiDialogOpen}
-        documentId={prismaDocument.id}
-        teamId={teamId}
-        agentsEnabled={prismaDocument.agentsEnabled}
-        vectorStoreFileId={primaryVersion.vectorStoreFileId}
-      />
-
-      {isRedactionEnabled && primaryVersion.type === "pdf" ? (
-        <>
-          {redactionJobsOpen ? (
-            <RedactionJobsDialog
-              open={redactionJobsOpen}
-              onOpenChange={setRedactionJobsOpen}
-              documentId={prismaDocument.id}
-              documentName={prismaDocument.name}
-              onStartNew={() => setRedactionConfigOpen(true)}
-            />
-          ) : null}
-          {redactionConfigOpen ? (
-            <RedactionConfigDialog
-              open={redactionConfigOpen}
-              onOpenChange={setRedactionConfigOpen}
-              documentId={prismaDocument.id}
-              documentName={prismaDocument.name}
-            />
-          ) : null}
-        </>
-      ) : null}
     </header>
   );
 }

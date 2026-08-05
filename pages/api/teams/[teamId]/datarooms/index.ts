@@ -1,232 +1,103 @@
 import { NextApiRequest, NextApiResponse } from "next";
 
-import { isTeamPausedById } from "@/ee/features/billing/cancellation/lib/is-team-paused";
 import { getLimits } from "@/ee/limits/server";
-import { Prisma } from "@prisma/client";
+import { authOptions } from "@/pages/api/auth/[...nextauth]";
+import slugify from "@sindresorhus/slugify";
+import { getServerSession } from "next-auth/next";
 
-import { withTeamApi } from "@/lib/api/auth/with-session-team";
-import { isDataroomScopedRole } from "@/lib/api/rbac/permissions";
 import { newId } from "@/lib/id-helper";
 import prisma from "@/lib/prisma";
+import { CustomUser } from "@/lib/types";
 
-export const config = {
-  maxDuration: 180,
-};
+export default async function handle(
+  req: NextApiRequest,
+  res: NextApiResponse,
+) {
+  if (req.method === "GET") {
+    // GET /api/teams/:teamId/datarooms
+    const session = await getServerSession(req, res, authOptions);
+    if (!session) {
+      return res.status(401).end("Unauthorized");
+    }
 
-const DATAROOM_PLANS = [
-  "business",
-  "datarooms",
-  "datarooms-plus",
-  "datarooms-premium",
-  "datarooms-unlimited",
-  "business+old",
-  "datarooms+old",
-  "datarooms-plus+old",
-  "datarooms-premium+old",
-  "datarooms-unlimited+old",
-  "free+drtrial",
-  "datarooms+drtrial",
-  "business+drtrial",
-  "datarooms-plus+drtrial",
-  "datarooms-premium+drtrial",
-  "datarooms-unlimited+drtrial",
-];
-
-// GET /api/teams/:teamId/datarooms
-const getHandler = withTeamApi(
-  async ({ req, res, teamId, role, allowedDataroomIds }) => {
-    const { search, tags, simple } = req.query as {
-      search?: string;
-      tags?: string;
-      simple?: string;
-    };
-
-    const isSimpleMode = simple === "true";
-    const scoped = isDataroomScopedRole(role);
+    const userId = (session.user as CustomUser).id;
+    const { teamId } = req.query as { teamId: string };
 
     try {
-      // Simple mode: return minimal data without filters, tags, or aggregations
-      if (isSimpleMode) {
-        const datarooms = await prisma.dataroom.findMany({
-          where: {
-            teamId: teamId,
-            ...(scoped ? { id: { in: allowedDataroomIds } } : {}),
-          },
-          select: {
-            id: true,
-            name: true,
-            internalName: true,
-            isFrozen: true,
-            createdAt: true,
-          },
-          orderBy: {
-            createdAt: "desc",
-          },
-        });
-
-        return res.status(200).json({ datarooms });
-      }
-
-      const now = new Date();
-      const activeLinkFilter: Prisma.LinkWhereInput = {
-        linkType: "DATAROOM_LINK",
-        deletedAt: null,
-        isArchived: false,
-        OR: [{ expiresAt: null }, { expiresAt: { gte: now } }],
-      };
-
-      // Build where clause based on filters
-      const whereClause: Prisma.DataroomWhereInput = {
-        teamId: teamId,
-        // Dataroom-scoped members only ever see their assigned rooms.
-        ...(scoped ? { id: { in: allowedDataroomIds } } : {}),
-      };
-
-      // Search filter - search both name and internalName
-      if (search) {
-        whereClause.OR = [
-          {
-            name: {
-              contains: search,
-              mode: "insensitive",
-            },
-          },
-          {
-            internalName: {
-              contains: search,
-              mode: "insensitive",
-            },
-          },
-        ];
-      }
-
-      // Tags filter
-      if (tags) {
-        const tagNames = tags.split(",").filter(Boolean);
-        if (tagNames.length > 0) {
-          whereClause.tags = {
+      // Check if the user is part of the team
+      const team = await prisma.team.findUnique({
+        where: {
+          id: teamId,
+          users: {
             some: {
-              tag: {
-                name: {
-                  in: tagNames,
-                },
-              },
+              userId: userId,
             },
-          };
-        }
+          },
+        },
+      });
+
+      if (!team) {
+        return res.status(401).end("Unauthorized");
       }
 
-      const countWhere: Prisma.DataroomWhereInput = {
-        teamId: teamId,
-        ...(scoped ? { id: { in: allowedDataroomIds } } : {}),
-      };
-
-      const [totalCount, datarooms] = await Promise.all([
-        prisma.dataroom.count({
-          where: countWhere,
-        }),
-        prisma.dataroom.findMany({
-          where: whereClause,
-          select: {
-            id: true,
-            name: true,
-            isFrozen: true,
-            createdAt: true,
-            _count: {
-              select: { documents: true, views: true },
-            },
-            tags: {
-              include: {
-                tag: {
-                  select: {
-                    id: true,
-                    name: true,
-                    color: true,
-                    description: true,
-                  },
-                },
-              },
-            },
+      const datarooms = await prisma.dataroom.findMany({
+        where: {
+          teamId: teamId,
+        },
+        include: {
+          _count: {
+            select: { documents: true, views: true },
           },
-          orderBy: {
-            createdAt: "desc",
-          },
-        }),
-      ]);
-
-      const dataroomIds = datarooms.map((dataroom) => dataroom.id);
-      const [activeLinkCounts, lastViewedAtByDataroom] = dataroomIds.length
-        ? await Promise.all([
-            prisma.link.groupBy({
-              by: ["dataroomId"],
-              where: {
-                dataroomId: { in: dataroomIds },
-                ...activeLinkFilter,
-              },
-              _count: {
-                _all: true,
-              },
-            }),
-            prisma.view.groupBy({
-              by: ["dataroomId"],
-              where: {
-                dataroomId: { in: dataroomIds },
-              },
-              _max: {
-                viewedAt: true,
-              },
-            }),
-          ])
-        : [[], []];
-
-      const activeLinkCountMap = new Map(
-        activeLinkCounts.map((entry) => [entry.dataroomId, entry._count._all]),
-      );
-      const lastViewedAtMap = new Map(
-        lastViewedAtByDataroom.map((entry) => [
-          entry.dataroomId,
-          entry._max.viewedAt,
-        ]),
-      );
-
-      const dataroomsWithStats = datarooms.map((dataroom) => ({
-        ...dataroom,
-        activeLinkCount: activeLinkCountMap.get(dataroom.id) ?? 0,
-        lastViewedAt: lastViewedAtMap.get(dataroom.id) ?? null,
-      }));
-
-      return res.status(200).json({
-        datarooms: dataroomsWithStats,
-        totalCount,
+        },
       });
+
+      return res.status(200).json(datarooms);
     } catch (error) {
       console.error("Request error", error);
       return res.status(500).json({ error: "Error fetching datarooms" });
     }
-  },
-  { requiredPermissions: ["datarooms.read"] },
-);
+  } else if (req.method === "POST") {
+    // POST /api/teams/:teamId/datarooms
+    const session = await getServerSession(req, res, authOptions);
+    if (!session) {
+      res.status(401).end("Unauthorized");
+      return;
+    }
 
-// POST /api/teams/:teamId/datarooms
-const postHandler = withTeamApi(
-  async ({ req, res, teamId, userId, team }) => {
-    const { name, internalName } = req.body as {
-      name: string;
-      internalName?: string;
-    };
+    const userId = (session.user as CustomUser).id;
+
+    const { teamId } = req.query as { teamId: string };
+    const { name } = req.body as { name: string };
 
     try {
-      if (!DATAROOM_PLANS.includes(team.plan)) {
-        return res.status(403).end("Forbidden");
-      }
+      // Check if the user is part of the team
+      const team = await prisma.team.findUnique({
+        where: {
+          id: teamId,
+          plan: {
+            // exclude all teams not on `business`, `datarooms`, `datarooms-plus`, `business+old`, `datarooms+old`, `datarooms-plus+old` plan
+            in: [
+              "business",
+              "datarooms",
+              "datarooms-plus",
+              "business+old",
+              "datarooms+old",
+              "datarooms-plus+old",
+              "datarooms+drtrial", 
+              "business+drtrial", 
+              "datarooms-plus+drtrial"
+            ],
+          },
+          users: {
+            some: {
+              userId: userId,
+            },
+          },
+        },
+      });
 
-      // Check if team is paused
-      const teamIsPaused = await isTeamPausedById(teamId);
-      if (teamIsPaused) {
-        return res.status(403).json({
-          error:
-            "Team is currently paused. New dataroom creation is not available.",
-        });
+      if (!team) {
+        return res.status(401).end("Unauthorized");
       }
 
       // Limits: Check if the user has reached the limit of datarooms in the team
@@ -238,11 +109,7 @@ const postHandler = withTeamApi(
 
       const limits = await getLimits({ teamId, userId });
 
-      if (
-        limits &&
-        limits.datarooms !== null &&
-        dataroomCount >= limits.datarooms
-      ) {
+      if (limits && dataroomCount >= limits.datarooms) {
         return res
           .status(403)
           .json({ message: "You have reached the limit of datarooms" });
@@ -255,7 +122,6 @@ const postHandler = withTeamApi(
           name: name,
           teamId: teamId,
           pId: pId,
-          ...(internalName && { internalName: internalName.trim() }),
         },
       });
 
@@ -269,24 +135,8 @@ const postHandler = withTeamApi(
       console.error("Request error", error);
       res.status(500).json({ error: "Error creating dataroom" });
     }
-  },
-  {
-    // Creating a dataroom is a team-level structural action; scoped members are
-    // excluded (they hold datarooms.write only for rooms they already manage).
-    requiredPermissions: ["datarooms.write"],
-    requiredRoles: ["ADMIN", "MANAGER", "MEMBER"],
-  },
-);
-
-export default async function handle(
-  req: NextApiRequest,
-  res: NextApiResponse,
-) {
-  if (req.method === "GET") {
-    return getHandler(req, res);
-  } else if (req.method === "POST") {
-    return postHandler(req, res);
   } else {
+    // We only allow POST requests
     res.setHeader("Allow", ["GET", "POST"]);
     return res.status(405).end(`Method ${req.method} Not Allowed`);
   }

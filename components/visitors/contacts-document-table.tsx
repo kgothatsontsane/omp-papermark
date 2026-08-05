@@ -31,7 +31,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { TimestampTooltip } from "@/components/ui/timestamp-tooltip";
 
 type ViewerView = {
   documentId: string;
@@ -182,18 +181,9 @@ export function ContactsDocumentsTable({
         cell: ({ row }) => {
           const view = row.original;
           return (
-            <TimestampTooltip
-              timestamp={view.lastViewed}
-              side="right"
-              rows={["local", "utc", "unix"]}
-            >
-              <time
-                className="select-none"
-                dateTime={new Date(view.lastViewed).toISOString()}
-              >
-                {timeAgo(view.lastViewed)}
-              </time>
-            </TimestampTooltip>
+            <time dateTime={new Date(view.lastViewed).toISOString()}>
+              {timeAgo(view.lastViewed)}
+            </time>
           );
         },
         sortingFn: (rowA, rowB) => {
@@ -277,7 +267,7 @@ export function ContactsDocumentsTable({
               <TableHead>Document Name</TableHead>
               <TableHead>Last Viewed</TableHead>
               <TableHead>Time Spent</TableHead>
-              <TableHead>Views</TableHead>
+              <TableHead>Visits</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>

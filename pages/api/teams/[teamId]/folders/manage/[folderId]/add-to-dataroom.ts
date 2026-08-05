@@ -1,10 +1,10 @@
 import { NextApiRequest, NextApiResponse } from "next";
 
 import { authOptions } from "@/pages/api/auth/[...nextauth]";
+import slugify from "@sindresorhus/slugify";
 import { getServerSession } from "next-auth/next";
 
 import { errorhandler } from "@/lib/errorHandler";
-import { safeSlugify } from "@/lib/utils";
 import prisma from "@/lib/prisma";
 import { CustomUser } from "@/lib/types";
 
@@ -50,7 +50,7 @@ async function createDataroomStructure(
   parentPath: string = "",
   parentFolderId?: string,
 ): Promise<void> {
-  const currentPath = `${parentPath}/${safeSlugify(folder.name)}`;
+  const currentPath = `${parentPath}/${slugify(folder.name)}`;
 
   const dataroomFolder = await prisma.dataroomFolder.create({
     data: {
@@ -132,17 +132,6 @@ export default async function handle(
       if (team.plan === "free" || team.plan === "pro") {
         return res.status(403).json({
           message: "Upgrade your plan to use datarooms.",
-        });
-      }
-
-      const dataroom = await prisma.dataroom.findUnique({
-        where: { id: dataroomId, teamId },
-        select: { isFrozen: true },
-      });
-      if (dataroom?.isFrozen) {
-        return res.status(403).json({
-          message:
-            "This data room is frozen. You cannot add folders to a frozen data room.",
         });
       }
 

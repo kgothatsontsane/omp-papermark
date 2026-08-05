@@ -1,9 +1,8 @@
 import { JSXElementConstructor, ReactElement } from "react";
 
-import { render, toPlainText } from "react-email";
+import { render } from "@react-email/components";
 import { Resend } from "resend";
 
-import prisma from "@/lib/prisma";
 import { log, nanoid } from "@/lib/utils";
 
 export const resend = process.env.RESEND_API_KEY
@@ -23,7 +22,6 @@ export const sendEmail = async ({
   replyTo,
   scheduledAt,
   unsubscribeUrl,
-  idempotencyKey,
 }: {
   to: string;
   subject: string;
@@ -37,53 +35,41 @@ export const sendEmail = async ({
   replyTo?: string;
   scheduledAt?: string;
   unsubscribeUrl?: string;
-  idempotencyKey?: string;
 }) => {
   if (!resend) {
     // Throw an error if resend is not initialized
     throw new Error("Resend not initialized");
   }
 
-  const html = await render(react);
-  const plainText = toPlainText(html);
+  const plainText = await render(react, { plainText: true });
 
   const fromAddress =
     from ??
     (marketing
-      ? "Marc from Papermark <marc@updates.papermark.com>"
+      ? "Marc from Papermark <marc@ship.papermark.io>"
       : system
-        ? "Papermark <system@papermark.com>"
+        ? "Papermark <system@papermark.io>"
         : verify
-          ? "Papermark <system@verify.papermark.com>"
+          ? "Papermark <system@verify.papermark.io>"
           : !!scheduledAt
-            ? "Marc Seitz <marc@papermark.com>"
-            : "Marc from Papermark <marc@papermark.com>");
+            ? "Marc Seitz <marc@papermark.io>"
+            : "Marc from Papermark <marc@papermark.io>");
 
   try {
-    const { data, error } = await resend.emails.send(
-      {
-        from: fromAddress,
-        to: test ? "delivered@resend.dev" : to,
-        cc: cc,
-        replyTo: marketing ? "marc@papermark.com" : replyTo,
-        subject,
-        react,
-        scheduledAt,
-        text: plainText,
-        headers: {
-          // Reusing an idempotency key with a changed payload is a 409, so the
-          // ref id has to come from the key rather than a fresh nanoid.
-          "X-Entity-Ref-ID": idempotencyKey ?? nanoid(),
-          ...(unsubscribeUrl
-            ? {
-                "List-Unsubscribe": `<${unsubscribeUrl}>`,
-                "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
-              }
-            : {}),
-        },
+    const { data, error } = await resend.emails.send({
+      from: fromAddress,
+      to: test ? "delivered@resend.dev" : to,
+      cc: cc,
+      replyTo: marketing ? "marc@papermark.io" : replyTo,
+      subject,
+      react,
+      scheduledAt,
+      text: plainText,
+      headers: {
+        "X-Entity-Ref-ID": nanoid(),
+        ...(unsubscribeUrl ? { "List-Unsubscribe": unsubscribeUrl } : {}),
       },
-      { idempotencyKey },
-    );
+    });
 
     // Check if the email sending operation returned an error and throw it
     if (error) {
@@ -106,55 +92,4 @@ export const sendEmail = async ({
     });
     throw exception; // Rethrow the caught exception
   }
-};
-
-export const subscribe = async (email: string): Promise<void> => {
-  if (!resend) {
-    console.error("RESEND_API_KEY is not set in the .env. Skipping.");
-    return;
-  }
-
-  const { data, error } = await resend.contacts.create({
-    email,
-  });
-
-  if (error || !data?.id) {
-    console.error("Failed to create contact:", error);
-    return;
-  }
-
-  if (
-    process.env.NODE_ENV === "production" &&
-    process.env.RESEND_MARKETING_SEGMENT_ID
-  ) {
-    await resend.contacts.segments.add({
-      contactId: data.id,
-      segmentId: process.env.RESEND_MARKETING_SEGMENT_ID as string,
-    });
-  }
-};
-
-export const unsubscribe = async (email: string): Promise<void> => {
-  if (!resend) {
-    console.error("RESEND_API_KEY is not set in the .env. Skipping.");
-    return;
-  }
-
-  if (!email) {
-    return;
-  }
-
-  const user = await prisma.user.findUnique({
-    where: { email },
-    select: { email: true },
-  });
-
-  if (!user || !user.email) {
-    return;
-  }
-
-  await resend.contacts.update({
-    email: user.email,
-    unsubscribed: true,
-  });
 };

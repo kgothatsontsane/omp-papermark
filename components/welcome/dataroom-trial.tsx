@@ -33,47 +33,12 @@ export default function DataroomTrial() {
 
   const [useCase, setUseCase] = useState<string>("");
   const [customUseCase, setCustomUseCase] = useState<string>("");
-  const [dealSize, setDealSize] = useState<string>("");
   const [companySize, setCompanySize] = useState<string>("");
   const [name, setName] = useState<string>("");
   const [companyName, setCompanyName] = useState<string>("");
   const [tools, setTools] = useState<string>("");
 
   const [loading, setLoading] = useState<boolean>(false);
-
-  // Map use case to deal type for survey
-  const useCaseToDealType: Record<string, string> = {
-    "mergers-and-acquisitions": "mergers-acquisitions",
-    "startup-fundraising": "startup-fundraising",
-    "fund-management": "fund-management",
-    sales: "sales",
-    "project-management": "project-management",
-    operations: "financial-operations",
-    "real-estate": "real-estate",
-  };
-
-  // Check if use case needs deal size question
-  const needsDealSize =
-    !!useCase && useCase !== "project-management";
-
-  // Helper function to convert use case to proper dataroom name
-  const getDataroomName = (useCaseValue: string, customValue: string = "") => {
-    if (useCaseValue === "other" && customValue) {
-      return `${customValue} Data Room`;
-    }
-
-    const useCaseNames: Record<string, string> = {
-      "mergers-and-acquisitions": "Mergers & Acquisitions Data Room",
-      "startup-fundraising": "Startup Fundraising Data Room",
-      "fund-management": "Fundraising & Reporting Data Room",
-      sales: "Sales Data Room",
-      "project-management": "Project Management Data Room",
-      operations: "Financial Operations Data Room",
-      "real-estate": "Real Estate Data Room",
-    };
-
-    return useCaseNames[useCaseValue] || "Data Room";
-  };
 
   const handleSubmit = async (event: any) => {
     event.preventDefault();
@@ -84,31 +49,9 @@ export default function DataroomTrial() {
       return;
     }
 
-    // Check if deal size is required but not filled
-    if (needsDealSize && !dealSize) {
-      toast.error("Please select a deal size.");
-      return;
-    }
-
     setLoading(true);
 
-    const dataroomName = getDataroomName(useCase, customUseCase.trim());
-
     try {
-      // Save survey data to team
-      const dealType = useCase === "other" ? "other" : useCaseToDealType[useCase];
-      if (dealType) {
-        await fetch(`/api/teams/${teamInfo?.currentTeam?.id}/survey`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            dealType,
-            dealTypeOther: useCase === "other" ? customUseCase.trim() : null,
-            dealSize: dealSize || null,
-          }),
-        });
-      }
-
       const response = await fetch(
         `/api/teams/${teamInfo?.currentTeam?.id}/datarooms/trial`,
         {
@@ -117,7 +60,7 @@ export default function DataroomTrial() {
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            name: dataroomName,
+            name: "Dataroom #1",
             fullName: name,
             companyName,
             useCase: useCase === "other" ? customUseCase.trim() : useCase,
@@ -141,21 +84,17 @@ export default function DataroomTrial() {
       }
 
       analytics.capture("Dataroom Trial Created", {
-        dataroomName: dataroomName,
+        dataroomName: "Dataroom #1",
         useCase: useCase === "other" ? customUseCase.trim() : useCase,
         companySize,
-        dealSize,
         dataroomId,
       });
-      toast.success("Free trial started! 🎉");
+      toast.success("Dataroom successfully created! 🎉");
 
-      await Promise.all([
-        mutate(`/api/teams/${teamInfo?.currentTeam?.id}/datarooms`),
-        mutate(`/api/teams/${teamInfo?.currentTeam?.id}/datarooms?simple=true`),
-      ]);
+      await mutate(`/api/teams/${teamInfo?.currentTeam?.id}/datarooms`);
 
-      // Navigate to dataroom choice page (scratch vs templates)
-      router.push(`/welcome?type=dataroom-choice&dataroomId=${dataroomId}`);
+      // Instead of redirecting to "/datarooms", we'll navigate to the dataroom-upload page
+      router.push(`/welcome?type=dataroom-upload&dataroomId=${dataroomId}`);
     } catch (error) {
       toast.error("Error adding dataroom. Please try again.");
       console.error("Error creating dataroom:", error);
@@ -192,9 +131,6 @@ export default function DataroomTrial() {
         <h1 className="font-display max-w-lg text-3xl font-semibold transition-colors sm:text-4xl">
           Start a 7-day free trial!
         </h1>
-        {/* <p className="mt-2 text-lg text-muted-foreground">
-          Data Room Plan Trial
-        </p> */}
       </motion.div>
       <motion.div
         variants={STAGGER_CHILD_VARIANTS}
@@ -288,8 +224,6 @@ export default function DataroomTrial() {
                 if (value !== "other") {
                   setCustomUseCase("");
                 }
-                // Reset deal size when use case changes
-                setDealSize("");
               }}
             >
               <SelectTrigger>
@@ -297,20 +231,19 @@ export default function DataroomTrial() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="mergers-and-acquisitions">
-                  Mergers & Acquisitions
+                  Mergers and Acquisitions
                 </SelectItem>
                 <SelectItem value="startup-fundraising">
                   Startup Fundraising
                 </SelectItem>
                 <SelectItem value="fund-management">
-                  Fundraising & Reporting
+                  Fund management & Fundraising
                 </SelectItem>
                 <SelectItem value="sales">Sales</SelectItem>
                 <SelectItem value="project-management">
-                  Project Management
+                  Project management
                 </SelectItem>
-                <SelectItem value="operations">Financial Operations</SelectItem>
-                <SelectItem value="real-estate">Real Estate</SelectItem>
+                <SelectItem value="operations">Operations</SelectItem>
 
                 <SelectItem value="other">Other</SelectItem>
               </SelectContent>
@@ -325,29 +258,6 @@ export default function DataroomTrial() {
               />
             )}
           </div>
-
-          {/* Deal Size - shown after use case is selected (except project-management and operations) */}
-          {needsDealSize && (
-            <div className="space-y-1">
-              <Label className="opacity-80">
-                {useCase === "startup-fundraising" || useCase === "fund-management"
-                  ? "How much are you raising?*"
-                  : "What's the deal size?*"}
-              </Label>
-              <Select onValueChange={(value) => setDealSize(value)}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select deal size" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="0-500k">$0 - $500K</SelectItem>
-                  <SelectItem value="500k-5m">$500K - $5M</SelectItem>
-                  <SelectItem value="5m-10m">$5M - $10M</SelectItem>
-                  <SelectItem value="10m-100m">$10M - $100M</SelectItem>
-                  <SelectItem value="100m+">$100M+</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          )}
 
           <div className="space-y-1">
             <Label htmlFor="tools" className="opacity-80">
@@ -382,8 +292,7 @@ export default function DataroomTrial() {
                 !useCase ||
                 !name ||
                 !companyName ||
-                (useCase === "other" && !customUseCase.trim()) ||
-                (needsDealSize && !dealSize)
+                (useCase === "other" && !customUseCase.trim())
               }
               loading={loading}
             >
@@ -397,14 +306,12 @@ export default function DataroomTrial() {
               </UpgradePlanModal>{" "}
               plan. <br /> */}
               No credit card is required. After the trial, upgrade to{" "}
-              <UpgradePlanModal
-                clickedPlan={PlanEnum.DataRooms}
-                highlightItem={["datarooms"]}
-                trigger="dataroom_trial_form"
-              >
-                <button className="underline">Papermark Data Rooms</button>
+              <UpgradePlanModal clickedPlan={PlanEnum.Business}>
+                <button className="underline">
+                  Papermark Business or Data Rooms
+                </button>
               </UpgradePlanModal>{" "}
-              to continue using advanced data room features.
+              to continue using data rooms.
             </div>
           </div>
         </form>

@@ -1,229 +1,366 @@
 import { NextApiRequest, NextApiResponse } from "next";
 
-import { ViewType } from "@prisma/client";
+import { getTeamStorageConfigById } from "@/ee/features/storage/config";
+import { InvocationType, InvokeCommand } from "@aws-sdk/client-lambda";
+import { ItemType, ViewType } from "@prisma/client";
 
-import { getDataroomSessionByLinkIdInPagesRouter } from "@/lib/auth/dataroom-auth";
+import { getLambdaClientForTeam } from "@/lib/files/aws-client";
 import prisma from "@/lib/prisma";
-import { downloadJobStore } from "@/lib/redis-download-job-store";
-import { bulkDownloadTask } from "@/lib/trigger/bulk-download";
 import { getIpAddress } from "@/lib/utils/ip";
 
 export const config = {
-  // Lightweight handler: validate access + create job + trigger task. The
-  // heavy folder/document/permission queries and view inserts run inside the
-  // trigger task so the viewer never sees a request timeout.
-  maxDuration: 60,
+  maxDuration: 300,
+  memory: 2048,
 };
 
 export default async function handle(
   req: NextApiRequest,
   res: NextApiResponse,
 ) {
-  if (req.method !== "POST") {
+  if (req.method === "POST") {
+    // POST /api/links/download/bulk
+    const { linkId, viewId } = req.body as { linkId: string; viewId: string };
+
+    try {
+      const view = await prisma.view.findUnique({
+        where: {
+          id: viewId,
+          linkId: linkId,
+          viewType: { equals: ViewType.DATAROOM_VIEW },
+        },
+        select: {
+          id: true,
+          viewedAt: true,
+          viewerEmail: true,
+          link: {
+            select: {
+              allowDownload: true,
+              expiresAt: true,
+              isArchived: true,
+              enableWatermark: true,
+              watermarkConfig: true,
+              name: true,
+              permissionGroupId: true,
+            },
+          },
+          groupId: true,
+          dataroom: {
+            select: {
+              teamId: true,
+              allowBulkDownload: true,
+              folders: {
+                select: {
+                  id: true,
+                  name: true,
+                  path: true,
+                },
+              },
+              documents: {
+                select: {
+                  id: true,
+                  folderId: true,
+                  document: {
+                    select: {
+                      name: true,
+                      versions: {
+                        where: { isPrimary: true },
+                        select: {
+                          type: true,
+                          file: true,
+                          storageType: true,
+                          originalFile: true,
+                          contentType: true,
+                          numPages: true,
+                        },
+                        take: 1,
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      });
+
+      // if view does not exist, we should not allow the download
+      if (!view) {
+        return res.status(404).json({ error: "Error downloading" });
+      }
+
+      // if link does not allow download, we should not allow the download
+      if (!view.link.allowDownload) {
+        return res.status(403).json({ error: "Error downloading" });
+      }
+
+      // if link is archived, we should not allow the download
+      if (view.link.isArchived) {
+        return res.status(403).json({ error: "Error downloading" });
+      }
+
+      // if link is expired, we should not allow the download
+      if (view.link.expiresAt && view.link.expiresAt < new Date()) {
+        return res.status(403).json({ error: "Error downloading" });
+      }
+
+      // if dataroom does not exist, we should not allow the download
+      if (!view.dataroom) {
+        return res.status(404).json({ error: "Error downloading" });
+      }
+
+      // if dataroom does not allow bulk download, we should not allow the download
+      if (!view.dataroom.allowBulkDownload) {
+        return res.status(403).json({ error: "Bulk download is disabled for this dataroom" });
+      }
+
+      // if viewedAt is longer than 23 hours ago, we should not allow the download
+      if (
+        view.viewedAt &&
+        view.viewedAt < new Date(Date.now() - 23 * 60 * 60 * 1000)
+      ) {
+        return res.status(403).json({ error: "Error downloading" });
+      }
+
+      let downloadFolders = view.dataroom.folders;
+      let downloadDocuments = view.dataroom.documents;
+
+      // Check permissions based on groupId (ViewerGroup) or permissionGroupId (PermissionGroup)
+      const effectiveGroupId = view.groupId || view.link.permissionGroupId;
+
+      if (effectiveGroupId) {
+        let groupPermissions: any[] = [];
+
+        if (view.groupId) {
+          // This is a ViewerGroup (legacy behavior)
+          groupPermissions = await prisma.viewerGroupAccessControls.findMany({
+            where: { groupId: view.groupId, canDownload: true },
+          });
+        } else if (view.link.permissionGroupId) {
+          // This is a PermissionGroup (new behavior)
+          groupPermissions =
+            await prisma.permissionGroupAccessControls.findMany({
+              where: {
+                groupId: view.link.permissionGroupId,
+                canDownload: true,
+              },
+            });
+        }
+
+        const permittedFolderIds = groupPermissions
+          .filter(
+            (permission) => permission.itemType === ItemType.DATAROOM_FOLDER,
+          )
+          .map((permission) => permission.itemId);
+        const permittedDocumentIds = groupPermissions
+          .filter(
+            (permission) => permission.itemType === ItemType.DATAROOM_DOCUMENT,
+          )
+          .map((permission) => permission.itemId);
+
+        downloadFolders = downloadFolders.filter((folder) =>
+          permittedFolderIds.includes(folder.id),
+        );
+        downloadDocuments = downloadDocuments.filter((doc) =>
+          permittedDocumentIds.includes(doc.id),
+        );
+      }
+
+      // update the view with the downloadedAt timestamp
+      await prisma.view.update({
+        where: { id: viewId },
+        data: { downloadedAt: new Date() },
+      });
+
+      // Construct folderStructure and fileKeys
+      const folderStructure: {
+        [key: string]: {
+          name: string;
+          path: string;
+          files: {
+            name: string;
+            key: string;
+            type?: string;
+            numPages?: number;
+            needsWatermark?: boolean;
+          }[];
+        };
+      } = {};
+      const fileKeys: string[] = [];
+
+      // Create a map of folder IDs to folder names
+      const folderMap = new Map(
+        downloadFolders.map((folder) => [
+          folder.path,
+          { name: folder.name, id: folder.id },
+        ]),
+      );
+
+      const addFileToStructure = (
+        path: string,
+        fileName: string,
+        fileKey: string,
+        fileType?: string,
+        numPages?: number,
+      ) => {
+        const pathParts = path.split("/").filter(Boolean);
+        let currentPath = "";
+
+        // Add folder information for each level of the path
+        pathParts.forEach((part, index) => {
+          currentPath += "/" + part;
+          const folderInfo = folderMap.get(currentPath);
+          if (!folderStructure[currentPath]) {
+            folderStructure[currentPath] = {
+              name: folderInfo ? folderInfo.name : part,
+              path: currentPath,
+              files: [],
+            };
+          }
+        });
+
+        // Add the file to the leaf folder
+        if (!folderStructure[path]) {
+          const folderInfo = folderMap.get(path) || { name: "Root", id: null };
+          folderStructure[path] = {
+            name: folderInfo.name,
+            path: path,
+            files: [],
+          };
+        }
+
+        const needsWatermark =
+          view.link.enableWatermark &&
+          (fileType === "pdf" || fileType === "image");
+
+        folderStructure[path].files.push({
+          name: fileName,
+          key: fileKey,
+          type: fileType,
+          numPages: numPages,
+          needsWatermark: needsWatermark ?? undefined,
+        });
+        fileKeys.push(fileKey);
+      };
+
+      // Add root level documents
+      downloadDocuments
+        .filter((doc) => !doc.folderId)
+        .filter((doc) => doc.document.versions[0].type !== "notion")
+        .filter((doc) => doc.document.versions[0].storageType !== "VERCEL_BLOB")
+        .forEach((doc) => {
+          const fileKey =
+            view.link.enableWatermark && doc.document.versions[0].type === "pdf"
+              ? doc.document.versions[0].file
+              : (doc.document.versions[0].originalFile ??
+                doc.document.versions[0].file);
+
+          addFileToStructure(
+            "/",
+            doc.document.name,
+            fileKey,
+            doc.document.versions[0].type ?? undefined,
+            doc.document.versions[0].numPages ?? undefined,
+          );
+        });
+
+      // Add documents in folders
+      downloadFolders.forEach((folder) => {
+        const folderDocs = downloadDocuments
+          .filter((doc) => doc.folderId === folder.id)
+          .filter((doc) => doc.document.versions[0].type !== "notion")
+          .filter(
+            (doc) => doc.document.versions[0].storageType !== "VERCEL_BLOB",
+          );
+
+        folderDocs &&
+          folderDocs.forEach((doc) => {
+            // Use .file if watermark is enabled and document is PDF, otherwise use .originalFile
+            const fileKey =
+              view.link.enableWatermark &&
+              doc.document.versions[0].type === "pdf"
+                ? doc.document.versions[0].file
+                : (doc.document.versions[0].originalFile ??
+                  doc.document.versions[0].file);
+
+            addFileToStructure(
+              folder.path,
+              doc.document.name,
+              fileKey,
+              doc.document.versions[0].type ?? undefined,
+              doc.document.versions[0].numPages ?? undefined,
+            );
+          });
+
+        // If the folder is empty, ensure it's still added to the structure
+        if (folderDocs && folderDocs.length === 0) {
+          addFileToStructure(folder.path, "", "");
+        }
+      });
+
+      if (fileKeys.length === 0) {
+        return res.status(404).json({ error: "No files to download" });
+      }
+
+      // Get team-specific storage configuration
+      const teamId = view.dataroom!.teamId;
+      const [client, storageConfig] = await Promise.all([
+        getLambdaClientForTeam(teamId),
+        getTeamStorageConfigById(teamId),
+      ]);
+
+      const params = {
+        FunctionName: storageConfig.lambdaFunctionName,
+        InvocationType: InvocationType.RequestResponse,
+        Payload: JSON.stringify({
+          sourceBucket: storageConfig.bucket,
+          fileKeys: fileKeys,
+          folderStructure: folderStructure,
+          watermarkConfig: view.link.enableWatermark
+            ? {
+                enabled: true,
+                config: view.link.watermarkConfig,
+                viewerData: {
+                  email: view.viewerEmail,
+                  date: new Date(view.viewedAt).toLocaleDateString(),
+                  time: new Date(view.viewedAt).toLocaleTimeString(),
+                  link: view.link.name,
+                  ipAddress: getIpAddress(req.headers),
+                },
+              }
+            : { enabled: false },
+        }),
+      };
+
+      try {
+        const command = new InvokeCommand(params);
+        const response = await client.send(command);
+
+        if (response.Payload) {
+          const decodedPayload = new TextDecoder().decode(response.Payload);
+
+          const payload = JSON.parse(decodedPayload);
+          const { downloadUrl } = JSON.parse(payload.body);
+
+          res.status(200).json({ downloadUrl });
+        } else {
+          throw new Error("Payload is undefined or empty");
+        }
+      } catch (error) {
+        console.error("Error invoking Lambda:", error);
+        res.status(500).json({
+          error: "Failed to generate download link",
+          details: (error as Error).message,
+        });
+      }
+    } catch (error) {
+      return res.status(500).json({
+        message: "Internal Server Error",
+        error: (error as Error).message,
+      });
+    }
+  } else {
+    // We only allow POST requests
     res.setHeader("Allow", ["POST"]);
     return res.status(405).end(`Method ${req.method} Not Allowed`);
-  }
-
-  const { linkId, emailNotification } = req.body as {
-    linkId: string;
-    emailNotification?: boolean;
-  };
-
-  if (typeof linkId !== "string" || !linkId.trim()) {
-    return res.status(400).json({ error: "linkId is required" });
-  }
-
-  try {
-    const session = await getDataroomSessionByLinkIdInPagesRouter(req, linkId);
-    if (!session) {
-      return res.status(401).json({ error: "Session required to download" });
-    }
-
-    const view = await prisma.view.findUnique({
-      where: {
-        id: session.viewId,
-        linkId: linkId,
-        viewType: { equals: ViewType.DATAROOM_VIEW },
-      },
-      select: {
-        id: true,
-        viewedAt: true,
-        viewerEmail: true,
-        viewerId: true,
-        verified: true,
-        link: {
-          select: {
-            allowDownload: true,
-            expiresAt: true,
-            isArchived: true,
-            deletedAt: true,
-            enableWatermark: true,
-            watermarkConfig: true,
-            name: true,
-            permissionGroupId: true,
-          },
-        },
-        groupId: true,
-        dataroom: {
-          select: {
-            id: true,
-            name: true,
-            teamId: true,
-            allowBulkDownload: true,
-          },
-        },
-      },
-    });
-
-    if (!view) {
-      return res.status(404).json({ error: "Error downloading" });
-    }
-
-    const dataroomId = view.dataroom?.id;
-    if (!dataroomId || session.dataroomId !== dataroomId) {
-      return res.status(403).json({ error: "Error downloading" });
-    }
-
-    if (emailNotification) {
-      if (!view.viewerEmail) {
-        return res.status(400).json({
-          error:
-            "Email is required to receive download notifications. Enter your email in the dataroom.",
-        });
-      }
-      if (!session.verified) {
-        return res.status(403).json({
-          error:
-            "Verify your email with the one-time code to receive a notification when the download is ready.",
-        });
-      }
-    }
-
-    if (!view.link.allowDownload) {
-      return res.status(403).json({ error: "Error downloading" });
-    }
-
-    if (view.link.isArchived) {
-      return res.status(403).json({ error: "Error downloading" });
-    }
-
-    if (view.link.deletedAt) {
-      return res.status(403).json({ error: "Error downloading" });
-    }
-
-    if (view.link.expiresAt && view.link.expiresAt < new Date()) {
-      return res.status(403).json({ error: "Error downloading" });
-    }
-
-    if (!view.dataroom) {
-      return res.status(404).json({ error: "Error downloading" });
-    }
-
-    if (!view.dataroom.allowBulkDownload) {
-      return res
-        .status(403)
-        .json({ error: "Bulk download is disabled for this dataroom" });
-    }
-
-    if (
-      view.viewedAt &&
-      view.viewedAt < new Date(Date.now() - 23 * 60 * 60 * 1000)
-    ) {
-      return res.status(403).json({ error: "Error downloading" });
-    }
-
-    const teamId = view.dataroom.teamId;
-    const sendEmail =
-      !!emailNotification && !!view.viewerEmail && !!session.verified;
-
-    const job = await downloadJobStore.createJob({
-      type: "bulk",
-      status: "PENDING",
-      dataroomId: view.dataroom.id,
-      dataroomName: view.dataroom.name,
-      // The task fills in the real total once it builds the folder
-      // structure; computing it here would defeat the purpose of moving the
-      // heavy queries off of the request path.
-      totalFiles: 0,
-      processedFiles: 0,
-      progress: 0,
-      teamId,
-      userId: view.viewerId ?? view.viewerEmail ?? "viewer",
-      linkId,
-      viewerId: view.viewerId ?? undefined,
-      viewerEmail: view.viewerEmail ?? undefined,
-      emailNotification: sendEmail,
-      emailAddress: sendEmail ? (view.viewerEmail ?? undefined) : undefined,
-    });
-
-    const handle = await bulkDownloadTask.trigger(
-      {
-        jobId: job.id,
-        dataroomId: view.dataroom.id,
-        dataroomName: view.dataroom.name,
-        teamId,
-        watermarkConfig: view.link.enableWatermark
-          ? {
-              enabled: true,
-              config: view.link.watermarkConfig,
-              viewerData: {
-                email: view.viewerEmail,
-                date: (view.viewedAt
-                  ? new Date(view.viewedAt)
-                  : new Date()
-                ).toLocaleDateString(),
-                time: (view.viewedAt
-                  ? new Date(view.viewedAt)
-                  : new Date()
-                ).toLocaleTimeString(),
-                link: view.link.name,
-                ipAddress: getIpAddress(req.headers),
-              },
-            }
-          : { enabled: false },
-        viewId: view.id,
-        viewerId: view.viewerId ?? undefined,
-        viewerEmail: view.viewerEmail ?? undefined,
-        linkId,
-        emailNotification: sendEmail,
-        emailAddress: sendEmail ? (view.viewerEmail ?? undefined) : undefined,
-        sourceContext: {
-          type: "bulk",
-          linkId,
-          viewId: view.id,
-          viewerId: view.viewerId ?? undefined,
-          viewerEmail: view.viewerEmail ?? undefined,
-          groupId: view.groupId ?? undefined,
-          permissionGroupId: view.link.permissionGroupId ?? undefined,
-          verified: view.verified ?? false,
-          enableWatermark: !!view.link.enableWatermark,
-          notifySlack: true,
-        },
-      },
-      {
-        idempotencyKey: job.id,
-        tags: [
-          `team_${teamId}`,
-          `dataroom_${view.dataroom.id}`,
-          `job_${job.id}`,
-          `link_${linkId}`,
-        ],
-      },
-    );
-
-    await downloadJobStore.updateJob(job.id, { triggerRunId: handle.id });
-
-    return res.status(202).json({
-      jobId: job.id,
-      status: "PENDING",
-      message: sendEmail
-        ? "Download started. We'll email you when it's ready."
-        : "Download started. You can check status on the downloads page.",
-    });
-  } catch (error) {
-    console.error("Error starting bulk download:", error);
-    return res.status(500).json({
-      message: "Internal Server Error",
-    });
   }
 }

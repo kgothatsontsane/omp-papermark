@@ -1,4 +1,5 @@
 User-Agent: *
+Disallow: /login
 Disallow: /register
 Disallow: /verify/
 Disallow: /auth/

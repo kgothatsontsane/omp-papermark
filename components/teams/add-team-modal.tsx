@@ -2,6 +2,7 @@ import { useRouter } from "next/router";
 
 import { useState } from "react";
 
+import { usePlausible } from "next-plausible";
 import { toast } from "sonner";
 import { mutate } from "swr";
 
@@ -27,6 +28,7 @@ interface AddTeamModalProps {
 
 export function AddTeamModal({ children, setCurrentTeam }: AddTeamModalProps) {
   const router = useRouter();
+  const plausible = usePlausible();
   const [teamName, setTeamName] = useState<string>("");
   const [loading, setLoading] = useState<boolean>(false);
 

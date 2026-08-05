@@ -3,7 +3,6 @@ import { useRouter } from "next/router";
 
 import { useEffect, useState } from "react";
 
-import WorkflowAccessView from "@/ee/features/workflows/components/workflow-access-view";
 import NotFound from "@/pages/404";
 import { Brand, DataroomBrand } from "@prisma/client";
 import Cookies from "js-cookie";
@@ -12,19 +11,7 @@ import { ExtendedRecordMap } from "notion-types";
 import { parsePageId } from "notion-utils";
 import z from "zod";
 
-import { fetchLinkDataByDomainSlug } from "@/lib/api/links/link-data";
-import { getFeatureFlags } from "@/lib/featureFlags";
-import { useUrlPasscode } from "@/lib/hooks/use-url-passcode";
-import {
-  buildViewerI18nPageProps,
-  type ViewerI18nPageProps,
-} from "@/lib/i18n/viewer-page-props";
 import notion from "@/lib/notion";
-import {
-  addSignedUrls,
-  fetchMissingPageReferences,
-  normalizeRecordMap,
-} from "@/lib/notion/utils";
 import {
   CustomUser,
   LinkWithDataroom,
@@ -36,7 +23,6 @@ import LoadingSpinner from "@/components/ui/loading-spinner";
 import CustomMetaTag from "@/components/view/custom-metatag";
 import DataroomView from "@/components/view/dataroom/dataroom-view";
 import DocumentView from "@/components/view/document-view";
-import { ViewerI18nProvider } from "@/components/view/viewer-i18n-provider";
 
 type DocumentLinkData = {
   linkType: "DOCUMENT_LINK";
@@ -48,14 +34,6 @@ type DataroomLinkData = {
   linkType: "DATAROOM_LINK";
   link: LinkWithDataroom;
   brand: DataroomBrand | null;
-};
-
-type WorkflowLinkData = {
-  linkType: "WORKFLOW_LINK";
-  entryLinkId: string;
-  domain: string;
-  slug: string;
-  brand: Brand | null;
 };
 
 export const getStaticProps = async (context: GetStaticPropsContext) => {
@@ -74,72 +52,21 @@ export const getStaticProps = async (context: GetStaticPropsContext) => {
       .regex(/^[a-zA-Z0-9_-]+$/, "Invalid path parameter")
       .parse(slugParam);
 
-    const result = await fetchLinkDataByDomainSlug({ domain, slug });
-    if (result.status === "frozen") {
-      return {
-        props: {
-          frozen: true,
-        },
-        revalidate: 10,
-      };
+    const res = await fetch(
+      `${process.env.NEXTAUTH_URL}/api/links/domains/${encodeURIComponent(
+        domain,
+      )}/${encodeURIComponent(slug)}`,
+    );
+    if (!res.ok) {
+      throw new Error(`Failed to fetch: ${res.status}`);
     }
-    if (result.status !== "ok") {
+    const { linkType, link, brand } = (await res.json()) as
+      | DocumentLinkData
+      | DataroomLinkData;
+
+    if (!link || !linkType) {
       return {
         notFound: true,
-        revalidate: 10,
-      };
-    }
-
-    const { linkType, link, brand, linkId, publicMeta } = result;
-
-    if (!linkType) {
-      return {
-        notFound: true,
-        revalidate: 10,
-      };
-    }
-
-    const i18nProps = await buildViewerI18nPageProps(brand as any);
-
-    // Handle workflow links - minimal props needed
-    if (linkType === "WORKFLOW_LINK") {
-      return {
-        props: {
-          linkData: {
-            linkType: "WORKFLOW_LINK",
-            entryLinkId: linkId || "",
-            domain,
-            slug,
-            brand: brand || null,
-          },
-          notionData: {
-            rootNotionPageId: null,
-            recordMap: null,
-            theme: null,
-          },
-          meta: {
-            enableCustomMetatag: publicMeta.enableCustomMetatag,
-            metaTitle: publicMeta.metaTitle,
-            metaDescription: publicMeta.metaDescription,
-            metaImage: publicMeta.metaImage,
-            metaUrl: `https://${domain}/${slug}`,
-            metaFavicon: publicMeta.metaFavicon,
-          },
-          showPoweredByBanner: false,
-          showAccountCreationSlide: false,
-          useAdvancedExcelViewer: false,
-          hideFooterOnAccessForm: false,
-          logoOnAccessForm: false,
-          ...i18nProps,
-        },
-        revalidate: 60,
-      };
-    }
-
-    if (!link) {
-      return {
-        notFound: true,
-        revalidate: 10,
       };
     }
 
@@ -158,29 +85,16 @@ export const getStaticProps = async (context: GetStaticPropsContext) => {
         if (!notionPageId) {
           return {
             notFound: true,
-            revalidate: 10,
           };
         }
 
         pageId = notionPageId;
-        recordMap = await notion.getPage(pageId, { signFileUrls: false });
-        // Fetch missing page references that are embedded in rich text (e.g., table cells with multiple page links)
-        await fetchMissingPageReferences(recordMap);
-        // Normalize double-nested block structures from the Notion API
-        normalizeRecordMap(recordMap);
-        await addSignedUrls({ recordMap });
+        recordMap = await notion.getPage(pageId);
       }
 
       const { team, teamId, advancedExcelEnabled, ...linkDocument } =
         link.document;
       const teamPlan = team?.plan || "free";
-
-      // Check feature flags for document links
-      const docFeatureFlags = await getFeatureFlags({ teamId: teamId || undefined });
-      const textSelectionEnabled = docFeatureFlags.textSelection;
-      const logoOnAccessFormEnabled = docFeatureFlags.logoOnAccessForm;
-      const hideFooterOnAccessFormEnabled =
-        docFeatureFlags.hideFooterOnAccessForm;
 
       return {
         props: {
@@ -188,10 +102,12 @@ export const getStaticProps = async (context: GetStaticPropsContext) => {
             linkType: "DOCUMENT_LINK",
             link: {
               ...link,
-              teamId: teamId || null,
+              teamId: teamId,
               document: {
                 ...linkDocument,
                 versions: [versionWithoutTypeAndFile],
+                // TODO: remove this once the assistant feature is re-enabled
+                assistantEnabled: false,
               },
             },
             brand,
@@ -202,19 +118,23 @@ export const getStaticProps = async (context: GetStaticPropsContext) => {
             theme,
           },
           meta: {
-            enableCustomMetatag: publicMeta.enableCustomMetatag,
-            metaTitle: publicMeta.metaTitle,
-            metaDescription: publicMeta.metaDescription,
-            metaImage: publicMeta.metaImage,
-            metaFavicon: publicMeta.metaFavicon,
+            enableCustomMetatag: link.enableCustomMetatag || false,
+            metaTitle: link.metaTitle,
+            metaDescription: link.metaDescription,
+            metaImage: link.metaImage,
+            metaFavicon: link.metaFavicon || "/favicon.ico",
             metaUrl: `https://${domain}/${slug}` || null,
           },
           showAccountCreationSlide: link.showBanner || teamPlan === "free",
           useAdvancedExcelViewer: advancedExcelEnabled,
-          hideFooterOnAccessForm: hideFooterOnAccessFormEnabled,
-          logoOnAccessForm: logoOnAccessFormEnabled,
-          textSelectionEnabled,
-          ...i18nProps,
+          useCustomAccessForm:
+            teamId === "cm0154tiv0000lr2t6nr5c6kp" ||
+            teamId === "clup33by90000oewh4rfvp2eg" ||
+            teamId === "cm76hfyvy0002q623hmen99pf" ||
+            teamId === "cm9ztf0s70005js04i689gefn",
+          logoOnAccessForm:
+            teamId === "cm7nlkrhm0000qgh0nvyrrywr" ||
+            teamId === "clup33by90000oewh4rfvp2eg",
         },
         revalidate: 10,
       };
@@ -233,7 +153,6 @@ export const getStaticProps = async (context: GetStaticPropsContext) => {
           dataroomDocumentId: document.id,
           folderId: document.folderId,
           orderIndex: document.orderIndex,
-          hierarchicalIndex: document.hierarchicalIndex,
           versions: [
             {
               ...versionWithoutTypeAndFile,
@@ -248,22 +167,12 @@ export const getStaticProps = async (context: GetStaticPropsContext) => {
 
       const { teamId } = link.dataroom;
 
-      const featureFlags = await getFeatureFlags({ teamId });
-      const dataroomIndexEnabled =
-        result.dataroomIndexEnabledForViewer ?? false;
-      const textSelectionEnabled = featureFlags.textSelection;
-      const logoOnAccessFormEnabled = featureFlags.logoOnAccessForm;
-      const hideFooterOnAccessFormEnabled = featureFlags.hideFooterOnAccessForm;
-
-      const lastUpdatedAt = link.dataroom.documents.reduce(
-        (max: number, doc: any) => {
-          return Math.max(
-            max,
-            new Date(doc.document.versions[0].updatedAt).getTime(),
-          );
-        },
-        new Date(link.dataroom.createdAt).getTime(),
-      );
+      const lastUpdatedAt = link.dataroom.documents.reduce((max, doc) => {
+        return Math.max(
+          max,
+          new Date(doc.document.versions[0].updatedAt).getTime(),
+        );
+      }, 0);
 
       return {
         props: {
@@ -271,7 +180,7 @@ export const getStaticProps = async (context: GetStaticPropsContext) => {
             linkType: "DATAROOM_LINK",
             link: {
               ...link,
-              teamId: teamId || null,
+              teamId: teamId,
               dataroom: {
                 ...link.dataroom,
                 documents,
@@ -281,28 +190,30 @@ export const getStaticProps = async (context: GetStaticPropsContext) => {
             brand,
           },
           meta: {
-            enableCustomMetatag: publicMeta.enableCustomMetatag,
-            metaTitle: publicMeta.metaTitle,
-            metaDescription: publicMeta.metaDescription,
-            metaImage: publicMeta.metaImage,
-            metaFavicon: publicMeta.metaFavicon,
+            enableCustomMetatag: link.enableCustomMetatag || false,
+            metaTitle: link.metaTitle,
+            metaDescription: link.metaDescription,
+            metaImage: link.metaImage,
+            metaFavicon: link.metaFavicon || "/favicon.ico",
             metaUrl: `https://${domain}/${slug}` || null,
           },
           showPoweredByBanner: false,
           showAccountCreationSlide: false,
           useAdvancedExcelViewer: false, // INFO: this is managed in the API route
-          hideFooterOnAccessForm: hideFooterOnAccessFormEnabled,
-          logoOnAccessForm: logoOnAccessFormEnabled,
-          dataroomIndexEnabled,
-          textSelectionEnabled,
-          ...i18nProps,
+          useCustomAccessForm:
+            teamId === "cm0154tiv0000lr2t6nr5c6kp" ||
+            teamId === "clup33by90000oewh4rfvp2eg" ||
+            teamId === "cm76hfyvy0002q623hmen99pf" ||
+            teamId === "cm9ztf0s70005js04i689gefn",
+          logoOnAccessForm:
+            teamId === "cm7nlkrhm0000qgh0nvyrrywr" ||
+            teamId === "clup33by90000oewh4rfvp2eg",
         },
         revalidate: 10,
       };
     }
   } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    console.error("Fetching error:", message);
+    console.error("Fetching error:", error);
     return { props: { error: true }, revalidate: 30 };
   }
 };
@@ -314,9 +225,17 @@ export async function getStaticPaths() {
   };
 }
 
-type DomainViewPageProps = Partial<ViewerI18nPageProps> & {
-  frozen?: boolean;
-  linkData: DocumentLinkData | DataroomLinkData | WorkflowLinkData;
+export default function ViewPage({
+  linkData,
+  notionData,
+  meta,
+  showAccountCreationSlide,
+  useAdvancedExcelViewer,
+  useCustomAccessForm,
+  logoOnAccessForm,
+  error,
+}: {
+  linkData: DocumentLinkData | DataroomLinkData;
   notionData: {
     rootNotionPageId: string | null;
     recordMap: ExtendedRecordMap | null;
@@ -332,31 +251,14 @@ type DomainViewPageProps = Partial<ViewerI18nPageProps> & {
   };
   showAccountCreationSlide: boolean;
   useAdvancedExcelViewer: boolean;
-  hideFooterOnAccessForm: boolean;
+  useCustomAccessForm: boolean;
   logoOnAccessForm: boolean;
-  dataroomIndexEnabled?: boolean;
-  textSelectionEnabled?: boolean;
   error?: boolean;
-};
-
-function ViewPageInner({
-  frozen,
-  linkData,
-  notionData,
-  meta,
-  showAccountCreationSlide,
-  useAdvancedExcelViewer,
-  hideFooterOnAccessForm,
-  logoOnAccessForm,
-  dataroomIndexEnabled,
-  textSelectionEnabled,
-  error,
-}: DomainViewPageProps) {
+}) {
   const router = useRouter();
   const { data: session, status } = useSession();
   const [storedToken, setStoredToken] = useState<string | undefined>(undefined);
   const [storedEmail, setStoredEmail] = useState<string | undefined>(undefined);
-  const urlPasscode = useUrlPasscode();
 
   useEffect(() => {
     // Retrieve token from cookie on component mount
@@ -379,12 +281,6 @@ function ViewPageInner({
     );
   }
 
-  if (frozen) {
-    return (
-      <NotFound message="This data room has been closed and is no longer available." />
-    );
-  }
-
   if (error) {
     return (
       <NotFound message="Sorry, we had trouble loading this link. Please try again in a moment." />
@@ -402,37 +298,10 @@ function ViewPageInner({
     previewToken?: string;
     preview?: string;
   };
-  const disableEditPassword = !!disableEditEmail && !!urlPasscode;
-  const { linkType } = linkData;
-
-  // Render workflow access view for WORKFLOW_LINK
-  if (linkType === "WORKFLOW_LINK") {
-    const { entryLinkId, domain, slug, brand } = linkData as WorkflowLinkData;
-
-    return (
-      <>
-        <CustomMetaTag
-          favicon={meta.metaFavicon}
-          enableBranding={false}
-          title="Access Workflow | Powered by Papermark"
-          description={null}
-          imageUrl={null}
-          url={meta.metaUrl ?? ""}
-        />
-        <WorkflowAccessView
-          entryLinkId={entryLinkId}
-          domain={domain}
-          slug={slug}
-          brand={brand}
-        />
-      </>
-    );
-  }
+  const { linkType, link, brand } = linkData;
 
   // Render the document view for DOCUMENT_LINK
   if (linkType === "DOCUMENT_LINK") {
-    const { link, brand } = linkData as DocumentLinkData;
-
     if (!link || status === "loading") {
       return (
         <>
@@ -440,7 +309,9 @@ function ViewPageInner({
             favicon={meta.metaFavicon}
             enableBranding={meta.enableCustomMetatag ?? false}
             title={
-              meta.metaTitle ?? `${link?.document?.name} | Powered by Papermark`
+              meta.metaTitle ??
+              `${link?.document?.name} | Powered by Papermark` ??
+              "Document powered by Papermark"
             }
             description={meta.metaDescription ?? null}
             imageUrl={meta.metaImage ?? null}
@@ -483,7 +354,9 @@ function ViewPageInner({
           favicon={meta.metaFavicon}
           enableBranding={meta.enableCustomMetatag ?? false}
           title={
-            meta.metaTitle ?? `${link?.document?.name} | Powered by Papermark`
+            meta.metaTitle ??
+            `${link?.document?.name} | Powered by Papermark` ??
+            "Document powered by Papermark"
           }
           description={meta.metaDescription ?? null}
           imageUrl={meta.metaImage ?? null}
@@ -500,13 +373,10 @@ function ViewPageInner({
           useAdvancedExcelViewer={useAdvancedExcelViewer}
           previewToken={previewToken}
           disableEditEmail={!!disableEditEmail}
-          urlPasscode={urlPasscode}
-          disableEditPassword={disableEditPassword}
-          hideFooterOnAccessForm={hideFooterOnAccessForm}
+          useCustomAccessForm={useCustomAccessForm}
           token={storedToken}
           verifiedEmail={verifiedEmail}
           logoOnAccessForm={logoOnAccessForm}
-          textSelectionEnabled={textSelectionEnabled}
         />
       </>
     );
@@ -514,8 +384,6 @@ function ViewPageInner({
 
   // Render the dataroom view for DATAROOM_LINK
   if (linkType === "DATAROOM_LINK") {
-    const { link, brand } = linkData as DataroomLinkData;
-
     if (!link || status === "loading" || router.isFallback) {
       return (
         <>
@@ -523,7 +391,9 @@ function ViewPageInner({
             favicon={meta.metaFavicon}
             enableBranding={meta.enableCustomMetatag ?? false}
             title={
-              meta.metaTitle ?? `${link?.dataroom?.name} | Powered by Papermark`
+              meta.metaTitle ??
+              `${link?.dataroom?.name} | Powered by Papermark` ??
+              "Dataroom powered by Papermark"
             }
             description={meta.metaDescription ?? null}
             imageUrl={meta.metaImage ?? null}
@@ -567,7 +437,9 @@ function ViewPageInner({
           favicon={meta.metaFavicon}
           enableBranding={meta.enableCustomMetatag ?? false}
           title={
-            meta.metaTitle ?? `${link?.dataroom?.name} | Powered by Papermark`
+            meta.metaTitle ??
+            `${link?.dataroom?.name} | Powered by Papermark` ??
+            "Dataroom powered by Papermark"
           }
           description={meta.metaDescription ?? null}
           imageUrl={meta.metaImage ?? null}
@@ -580,31 +452,14 @@ function ViewPageInner({
           isProtected={!!(emailProtected || linkPassword || enableAgreement)}
           brand={brand}
           disableEditEmail={!!disableEditEmail}
-          urlPasscode={urlPasscode}
-          disableEditPassword={disableEditPassword}
-          hideFooterOnAccessForm={hideFooterOnAccessForm}
+          useCustomAccessForm={useCustomAccessForm}
           token={storedToken}
           verifiedEmail={verifiedEmail}
           previewToken={previewToken}
           preview={!!preview}
           logoOnAccessForm={logoOnAccessForm}
-          dataroomIndexEnabled={dataroomIndexEnabled}
-          textSelectionEnabled={textSelectionEnabled}
         />
       </>
     );
   }
-}
-
-export default function ViewPage(props: DomainViewPageProps) {
-  const locale = props.i18n?.locale ?? "en";
-  const resources = props.i18n?.resources ?? {};
-  return (
-    <ViewerI18nProvider
-      locale={locale}
-      resources={resources}
-    >
-      <ViewPageInner {...props} />
-    </ViewerI18nProvider>
-  );
 }

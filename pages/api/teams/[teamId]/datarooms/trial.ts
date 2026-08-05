@@ -8,12 +8,11 @@ import { sendDataroomTrialWelcome } from "@/lib/emails/send-dataroom-trial";
 import { newId } from "@/lib/id-helper";
 import prisma from "@/lib/prisma";
 import {
-  sendDataroomTrial24hReminderEmailTask,
   sendDataroomTrialExpiredEmailTask,
   sendDataroomTrialInfoEmailTask,
-} from "@/ee/features/billing/dataroom-trial/lib/trigger/send-scheduled-email";
+} from "@/lib/trigger/send-scheduled-email";
 import { CustomUser } from "@/lib/types";
-import { log, logStore } from "@/lib/utils";
+import { log } from "@/lib/utils";
 
 export const config = {
   // in order to enable `waitUntil` function
@@ -83,18 +82,6 @@ export default async function handle(
         mention: true,
       });
 
-      await logStore({
-        object: {
-          teamId: teamId,
-          email: email,
-          fullName: fullName,
-          companyName: companyName,
-          useCase: useCase,
-          companySize: companySize,
-          tools: tools,
-        },
-      });
-
       await prisma.team.update({
         where: { id: teamId },
         data: {
@@ -121,53 +108,20 @@ export default async function handle(
        *
        * 1. Send welcome email
        * 2. Send dataroom info email after 1 day
-       * 3. Send 24h reminder after 6 days
-       * 4. Send expired trial email after 7 days
-       *
-       * Capture the reminder + expiry run ids so the trial can later be
-       * extended (see scripts/extend-trial.ts).
+       * 3. Send expired trial email after 7 days
        */
       waitUntil(sendDataroomTrialWelcome({ fullName, to: email! }));
       waitUntil(
         sendDataroomTrialInfoEmailTask.trigger(
-          { to: email!, useCase, name: fullName.split(" ")[0] },
-          { delay: "1d", tags: [`team_${teamId}`] },
+          { to: email! },
+          { delay: new Date(Date.now() + 1 * 24 * 60 * 60 * 1000) },
         ),
       );
       waitUntil(
-        (async () => {
-          try {
-            const reminderHandle =
-              await sendDataroomTrial24hReminderEmailTask.trigger(
-                { to: email!, name: fullName.split(" ")[0], teamId },
-                { delay: "6d", tags: [`team_${teamId}`] },
-              );
-            const expiredHandle =
-              await sendDataroomTrialExpiredEmailTask.trigger(
-                { to: email!, name: fullName.split(" ")[0], teamId },
-                { delay: "7d", tags: [`team_${teamId}`] },
-              );
-            await prisma.team.update({
-              where: { id: teamId },
-              data: {
-                trialReminderRunId: reminderHandle.id,
-                trialExpiredRunId: expiredHandle.id,
-              },
-            });
-          } catch (error) {
-            console.error(
-              `[dataroom-trial] Failed to schedule trial emails or persist run IDs for team ${teamId}:`,
-              error,
-            );
-            await log({
-              message: `:x: Dataroom Trial: failed to schedule trial emails or persist run IDs for team \`${teamId}\`\n\n\`\`\`${
-                error instanceof Error ? error.message : String(error)
-              }\`\`\``,
-              type: "error",
-              mention: true,
-            });
-          }
-        })(),
+        sendDataroomTrialExpiredEmailTask.trigger(
+          { to: email!, name: fullName.split(" ")[0], teamId },
+          { delay: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) },
+        ),
       );
 
       res.status(201).json(dataroomWithCount);

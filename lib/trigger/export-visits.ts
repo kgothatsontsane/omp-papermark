@@ -1,4 +1,4 @@
-import { logger, task } from "@trigger.dev/sdk";
+import { logger, task } from "@trigger.dev/sdk/v3";
 import { put } from "@vercel/blob";
 import Bottleneck from "bottleneck";
 
@@ -54,7 +54,8 @@ export type ExportVisitsPayload = {
 
 export const exportVisitsTask = task({
   id: "export-visits",
-  retry: { maxAttempts: 2 },
+  retry: { maxAttempts: 3 },
+  maxDuration: 900, // 15 minutes to handle large datasets
   run: async (payload: ExportVisitsPayload) => {
     const { type, teamId, resourceId, groupId, userId, exportId } = payload;
 
@@ -180,18 +181,6 @@ export const exportVisitsTask = task({
   },
 });
 
-// Helper function to check if a view occurred during a pause period
-function isViewDuringPause(
-  viewedAt: Date,
-  pauseStartsAt: Date | null,
-  pauseEndsAt: Date | null,
-): boolean {
-  if (!pauseStartsAt || !pauseEndsAt) {
-    return false;
-  }
-  return viewedAt >= pauseStartsAt && viewedAt <= pauseEndsAt;
-}
-
 async function exportDocumentVisits(
   docId: string,
   teamId: string,
@@ -199,7 +188,7 @@ async function exportDocumentVisits(
   csvData: string;
   resourceName: string;
 }> {
-  // Fetch Document with team pause information
+  // Fetch Document
   const document = await prisma.document.findUnique({
     where: { id: docId, teamId: teamId },
     select: {
@@ -217,8 +206,6 @@ async function exportDocumentVisits(
       team: {
         select: {
           plan: true,
-          pauseStartsAt: true,
-          pauseEndsAt: true,
         },
       },
     },
@@ -228,10 +215,8 @@ async function exportDocumentVisits(
     throw new Error("Document not found");
   }
 
-  const { pauseStartsAt, pauseEndsAt } = document.team;
-
   // Fetch views
-  const allViews = await prisma.view.findMany({
+  const views = await prisma.view.findMany({
     where: { documentId: docId },
     include: {
       link: { select: { name: true } },
@@ -256,11 +241,6 @@ async function exportDocumentVisits(
     },
   });
 
-  // Filter out views that occurred during the pause period
-  const views = allViews.filter(
-    (view) => !isViewDuringPause(view.viewedAt, pauseStartsAt, pauseEndsAt),
-  );
-
   if (!views || views.length === 0) {
     throw new Error("Document has no views");
   }
@@ -277,7 +257,7 @@ async function exportDocumentVisits(
     "Name",
     "Email",
     "Link Name",
-    "Total View Duration (s)",
+    "Total Visit Duration (s)",
     "Total Document Completion (%)",
     "Document version",
     "Downloaded at",
@@ -498,7 +478,7 @@ async function exportDataroomVisits(
   csvData: string;
   resourceName: string;
 }> {
-  // Fetch Dataroom with team pause information
+  // Fetch Dataroom
   const dataroom = await prisma.dataroom.findUnique({
     where: { id: dataroomId, teamId: teamId },
     select: {
@@ -523,12 +503,6 @@ async function exportDataroomVisits(
           },
         },
       },
-      team: {
-        select: {
-          pauseStartsAt: true,
-          pauseEndsAt: true,
-        },
-      },
     },
   });
 
@@ -536,10 +510,8 @@ async function exportDataroomVisits(
     throw new Error("Dataroom not found");
   }
 
-  const { pauseStartsAt, pauseEndsAt } = dataroom.team;
-
   // Fetch views
-  const allViews = await prisma.view.findMany({
+  const views = await prisma.view.findMany({
     where: {
       dataroomId: dataroomId,
       ...(groupId && { groupId }),
@@ -581,11 +553,6 @@ async function exportDataroomVisits(
       viewedAt: "desc",
     },
   });
-
-  // Filter out views that occurred during the pause period
-  const views = allViews.filter(
-    (view) => !isViewDuringPause(view.viewedAt, pauseStartsAt, pauseEndsAt),
-  );
 
   if (!views || views.length === 0) {
     throw new Error("Dataroom has no views");
@@ -692,19 +659,26 @@ async function exportDataroomVisits(
     dataroomViewMap.set(view.id, view);
   });
 
-  // Fetch user agent data per dataroom view (stored in pm_click_events via recordLinkView)
-  const userAgentDataMap = new Map<
-    string,
-    { browser: string; os: string; device: string; country: string; city: string }
-  >();
-  for (const drView of dataroomViews) {
-    const userAgentData = await tinybirdLimiter.schedule(() =>
-      getViewUserAgent({ viewId: drView.id }),
-    );
+  // Get user agent data for all document views at once with rate limiting
+  const userAgentDataMap = new Map();
+  for (const docView of documentViews) {
+    const userAgentData = await tinybirdLimiter.schedule(async () => {
+      const result = await getViewUserAgent({
+        viewId: docView.id,
+      });
 
-    if (userAgentData?.data[0]) {
-      userAgentDataMap.set(drView.id, userAgentData.data[0]);
-    }
+      if (!result || result.rows === 0) {
+        return getViewUserAgent_v2({
+          documentId: docView.document?.id || "null",
+          viewId: docView.id,
+          since: 0,
+        });
+      }
+
+      return result;
+    });
+
+    userAgentDataMap.set(docView.id, userAgentData);
   }
 
   // Create CSV
@@ -739,8 +713,6 @@ async function exportDataroomVisits(
   csvRows.push(createCsvRow(headers));
 
   exportData.forEach((view) => {
-    const ua = userAgentDataMap.get(view.dataroomViewId);
-
     if (view.documentViews.length === 0) {
       const rowData = [
         view.dataroomViewedAt,
@@ -759,11 +731,11 @@ async function exportDataroomVisits(
         "NaN",
         "NaN",
         "NaN",
-        ua?.browser || "NaN",
-        ua?.os || "NaN",
-        ua?.device || "NaN",
-        ua?.country || "NaN",
-        ua?.city || "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
+        "NaN",
       ];
 
       // Add custom field values for this dataroom view using direct ID lookup
@@ -775,6 +747,8 @@ async function exportDataroomVisits(
       csvRows.push(createCsvRow(rowData));
     } else {
       view.documentViews.forEach((docView) => {
+        const userAgentData = userAgentDataMap.get(docView.viewId);
+
         const rowData = [
           view.dataroomViewedAt,
           view.dataroomDownloadedAt,
@@ -792,11 +766,11 @@ async function exportDataroomVisits(
           (docView.duration / 1000).toFixed(1),
           docView.completionRate,
           docView.documentVersion,
-          ua?.browser || "NaN",
-          ua?.os || "NaN",
-          ua?.device || "NaN",
-          ua?.country || "NaN",
-          ua?.city || "NaN",
+          userAgentData?.data[0]?.browser || "NaN",
+          userAgentData?.data[0]?.os || "NaN",
+          userAgentData?.data[0]?.device || "NaN",
+          userAgentData?.data[0]?.country || "NaN",
+          userAgentData?.data[0]?.city || "NaN",
         ];
 
         // Add custom field values for this dataroom view using direct ID lookup

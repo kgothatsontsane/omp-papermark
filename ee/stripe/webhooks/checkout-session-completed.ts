@@ -2,18 +2,13 @@ import {
   BUSINESS_PLAN_LIMITS,
   DATAROOMS_PLAN_LIMITS,
   DATAROOMS_PLUS_PLAN_LIMITS,
-  DATAROOMS_PREMIUM_PLAN_LIMITS,
-  DATAROOMS_UNLIMITED_PLAN_LIMITS,
   PRO_PLAN_LIMITS,
 } from "@/ee/limits/constants";
 import { stripeInstance } from "@/ee/stripe";
-import { waitUntil } from "@vercel/functions";
 import Stripe from "stripe";
 
-import { sendUpgradePersonalEmail } from "@/lib/emails/send-upgrade-personal-welcome";
 import { sendUpgradePlanEmail } from "@/lib/emails/send-upgrade-plan";
 import prisma from "@/lib/prisma";
-import { sendUpgradeOneMonthCheckinEmailTask } from "@/lib/trigger/send-scheduled-email";
 import { log } from "@/lib/utils";
 
 import { getPlanFromPriceId } from "../utils";
@@ -65,9 +60,7 @@ export async function checkoutSessionCompleted(
     | typeof PRO_PLAN_LIMITS
     | typeof BUSINESS_PLAN_LIMITS
     | typeof DATAROOMS_PLAN_LIMITS
-    | typeof DATAROOMS_PLUS_PLAN_LIMITS
-    | typeof DATAROOMS_PREMIUM_PLAN_LIMITS
-    | typeof DATAROOMS_UNLIMITED_PLAN_LIMITS = structuredClone(PRO_PLAN_LIMITS);
+    | typeof DATAROOMS_PLUS_PLAN_LIMITS = structuredClone(PRO_PLAN_LIMITS);
   if (plan.slug === "pro") {
     planLimits = structuredClone(PRO_PLAN_LIMITS);
   } else if (plan.slug === "business") {
@@ -76,10 +69,6 @@ export async function checkoutSessionCompleted(
     planLimits = structuredClone(DATAROOMS_PLAN_LIMITS);
   } else if (plan.slug === "datarooms-plus") {
     planLimits = structuredClone(DATAROOMS_PLUS_PLAN_LIMITS);
-  } else if (plan.slug === "datarooms-premium") {
-    planLimits = structuredClone(DATAROOMS_PREMIUM_PLAN_LIMITS);
-  } else if (plan.slug === "datarooms-unlimited") {
-    planLimits = structuredClone(DATAROOMS_UNLIMITED_PLAN_LIMITS);
   }
 
   // Update the user limit in planLimits based on the subscription quantity
@@ -98,11 +87,6 @@ export async function checkoutSessionCompleted(
       startsAt: subscriptionStart,
       endsAt: subscriptionEnd,
       limits: planLimits,
-      // Clear cancellation and pause state when purchasing a new plan
-      cancelledAt: null,
-      pausedAt: null,
-      pauseStartsAt: null,
-      pauseEndsAt: null,
     },
     select: {
       id: true,
@@ -116,7 +100,7 @@ export async function checkoutSessionCompleted(
   });
 
   // if event creation time more than 1 hour ago, return
-  if (event.created < Date.now() / 1000 - 1 * 60 * 60) {
+  if (event.created > Date.now() - 1 * 60 * 60 * 1000) {
     await log({
       message: `Checkout session completed event created more than 1 hour ago: ${event.id}`,
       type: "error",
@@ -125,37 +109,11 @@ export async function checkoutSessionCompleted(
   }
 
   // Send thank you email to project owner if they are a new customer
-  waitUntil(
-    sendUpgradePlanEmail({
-      user: {
-        email: team.users[0].user.email as string,
-        name: team.users[0].user.name as string,
-      },
-      planType: plan.slug,
-    }),
-  );
-
-  // send personal welcome email
-  waitUntil(
-    sendUpgradePersonalEmail({
-      user: {
-        email: team.users[0].user.email as string,
-        name: team.users[0].user.name as string,
-      },
-      planSlug: plan.slug,
-    }),
-  );
-
-  waitUntil(
-    sendUpgradeOneMonthCheckinEmailTask.trigger(
-      {
-        to: team.users[0].user.email as string,
-        name: team.users[0].user.name as string,
-        teamId,
-      },
-      {
-        delay: "40d",
-      },
-    ),
-  );
+  await sendUpgradePlanEmail({
+    user: {
+      email: team.users[0].user.email as string,
+      name: team.users[0].user.name as string,
+    },
+    planType: plan.slug,
+  });
 }

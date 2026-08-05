@@ -2,16 +2,15 @@ import { NextApiRequest, NextApiResponse } from "next";
 
 import { getTeamStorageConfigById } from "@/ee/features/storage/config";
 import { authOptions } from "@/pages/api/auth/[...nextauth]";
+import { InvocationType, InvokeCommand } from "@aws-sdk/client-lambda";
 import { getServerSession } from "next-auth";
 
-import { buildBulkDownloadStructure } from "@/lib/dataroom/build-bulk-download-structure";
+import { getLambdaClientForTeam } from "@/lib/files/aws-client";
 import prisma from "@/lib/prisma";
-import { downloadJobStore } from "@/lib/redis-download-job-store";
-import { bulkDownloadTask } from "@/lib/trigger/bulk-download";
 import { CustomUser } from "@/lib/types";
 
 export const config = {
-  maxDuration: 60, // Reduced since we're just triggering the async task
+  maxDuration: 180,
 };
 
 export default async function handler(
@@ -28,21 +27,23 @@ export default async function handler(
     id: string;
   };
 
-  const userId = (session.user as CustomUser).id;
-
   if (req.method === "POST") {
     try {
-      const teamAccess = await prisma.userTeam.findUnique({
+      const team = await prisma.team.findUnique({
         where: {
-          userId_teamId: {
-            userId: userId,
-            teamId: teamId,
+          id: teamId,
+          users: {
+            some: {
+              userId: (session.user as CustomUser).id,
+            },
           },
         },
-        select: { teamId: true },
+        select: {
+          id: true,
+        },
       });
 
-      if (!teamAccess) {
+      if (!team) {
         return res.status(403).end("Unauthorized to access this team");
       }
 
@@ -52,14 +53,11 @@ export default async function handler(
           teamId: teamId,
         },
         select: {
-          id: true,
-          name: true,
           folders: {
             select: {
               id: true,
               name: true,
               path: true,
-              parentId: true,
             },
           },
           documents: {
@@ -77,7 +75,6 @@ export default async function handler(
                       storageType: true,
                       originalFile: true,
                       contentType: true,
-                      fileSize: true,
                     },
                     take: 1,
                   },
@@ -87,86 +84,135 @@ export default async function handler(
           },
         },
       });
-
       if (!dataroom) {
         return res.status(404).end("Dataroom not found");
       }
+      let downloadFolders = dataroom.folders;
+      let downloadDocuments = dataroom.documents;
 
-      // Admin bulk download: no permission filtering, no watermark.
-      const { folderStructure, fileKeys } = buildBulkDownloadStructure({
-        fullFolders: dataroom.folders,
-        includedFolders: dataroom.folders,
-        includedDocuments: dataroom.documents,
-        enableWatermark: false,
+      // Construct folderStructure and fileKeys
+      const folderStructure: {
+        [key: string]: {
+          name: string;
+          path: string;
+          files: { name: string; key: string }[];
+        };
+      } = {};
+      const fileKeys: string[] = [];
+      const folderMap = new Map(
+        downloadFolders.map((folder) => [
+          folder.path,
+          { name: folder.name, id: folder.id },
+        ]),
+      );
+      const addFileToStructure = (
+        path: string,
+        fileName: string,
+        fileKey: string,
+      ) => {
+        const pathParts = path.split("/").filter(Boolean);
+        let currentPath = "";
+
+        // Add folder information for each level of the path
+        pathParts.forEach((part, index) => {
+          currentPath += "/" + part;
+          const folderInfo = folderMap.get(currentPath);
+          if (!folderStructure[currentPath]) {
+            folderStructure[currentPath] = {
+              name: folderInfo ? folderInfo.name : part,
+              path: currentPath,
+              files: [],
+            };
+          }
+        });
+
+        // Add the file to the leaf folder
+        if (!folderStructure[path]) {
+          const folderInfo = folderMap.get(path) || {
+            name: "Root",
+            id: null,
+          };
+          folderStructure[path] = {
+            name: folderInfo.name,
+            path: path,
+            files: [],
+          };
+        }
+        folderStructure[path].files.push({ name: fileName, key: fileKey });
+        fileKeys.push(fileKey);
+      };
+      downloadDocuments
+        .filter((doc) => !doc.folderId)
+        .filter((doc) => doc.document.versions[0].type !== "notion")
+        .filter((doc) => doc.document.versions[0].storageType !== "VERCEL_BLOB")
+        .forEach((doc) =>
+          addFileToStructure(
+            "/",
+            doc.document.name,
+            doc.document.versions[0].originalFile ??
+              doc.document.versions[0].file,
+          ),
+        );
+      downloadFolders.forEach((folder) => {
+        const folderDocs = downloadDocuments
+          .filter((doc) => doc.folderId === folder.id)
+          .filter((doc) => doc.document.versions[0].type !== "notion")
+          .filter(
+            (doc) => doc.document.versions[0].storageType !== "VERCEL_BLOB",
+          );
+
+        folderDocs &&
+          folderDocs.forEach((doc) =>
+            addFileToStructure(
+              folder.path,
+              doc.document.name,
+              doc.document.versions[0].originalFile ??
+                doc.document.versions[0].file,
+            ),
+          );
+
+        // If the folder is empty, ensure it's still added to the structure
+        if (folderDocs && folderDocs.length === 0) {
+          addFileToStructure(folder.path, "", "");
+        }
       });
 
-      if (fileKeys.length === 0) {
-        return res.status(404).json({ error: "No files to download" });
-      }
-
-      // Get team-specific storage config
+      // Get team-specific Lambda client and storage config
+      const client = await getLambdaClientForTeam(teamId);
       const storageConfig = await getTeamStorageConfigById(teamId);
 
-      // Get user email for notification
-      const user = await prisma.user.findUnique({
-        where: { id: userId },
-        select: { email: true },
-      });
-
-      // Create download job in Redis
-      const job = await downloadJobStore.createJob({
-        type: "bulk",
-        status: "PENDING",
-        dataroomId: dataroom.id,
-        dataroomName: dataroom.name,
-        totalFiles: fileKeys.length,
-        processedFiles: 0,
-        progress: 0,
-        teamId: teamId,
-        userId: userId,
-        emailNotification: !!user?.email,
-        emailAddress: user?.email ?? undefined,
-      });
-
-      // Trigger the async bulk download task
-      const handle = await bulkDownloadTask.trigger(
-        {
-          jobId: job.id,
-          dataroomId: dataroom.id,
-          dataroomName: dataroom.name,
-          teamId: teamId,
-          folderStructure: folderStructure,
-          fileKeys: fileKeys,
+      const params = {
+        FunctionName: storageConfig.lambdaFunctionName,
+        InvocationType: InvocationType.RequestResponse,
+        Payload: JSON.stringify({
           sourceBucket: storageConfig.bucket,
-          watermarkConfig: { enabled: false },
-          userId: userId,
-          emailNotification: !!user?.email,
-          emailAddress: user?.email ?? undefined,
-        },
-        {
-          idempotencyKey: job.id,
-          tags: [
-            `team_${teamId}`,
-            `dataroom_${dataroom.id}`,
-            `job_${job.id}`,
-            `user_${userId}`,
-          ],
-        },
-      );
+          fileKeys: fileKeys,
+          folderStructure: folderStructure,
+        }),
+      };
 
-      // Update job with trigger run ID
-      await downloadJobStore.updateJob(job.id, {
-        triggerRunId: handle.id,
-      });
+      try {
+        const command = new InvokeCommand(params);
+        const response = await client.send(command);
 
-      // Return job ID immediately (async response)
-      return res.status(202).json({
-        jobId: job.id,
-        status: "PENDING",
-        message: "Download started. You will be notified when ready.",
-      });
+        if (response.Payload) {
+          const decodedPayload = new TextDecoder().decode(response.Payload);
+
+          const payload = JSON.parse(decodedPayload);
+          const { downloadUrl } = JSON.parse(payload.body);
+
+          res.status(200).json({ downloadUrl });
+        } else {
+          throw new Error("Payload is undefined or empty");
+        }
+      } catch (error) {
+        console.error("Error invoking Lambda:", error);
+        res.status(500).json({
+          error: "Failed to generate download link",
+          details: (error as Error).message,
+        });
+      }
     } catch (error) {
-      console.error("Error starting bulk download:", error);
       return res.status(500).json({
         message: "Internal Server Error",
         error: (error as Error).message,

@@ -102,7 +102,6 @@ export default memo(function CustomField({
               <SelectItem value="NUMBER">Number</SelectItem>
               <SelectItem value="PHONE_NUMBER">Phone</SelectItem>
               <SelectItem value="URL">URL</SelectItem>
-              <SelectItem value="CHECKBOX">Checkbox</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -139,18 +138,16 @@ export default memo(function CustomField({
           />
         </div> */}
 
-        {localField.type !== "CHECKBOX" && (
-          <div className="grid gap-2">
-            <Label htmlFor="placeholder">Placeholder</Label>
-            <Input
-              id="placeholder"
-              type="text"
-              value={localField.placeholder || ""}
-              onChange={(e) => handleInputChange(e, "placeholder")}
-              placeholder="e.g., Enter your company name"
-            />
-          </div>
-        )}
+        <div className="grid gap-2">
+          <Label htmlFor="placeholder">Placeholder</Label>
+          <Input
+            id="placeholder"
+            type="text"
+            value={localField.placeholder || ""}
+            onChange={(e) => handleInputChange(e, "placeholder")}
+            placeholder="e.g., Enter your company name"
+          />
+        </div>
 
         <div className="flex items-center justify-between">
           <div className="flex flex-col space-y-1">

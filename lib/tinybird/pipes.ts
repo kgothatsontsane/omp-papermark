@@ -4,11 +4,7 @@ import { z } from "zod";
 import { VIDEO_EVENT_TYPES } from "../constants";
 import { WEBHOOK_TRIGGERS } from "../webhook/constants";
 
-const tb = new Tinybird({
-  token: process.env.TINYBIRD_TOKEN!,
-  // Tinybird is region-hosted; zod-bird defaults to the US API host.
-  baseUrl: process.env.TINYBIRD_BASE_URL,
-});
+const tb = new Tinybird({ token: process.env.TINYBIRD_TOKEN! });
 
 export const getTotalAvgPageDuration = tb.buildPipe({
   pipe: "get_total_average_page_duration__v5",
@@ -36,20 +32,6 @@ export const getViewPageDuration = tb.buildPipe({
   data: z.object({
     pageNumber: z.string(),
     sum_duration: z.number(),
-  }),
-});
-
-export const getViewCompletionStats = tb.buildPipe({
-  pipe: "get_view_completion_stats__v1",
-  parameters: z.object({
-    documentId: z.string(),
-    excludedViewIds: z.string().describe("Comma separated viewIds"),
-    since: z.number(),
-  }),
-  data: z.object({
-    viewId: z.string(),
-    versionNumber: z.number().int(),
-    pages_viewed: z.number(),
   }),
 });
 
@@ -214,31 +196,5 @@ export const getClickEventsByView = tb.buildPipe({
     page_number: z.string(),
     version_number: z.number(),
     href: z.string(),
-  }),
-});
-
-export const getDataroomViewDocumentStats = tb.buildPipe({
-  pipe: "get_dataroom_view_document_stats__v1",
-  parameters: z.object({
-    viewIds: z.string().describe("Comma separated viewIds"),
-  }),
-  data: z.object({
-    viewId: z.string(),
-    documentId: z.string(),
-    sum_duration: z.number(),
-    pages_viewed: z.number(),
-  }),
-});
-
-export const getTotalTeamDuration = tb.buildPipe({
-  pipe: "get_total_team_duration__v1",
-  parameters: z.object({
-    documentIds: z.string().describe("Comma separated documentIds"),
-    since: z.number(),
-    until: z.number(),
-  }),
-  data: z.object({
-    total_duration: z.number(),
-    unique_countries: z.array(z.string()),
   }),
 });

@@ -15,31 +15,12 @@ export const ScreenProtector = () => {
     event.stopPropagation();
   };
 
-  // PrintScreen-based shortcuts (Windows + Linux).
-  // The PrintScreen key only emits a `keyup` event in browsers (no `keydown`),
-  // so these must be registered with `keyup` enabled to be detected at all.
+  // Windows screenshot shortcuts
   useHotkeys(
     [
       "printscreen", // PrintScreen key
       "alt+printscreen", // Alt + PrintScreen (active window)
       "meta+printscreen", // Win + PrintScreen (save to file)
-      "ctrl+printscreen", // Ctrl + PrintScreen
-      "shift+printscreen", // Shift + PrintScreen (selection in some Linux distros)
-      "ctrl+alt+printscreen", // Ctrl + Alt + PrintScreen (some Linux distros)
-    ],
-    handleScreenshotAttempt,
-    {
-      preventDefault: true,
-      enableOnFormTags: true,
-      enableOnContentEditable: true,
-      keyup: true,
-      keydown: true,
-    },
-  );
-
-  // Windows snipping/recording shortcuts
-  useHotkeys(
-    [
       "meta+shift+s", // Win + Shift + S (Snipping Tool)
       "meta+g", // Win + G (Game Bar)
     ],
@@ -48,21 +29,13 @@ export const ScreenProtector = () => {
       preventDefault: true,
       enableOnFormTags: true,
       enableOnContentEditable: true,
-      keyup: true,
-      keydown: true,
     },
   );
 
-  // macOS screenshot shortcuts.
-  // `meta+shift` (the shared prefix of the macOS screenshot shortcuts) is
-  // intercepted on its own so the block overlay appears as soon as Cmd+Shift
-  // is held — before the user presses 3/4/5. Unlike the full combos, the bare
-  // modifier keydowns always reach the page (the OS only swallows the final
-  // key), so this fires even when the specific combos don't. Trade-off: it
-  // also fires on other Cmd+Shift shortcuts (e.g. reopen-tab).
+  // macOS screenshot shortcuts
   useHotkeys(
     [
-      "meta+shift", // Cmd + Shift (prefix for macOS screenshot shortcuts)
+      "meta+shift",
       "meta+shift+3", // Cmd + Shift + 3 (full screen)
       "meta+shift+4", // Cmd + Shift + 4 (selection)
       "meta+shift+5", // Cmd + Shift + 5 (screenshot utility)
@@ -73,8 +46,20 @@ export const ScreenProtector = () => {
       preventDefault: true,
       enableOnFormTags: true,
       enableOnContentEditable: true,
-      keyup: true,
-      keydown: true,
+    },
+  );
+
+  // Linux screenshot shortcuts
+  useHotkeys(
+    [
+      "shift+printscreen", // Shift + PrintScreen (selection in some Linux distros)
+      "ctrl+alt+printscreen", // Ctrl + Alt + PrintScreen (some Linux distros)
+    ],
+    handleScreenshotAttempt,
+    {
+      preventDefault: true,
+      enableOnFormTags: true,
+      enableOnContentEditable: true,
     },
   );
 
@@ -92,8 +77,6 @@ export const ScreenProtector = () => {
       preventDefault: true,
       enableOnFormTags: true,
       enableOnContentEditable: true,
-      keyup: true,
-      keydown: true,
     },
   );
 

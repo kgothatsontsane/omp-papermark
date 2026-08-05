@@ -21,17 +21,12 @@ export const DataroomNavigation = ({ dataroomId }: { dataroomId?: string }) => {
           segment: "permissions",
         },
         {
-          label: "Participants",
-          href: `/datarooms/${dataroomId}/participants`,
-          segment: "participants",
-        },
-        {
           label: "Analytics",
           href: `/datarooms/${dataroomId}/analytics`,
           segment: "analytics",
         },
         {
-          label: "Q&A",
+          label: "Q&A Conversations",
           href: `/datarooms/${dataroomId}/conversations`,
           segment: "conversations",
           limited: !limits?.conversationsInDataroom,

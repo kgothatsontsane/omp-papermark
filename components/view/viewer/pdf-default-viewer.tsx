@@ -1,14 +1,21 @@
 import { useEffect, useRef, useState } from "react";
 
+
+
 import { useTeam } from "@/context/team-context";
 import { ChevronLeftIcon, ChevronRightIcon } from "lucide-react";
 import { Document, Page, pdfjs } from "react-pdf";
 
+
+
 import { useSafePageViewTracker } from "@/lib/tracking/safe-page-view-tracker";
 import { getTrackingOptions } from "@/lib/tracking/tracking-config";
-import { ensureFileExtension } from "@/lib/utils/get-content-type";
+
+
 
 import Nav from "@/components/view/nav";
+
+
 
 import { AwayPoster } from "./away-poster";
 
@@ -232,10 +239,7 @@ export default function PDFViewer(props: any) {
       //create <a/> to download the file
       const a = document.createElement("a");
       a.href = window.URL.createObjectURL(fileData);
-      a.download = ensureFileExtension({
-        name: props.name,
-        contentType: "application/pdf",
-      });
+      a.download = props.name;
       document.body.appendChild(a);
       a.click();
 
@@ -315,7 +319,9 @@ export default function PDFViewer(props: any) {
         </div>
         <AwayPoster
           isVisible={isInactive}
-          inactivityThreshold={getTrackingOptions().inactivityThreshold}
+          inactivityThreshold={
+            getTrackingOptions().inactivityThreshold 
+          }
           onDismiss={updateActivity}
         />
       </div>

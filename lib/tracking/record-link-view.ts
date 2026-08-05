@@ -20,7 +20,6 @@ export async function recordLinkView({
   documentId,
   dataroomId,
   enableNotification,
-  isPaused,
 }: {
   req: NextRequest;
   clickId: string;
@@ -30,7 +29,6 @@ export async function recordLinkView({
   documentId?: string;
   dataroomId?: string;
   enableNotification: boolean | null;
-  isPaused: boolean;
 }) {
   const ua = userAgent(req);
   const bot = isBot(ua.ua);
@@ -110,12 +108,10 @@ export async function recordLinkView({
     enableNotification ? sendNotification({ viewId, locationData }) : null,
 
     // send webhook event
-    !isPaused
-      ? sendLinkViewWebhook({
-          teamId,
-          clickData,
-        })
-      : null,
+    sendLinkViewWebhook({
+      teamId,
+      clickData,
+    }),
   ]);
 
   return clickData;

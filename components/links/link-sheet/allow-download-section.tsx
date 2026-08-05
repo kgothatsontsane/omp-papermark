@@ -26,7 +26,7 @@ export default function AllowDownloadSection({
   return (
     <div className="pb-5">
       <LinkItem
-        title="Download permissions"
+        title="Allow downloading"
         enabled={enabled}
         link="https://www.papermark.com/help/article/link-settings"
         action={handleAllowDownload}

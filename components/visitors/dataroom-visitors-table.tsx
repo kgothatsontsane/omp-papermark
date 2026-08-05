@@ -1,26 +1,16 @@
-import Link from "next/link";
-
 import { useState } from "react";
 
 import { useTeam } from "@/context/team-context";
 import {
-  AlertTriangleIcon,
   BadgeCheckIcon,
   BadgeInfoIcon,
   Download,
   DownloadCloudIcon,
-  DownloadIcon,
   FileBadgeIcon,
-  FileSignatureIcon,
   MailOpenIcon,
 } from "lucide-react";
 import { toast } from "sonner";
 
-import {
-  buildTeamSignedAgreementDownloadUrl,
-  downloadSignedAgreement,
-} from "@/lib/signing/download";
-import { usePlan } from "@/lib/swr/use-billing";
 import { useDataroom } from "@/lib/swr/use-dataroom";
 import { useDataroomVisits } from "@/lib/swr/use-dataroom";
 import { timeAgo } from "@/lib/utils";
@@ -41,40 +31,13 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { TimestampTooltip } from "@/components/ui/timestamp-tooltip";
 import { BadgeTooltip } from "@/components/ui/tooltip";
 
 import { ExportVisitsModal } from "../datarooms/export-visits-modal";
-import { DataroomViewStats } from "./dataroom-view-stats";
 import DataroomVisitorCustomFields from "./dataroom-visitor-custom-fields";
 import { DataroomVisitorUserAgent } from "./dataroom-visitor-useragent";
+import DataroomVisitHistory from "./dataroom-visitors-history";
 import { VisitorAvatar } from "./visitor-avatar";
-
-type AgreementResponseSummary = {
-  id: string;
-  agreementId: string;
-  signingStatus: string;
-  agreement: {
-    name: string;
-    contentType: string;
-    signingProvider: string;
-  };
-};
-
-const isSignedAgreementResponse = (
-  response: AgreementResponseSummary | null | undefined,
-) => {
-  if (!response) return false;
-  const isSigningAgreement =
-    response.agreement.signingProvider === "DOCUMENSO" ||
-    response.agreement.contentType === "SIGNING";
-
-  return (
-    isSigningAgreement &&
-    (response.signingStatus === "SIGNED" ||
-      response.signingStatus === "COMPLETED")
-  );
-};
 
 export default function DataroomVisitorsTable({
   dataroomId,
@@ -87,69 +50,12 @@ export default function DataroomVisitorsTable({
 }) {
   const teamInfo = useTeam();
   const teamId = teamInfo?.currentTeam?.id;
-  const { views, hiddenFromPause } = useDataroomVisits({
-    dataroomId,
-    groupId,
-  });
+  const { views } = useDataroomVisits({ dataroomId, groupId });
   const { dataroom } = useDataroom();
-  const { isPaused } = usePlan();
   const [exportModalOpen, setExportModalOpen] = useState(false);
-  const [expandedViewIds, setExpandedViewIds] = useState<Set<string>>(
-    new Set(),
-  );
 
   const exportVisitCounts = () => {
     setExportModalOpen(true);
-  };
-
-  const handleDownloadSignedAgreement = async ({
-    agreementId,
-    responseId,
-    agreementName,
-  }: {
-    agreementId: string;
-    responseId: string;
-    agreementName: string;
-  }) => {
-    if (!teamId) return;
-
-    const url = buildTeamSignedAgreementDownloadUrl({
-      teamId,
-      agreementId,
-      responseId,
-    });
-
-    const safeName = agreementName
-      .replace(/[^a-z0-9\-_]/gi, "_")
-      .toLowerCase()
-      .substring(0, 50);
-
-    await toast.promise(
-      downloadSignedAgreement({
-        url,
-        fallbackFilename: `${safeName || "agreement"}_signed.pdf`,
-      }),
-      {
-        loading: "Preparing signed NDA...",
-        success: "Signed NDA downloaded",
-        error: (error: unknown) =>
-          error instanceof Error
-            ? error.message
-            : "Failed to download the signed NDA.",
-      },
-    );
-  };
-
-  const handleOpenChange = (viewId: string, open: boolean) => {
-    setExpandedViewIds((prev) => {
-      const next = new Set(prev);
-      if (open) {
-        next.add(viewId);
-      } else {
-        next.delete(viewId);
-      }
-      return next;
-    });
   };
 
   return (
@@ -161,64 +67,30 @@ export default function DataroomVisitorsTable({
           Export visits
         </Button>
       </div>
-      <div className="overflow-x-auto rounded-md border">
-        <Table className="min-w-[600px] table-fixed">
+      <div className="rounded-md border">
+        <Table>
           <TableHeader>
             <TableRow className="*:whitespace-nowrap *:font-medium hover:bg-transparent">
               <TableHead>Name</TableHead>
-              <TableHead className="w-[120px]">
-                {expandedViewIds.size > 0 ? "View Duration" : null}
-              </TableHead>
-              <TableHead className="w-[140px]">
-                {expandedViewIds.size > 0 ? "View Completion" : null}
-              </TableHead>
-              <TableHead className="w-[120px]">Last Viewed</TableHead>
-              <TableHead className="w-[48px]" />
+              {/* <TableHead>Visit Duration</TableHead> */}
+              {/* <TableHead>Last Viewed Document</TableHead> */}
+              <TableHead>Last Viewed</TableHead>
+              <TableHead className="text-center sm:text-right"></TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {views?.length === 0 && hiddenFromPause === 0 && (
+            {views?.length === 0 && (
               <TableRow>
                 <TableCell colSpan={5}>
                   <div className="flex h-40 w-full items-center justify-center">
-                    <p>No views yet. Try sharing a link.</p>
+                    <p>No visits yet. Try sharing a link.</p>
                   </div>
                 </TableCell>
               </TableRow>
             )}
-            {isPaused && hiddenFromPause > 0 && (
-              <>
-                <TableRow>
-                  <TableCell colSpan={5} className="text-left sm:text-center">
-                    <div className="flex flex-col items-start justify-center gap-2 sm:flex-row sm:items-center">
-                      <span className="flex items-center gap-x-1">
-                        <AlertTriangleIcon className="inline-block h-4 w-4 text-orange-500" />
-                        {hiddenFromPause} visit
-                        {hiddenFromPause !== 1 ? "s" : ""} occurred after your
-                        team was paused and{" "}
-                        {hiddenFromPause !== 1 ? "are" : "is"} hidden.{" "}
-                      </span>
-                      <Link
-                        href="/settings/billing"
-                        className="font-medium text-orange-600 underline hover:text-orange-700"
-                      >
-                        Unpause subscription to see all visits
-                      </Link>
-                    </div>
-                  </TableCell>
-                </TableRow>
-                {Array.from({ length: hiddenFromPause }).map((_, i) => (
-                  <VisitorBlurred key={i} />
-                ))}
-              </>
-            )}
             {views ? (
               views.map((view) => (
-                <Collapsible
-                  key={view.id}
-                  asChild
-                  onOpenChange={(open) => handleOpenChange(view.id, open)}
-                >
+                <Collapsible key={view.id} asChild>
                   <>
                     <TableRow key={view.id} className="group/row">
                       {/* Name */}
@@ -230,7 +102,7 @@ export default function DataroomVisitorsTable({
                               <p className="flex items-center gap-x-2 overflow-visible text-sm font-medium text-gray-800 dark:text-gray-200">
                                 {view.viewerEmail ? (
                                   <>
-                                    {view.viewerName || view.viewerEmail}{" "}
+                                    {view.viewerEmail}{" "}
                                     {view.verified && (
                                       <BadgeTooltip
                                         content="Verified visitor"
@@ -257,22 +129,10 @@ export default function DataroomVisitorsTable({
                                     )}
                                     {view.agreementResponse && (
                                       <BadgeTooltip
-                                        content={
-                                          isSignedAgreementResponse(
-                                            view.agreementResponse,
-                                          )
-                                            ? `Signed ${view.agreementResponse.agreement.name}`
-                                            : `Agreed to ${view.agreementResponse.agreement.name}`
-                                        }
+                                        content={`Agreed to ${view.agreementResponse.agreement.name}`}
                                         key={`agreement-${view.id}`}
                                       >
-                                        {isSignedAgreementResponse(
-                                          view.agreementResponse,
-                                        ) ? (
-                                          <FileSignatureIcon className="h-4 w-4 text-emerald-500 hover:text-emerald-600" />
-                                        ) : (
-                                          <FileBadgeIcon className="h-4 w-4 text-emerald-500 hover:text-emerald-600" />
-                                        )}
+                                        <FileBadgeIcon className="h-4 w-4 text-emerald-500 hover:text-emerald-600" />
                                       </BadgeTooltip>
                                     )}
                                   </>
@@ -280,11 +140,6 @@ export default function DataroomVisitorsTable({
                                   "Anonymous"
                                 )}
                               </p>
-                              {view.viewerName && view.viewerEmail && (
-                                <p className="text-xs text-muted-foreground/60">
-                                  {view.viewerEmail}
-                                </p>
-                              )}
                               <p className="text-xs text-muted-foreground/60 sm:text-sm">
                                 {view.link.name ? view.link.name : view.linkId}
                               </p>
@@ -292,22 +147,27 @@ export default function DataroomVisitorsTable({
                           </div>
                         </div>
                       </TableCell>
-                      <TableCell />
-                      <TableCell />
+                      {/* Duration */}
+                      {/* <TableCell className="">
+                        <div className="text-sm text-muted-foreground">
+                          {durationFormat(view.totalDuration)}
+                        </div>
+                      </TableCell> */}
+                      {/* Completion */}
+                      {/* <TableCell className="flex justify-start">
+                        <div className="text-sm text-muted-foreground">
+                          <Gauge
+                            value={view.completionRate}
+                            size={"small"}
+                            showValue={true}
+                          />
+                        </div>
+                      </TableCell> */}
                       {/* Last Viewed */}
                       <TableCell className="text-sm text-muted-foreground">
-                        <TimestampTooltip
-                          timestamp={view.viewedAt}
-                          side="right"
-                          rows={["local", "utc", "unix"]}
-                        >
-                          <time
-                            className="select-none"
-                            dateTime={new Date(view.viewedAt).toISOString()}
-                          >
-                            {timeAgo(view.viewedAt)}
-                          </time>
-                        </TimestampTooltip>
+                        <time dateTime={new Date(view.viewedAt).toISOString()}>
+                          {timeAgo(view.viewedAt)}
+                        </time>
                       </TableCell>
                       {/* Actions */}
                       <TableCell className="cursor-pointer p-0 text-center sm:text-right">
@@ -322,7 +182,7 @@ export default function DataroomVisitorsTable({
                     <CollapsibleContent asChild>
                       <>
                         <TableRow>
-                          <TableCell colSpan={5}>
+                          <TableCell colSpan={3}>
                             <DataroomVisitorCustomFields
                               viewId={view.id}
                               teamId={view.teamId!}
@@ -331,139 +191,61 @@ export default function DataroomVisitorsTable({
                             <DataroomVisitorUserAgent viewId={view.id} />
                           </TableCell>
                         </TableRow>
-                        <TableRow key={view.id} className="[&>td]:py-3">
+                        <TableRow key={view.id}>
                           <TableCell>
                             <div className="flex items-center gap-x-4 overflow-visible">
                               <MailOpenIcon className="h-5 w-5 text-[#fb7a00]" />
                               Accessed {view.dataroomName} dataroom
                             </div>
                           </TableCell>
-                          <TableCell />
-                          <TableCell />
+
                           <TableCell>
-                            <TimestampTooltip
-                              timestamp={view.viewedAt}
-                              side="right"
-                              rows={["local", "utc", "unix"]}
-                            >
+                            <div>
                               <time
-                                className="select-none truncate text-sm text-muted-foreground"
-                                dateTime={new Date(view.viewedAt).toISOString()}
+                                className="truncate text-sm text-muted-foreground"
+                                dateTime={new Date(
+                                  view.viewedAt,
+                                ).toLocaleString()}
+                                title={new Date(view.viewedAt).toLocaleString()}
                               >
                                 {timeAgo(view.viewedAt)}
                               </time>
-                            </TimestampTooltip>
+                            </div>
                           </TableCell>
-                          <TableCell />
+                          <TableCell className="table-cell"></TableCell>
                         </TableRow>
 
                         {view.downloadedAt ? (
-                          <TableRow
-                            key={`download-item-${view.id}`}
-                            className="[&>td]:py-3"
-                          >
+                          <TableRow key={`download-item-${view.id}`}>
                             <TableCell>
                               <div className="flex items-center gap-x-4 overflow-visible">
                                 <DownloadCloudIcon className="h-5 w-5 text-cyan-500 hover:text-cyan-600" />
                                 Downloaded {view.dataroomName} dataroom
                               </div>
                             </TableCell>
-                            <TableCell />
-                            <TableCell />
+
                             <TableCell>
-                              <TimestampTooltip
-                                timestamp={view.downloadedAt}
-                                side="right"
-                                rows={["local", "utc", "unix"]}
-                              >
+                              <div>
                                 <time
-                                  className="select-none truncate text-sm text-muted-foreground"
+                                  className="truncate text-sm text-muted-foreground"
                                   dateTime={new Date(
                                     view.downloadedAt,
-                                  ).toISOString()}
+                                  ).toLocaleString()}
+                                  title={new Date(
+                                    view.downloadedAt,
+                                  ).toLocaleString()}
                                 >
                                   {timeAgo(view.downloadedAt)}
                                 </time>
-                              </TimestampTooltip>
-                            </TableCell>
-                            <TableCell />
-                          </TableRow>
-                        ) : null}
-
-                        {isSignedAgreementResponse(view.agreementResponse) ? (
-                          <TableRow
-                            key={`signed-nda-${view.id}`}
-                            className="[&>td]:py-3"
-                          >
-                            <TableCell>
-                              <div className="flex items-center gap-x-4 overflow-visible">
-                                <FileSignatureIcon className="h-5 w-5 text-emerald-500" />
-                                <span>
-                                  Signed {view.agreementResponse.agreement.name}
-                                </span>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-6 w-6"
-                                  onClick={() =>
-                                    handleDownloadSignedAgreement({
-                                      agreementId:
-                                        view.agreementResponse.agreementId,
-                                      responseId: view.agreementResponse.id,
-                                      agreementName:
-                                        view.agreementResponse.agreement.name,
-                                    })
-                                  }
-                                >
-                                  <DownloadIcon className="h-4 w-4" />
-                                  <span className="sr-only">
-                                    Download signed NDA
-                                  </span>
-                                </Button>
                               </div>
                             </TableCell>
-                            <TableCell />
-                            <TableCell />
-                            <TableCell>
-                              {view.agreementResponse.signedAt ||
-                              view.agreementResponse.completedAt ? (
-                                <TimestampTooltip
-                                  timestamp={new Date(
-                                    view.agreementResponse.signedAt ||
-                                      view.agreementResponse.completedAt,
-                                  )}
-                                  side="right"
-                                  rows={["local", "utc", "unix"]}
-                                >
-                                  <time
-                                    className="select-none truncate text-sm text-muted-foreground"
-                                    dateTime={new Date(
-                                      view.agreementResponse.signedAt ||
-                                        view.agreementResponse.completedAt,
-                                    ).toISOString()}
-                                  >
-                                    {timeAgo(
-                                      new Date(
-                                        view.agreementResponse.signedAt ||
-                                          view.agreementResponse.completedAt,
-                                      ),
-                                    )}
-                                  </time>
-                                </TimestampTooltip>
-                              ) : (
-                                <span className="text-sm text-muted-foreground">
-                                  Signed
-                                </span>
-                              )}
-                            </TableCell>
-                            <TableCell />
+                            <TableCell className="table-cell"></TableCell>
                           </TableRow>
                         ) : null}
 
-                        <DataroomViewStats
+                        <DataroomVisitHistory
                           viewId={view.id}
                           dataroomId={dataroomId}
-                          isExpanded={expandedViewIds.has(view.id)}
                         />
                       </>
                     </CollapsibleContent>
@@ -475,17 +257,14 @@ export default function DataroomVisitorsTable({
                 <TableCell className="min-w-[100px]">
                   <Skeleton className="h-6 w-full" />
                 </TableCell>
-                <TableCell>
-                  <Skeleton className="h-6 w-14" />
+                <TableCell className="min-w-[450px]">
+                  <Skeleton className="h-6 w-full" />
                 </TableCell>
                 <TableCell>
-                  <Skeleton className="h-6 w-6 rounded-full" />
-                </TableCell>
-                <TableCell className="min-w-[100px]">
                   <Skeleton className="h-6 w-24" />
                 </TableCell>
                 <TableCell>
-                  <Skeleton className="h-6 w-6" />
+                  <Skeleton className="h-6 w-24" />
                 </TableCell>
               </TableRow>
             )}
@@ -506,43 +285,3 @@ export default function DataroomVisitorsTable({
     </div>
   );
 }
-
-const VisitorBlurred = () => {
-  return (
-    <TableRow className="blur-sm">
-      <TableCell className="">
-        <div className="flex items-center overflow-visible sm:space-x-3">
-          <VisitorAvatar viewerEmail={"abc@example.org"} />
-          <div className="min-w-0 flex-1">
-            <div className="focus:outline-none">
-              <p className="flex items-center gap-x-2 overflow-visible text-sm font-medium text-gray-800 dark:text-gray-200">
-                Anonymous
-              </p>
-              <p className="text-xs text-muted-foreground/60 sm:text-sm">
-                Demo link
-              </p>
-            </div>
-          </div>
-        </div>
-      </TableCell>
-      <TableCell />
-      <TableCell />
-      {/* Last Viewed */}
-      <TableCell className="text-sm text-muted-foreground">
-        <time
-          dateTime={new Date(
-            new Date().getTime() - 30 * 24 * 60 * 60 * 1000,
-          ).toISOString()}
-        >
-          {timeAgo(new Date(new Date().getTime() - 30 * 24 * 60 * 60 * 1000))}
-        </time>
-      </TableCell>
-      {/* Actions */}
-      <TableCell className="cursor-pointer p-0 text-center sm:text-right">
-        <div className="flex justify-end space-x-1 p-5 [&[data-state=open]>svg.chevron]:rotate-180">
-          <ChevronDown className="chevron h-4 w-4 shrink-0 transition-transform duration-200" />
-        </div>
-      </TableCell>
-    </TableRow>
-  );
-};

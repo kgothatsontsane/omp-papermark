@@ -1,18 +1,12 @@
 import { NextApiRequest, NextApiResponse } from "next";
 
-import { Prisma } from "@prisma/client";
 import { authOptions } from "@/pages/api/auth/[...nextauth]";
 import { getServerSession } from "next-auth/next";
-import { z } from "zod";
+import { version } from "os";
 
 import { errorhandler } from "@/lib/errorHandler";
 import prisma from "@/lib/prisma";
 import { CustomUser } from "@/lib/types";
-
-const changeOrientationSchema = z.object({
-  versionId: z.string().min(1, "versionId is required"),
-  isVertical: z.boolean(),
-});
 
 export default async function handle(
   req: NextApiRequest,
@@ -26,15 +20,10 @@ export default async function handle(
     }
 
     const { teamId, id: docId } = req.query as { teamId: string; id: string };
-
-    const parsed = changeOrientationSchema.safeParse(req.body);
-    if (!parsed.success) {
-      return res.status(400).json({
-        error: "Invalid input",
-        details: parsed.error.errors,
-      });
-    }
-    const { versionId, isVertical } = parsed.data;
+    const { versionId, isVertical } = req.body as {
+      versionId: string;
+      isVertical: boolean;
+    };
 
     const userId = (session.user as CustomUser).id;
 
@@ -64,27 +53,14 @@ export default async function handle(
         return res.status(401).end("Unauthorized");
       }
 
-      try {
-        await prisma.documentVersion.update({
-          where: {
-            id: versionId,
-            documentId: docId,
-          },
-          data: {
-            isVertical,
-          },
-        });
-      } catch (err) {
-        if (
-          err instanceof Prisma.PrismaClientKnownRequestError &&
-          err.code === "P2025"
-        ) {
-          return res
-            .status(404)
-            .json({ message: "Document version not found" });
-        }
-        throw err;
-      }
+      await prisma.documentVersion.update({
+        where: {
+          id: versionId,
+        },
+        data: {
+          isVertical,
+        },
+      });
 
       await fetch(
         `${process.env.NEXTAUTH_URL}/api/revalidate?secret=${process.env.REVALIDATE_TOKEN}&documentId=${docId}`,

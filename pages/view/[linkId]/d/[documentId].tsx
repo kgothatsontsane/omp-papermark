@@ -11,25 +11,13 @@ import { ExtendedRecordMap } from "notion-types";
 import { parsePageId } from "notion-utils";
 import z from "zod";
 
-import { fetchLinkDataById } from "@/lib/api/links/link-data";
-import { getFeatureFlags } from "@/lib/featureFlags";
-import { useUrlPasscode } from "@/lib/hooks/use-url-passcode";
-import {
-  buildViewerI18nPageProps,
-  type ViewerI18nPageProps,
-} from "@/lib/i18n/viewer-page-props";
 import notion from "@/lib/notion";
-import {
-  addSignedUrls,
-  fetchMissingPageReferences,
-  normalizeRecordMap,
-} from "@/lib/notion/utils";
+import { addSignedUrls } from "@/lib/notion/utils";
 import { CustomUser, LinkWithDataroomDocument, NotionTheme } from "@/lib/types";
 
 import LoadingSpinner from "@/components/ui/loading-spinner";
 import CustomMetaTag from "@/components/view/custom-metatag";
 import DataroomDocumentView from "@/components/view/dataroom/dataroom-document-view";
-import { ViewerI18nProvider } from "@/components/view/viewer-i18n-provider";
 
 type DataroomDocumentLinkData = {
   linkType: "DATAROOM_LINK";
@@ -37,7 +25,7 @@ type DataroomDocumentLinkData = {
   brand: DataroomBrand | null;
 };
 
-type DataroomDocumentProps = Partial<ViewerI18nPageProps> & {
+type DataroomDocumentProps = {
   linkData: DataroomDocumentLinkData;
   notionData: {
     rootNotionPageId: string | null;
@@ -55,31 +43,24 @@ type DataroomDocumentProps = Partial<ViewerI18nPageProps> & {
   showPoweredByBanner: boolean;
   showAccountCreationSlide: boolean;
   useAdvancedExcelViewer: boolean;
-  hideFooterOnAccessForm: boolean;
+  useCustomAccessForm: boolean;
   logoOnAccessForm: boolean;
-  textSelectionEnabled?: boolean;
-  frozen?: boolean;
-  error?: boolean;
 };
 
-function DataroomDocumentViewPageInner({
-  frozen,
+export default function DataroomDocumentViewPage({
   linkData,
   notionData,
   meta,
   showPoweredByBanner,
   showAccountCreationSlide,
   useAdvancedExcelViewer,
-  hideFooterOnAccessForm,
+  useCustomAccessForm,
   logoOnAccessForm,
-  textSelectionEnabled,
-  error,
 }: DataroomDocumentProps) {
   const router = useRouter();
   const { data: session, status } = useSession();
   const [storedToken, setStoredToken] = useState<string | undefined>(undefined);
   const [storedEmail, setStoredEmail] = useState<string | undefined>(undefined);
-  const urlPasscode = useUrlPasscode();
 
   useEffect(() => {
     // Retrieve token from cookie on component mount
@@ -101,18 +82,6 @@ function DataroomDocumentViewPageInner({
     );
   }
 
-  if (frozen) {
-    return (
-      <NotFound message="This data room has been closed and is no longer available." />
-    );
-  }
-
-  if (error) {
-    return (
-      <NotFound message="Sorry, we had trouble loading this link. Please try again in a moment." />
-    );
-  }
-
   const {
     email: verifiedEmail,
     d: disableEditEmail,
@@ -124,7 +93,6 @@ function DataroomDocumentViewPageInner({
     previewToken?: string;
     preview?: string;
   };
-  const disableEditPassword = !!disableEditEmail && !!urlPasscode;
   const { link, brand } = linkData;
 
   // Render the document view for DATAROOM_LINK
@@ -136,7 +104,8 @@ function DataroomDocumentViewPageInner({
           enableBranding={meta.enableCustomMetatag ?? false}
           title={
             meta.metaTitle ??
-            `${link?.dataroomDocument?.document?.name} | Powered by Papermark`
+            `${link?.dataroomDocument?.document?.name} | Powered by Papermark` ??
+            "Document powered by Papermark"
           }
           description={meta.metaDescription ?? null}
           imageUrl={meta.metaImage ?? null}
@@ -181,7 +150,8 @@ function DataroomDocumentViewPageInner({
         enableBranding={meta.enableCustomMetatag ?? false}
         title={
           meta.metaTitle ??
-          `${link?.dataroomDocument?.document?.name} | Powered by Papermark`
+          `${link?.dataroomDocument?.document?.name} | Powered by Papermark` ??
+          "Dataroom powered by Papermark"
         }
         description={meta.metaDescription ?? null}
         imageUrl={meta.metaImage ?? null}
@@ -197,29 +167,13 @@ function DataroomDocumentViewPageInner({
         useAdvancedExcelViewer={useAdvancedExcelViewer}
         previewToken={previewToken}
         disableEditEmail={!!disableEditEmail}
-        urlPasscode={urlPasscode}
-        disableEditPassword={disableEditPassword}
-        hideFooterOnAccessForm={hideFooterOnAccessForm}
+        useCustomAccessForm={useCustomAccessForm}
         logoOnAccessForm={logoOnAccessForm}
         token={storedToken}
         verifiedEmail={verifiedEmail}
         preview={!!preview}
-        textSelectionEnabled={textSelectionEnabled}
       />
     </>
-  );
-}
-
-export default function DataroomDocumentViewPage(props: DataroomDocumentProps) {
-  const locale = props.i18n?.locale ?? "en";
-  const resources = props.i18n?.resources ?? {};
-  return (
-    <ViewerI18nProvider
-      locale={locale}
-      resources={resources}
-    >
-      <DataroomDocumentViewPageInner {...props} />
-    </ViewerI18nProvider>
   );
 }
 
@@ -233,26 +187,11 @@ export async function getStaticProps(context: GetStaticPropsContext) {
   try {
     const linkId = z.string().cuid().parse(linkIdParam);
     const documentId = z.string().cuid().parse(documentIdParam);
-
-    // Fetch link data directly from database to avoid internal HTTP fetch
-    // which can be blocked by Vercel's edge protection (403 errors)
-    const result = await fetchLinkDataById({
-      linkId,
-      dataroomDocumentId: documentId,
-    });
-
-    if (result.status === "frozen") {
-      return {
-        props: { frozen: true },
-        revalidate: 10,
-      };
-    }
-
-    if (result.status !== "ok") {
-      return { notFound: true };
-    }
-
-    const { linkType, link, brand, publicMeta } = result;
+    const res = await fetch(
+      `${process.env.NEXTAUTH_URL}/api/links/${linkId}/documents/${documentId}`,
+    );
+    const { linkType, link, brand } =
+      (await res.json()) as DataroomDocumentLinkData;
 
     if (!link || !linkType) {
       return { notFound: true };
@@ -280,10 +219,6 @@ export async function getStaticProps(context: GetStaticPropsContext) {
 
       pageId = notionPageId;
       recordMap = await notion.getPage(pageId, { signFileUrls: false });
-      // Fetch missing page references that are embedded in rich text (e.g., table cells with multiple page links)
-      await fetchMissingPageReferences(recordMap);
-      // Normalize double-nested block structures from the Notion API
-      normalizeRecordMap(recordMap);
       // TODO: separately sign the file urls until PR merged and published; ref: https://github.com/NotionX/react-notion-x/issues/580#issuecomment-2542823817
       await addSignedUrls({ recordMap });
     }
@@ -292,20 +227,6 @@ export async function getStaticProps(context: GetStaticPropsContext) {
 
     const { advancedExcelEnabled, ...linkDocument } =
       linkData.dataroomDocument.document;
-
-    // Check feature flags
-    const featureFlags = await getFeatureFlags({ teamId: teamId || undefined });
-    const textSelectionEnabled = featureFlags.textSelection;
-    const logoOnAccessFormEnabled = featureFlags.logoOnAccessForm;
-    const hideFooterOnAccessFormEnabled = featureFlags.hideFooterOnAccessForm;
-
-    const defaultLanguage =
-      brand && "defaultLanguage" in brand ? brand.defaultLanguage : undefined;
-    const i18nProps = await buildViewerI18nPageProps(
-      typeof defaultLanguage === "string" || defaultLanguage === null
-        ? { defaultLanguage }
-        : null,
-    );
 
     return {
       props: {
@@ -330,27 +251,27 @@ export async function getStaticProps(context: GetStaticPropsContext) {
           theme,
         },
         meta: {
-          enableCustomMetatag: publicMeta.enableCustomMetatag,
-          metaTitle: publicMeta.metaTitle,
-          metaDescription: publicMeta.metaDescription,
-          metaImage: publicMeta.metaImage,
-          metaFavicon: publicMeta.metaFavicon,
+          enableCustomMetatag: link.enableCustomMetatag || false,
+          metaTitle: link.metaTitle,
+          metaDescription: link.metaDescription,
+          metaImage: link.metaImage,
+          metaFavicon: link.metaFavicon ?? "/favicon.ico",
           metaUrl: `https://www.papermark.com/view/${linkId}`,
         },
         showPoweredByBanner: false,
         showAccountCreationSlide: false,
         useAdvancedExcelViewer: advancedExcelEnabled,
-        hideFooterOnAccessForm: hideFooterOnAccessFormEnabled,
-        logoOnAccessForm: logoOnAccessFormEnabled,
-        textSelectionEnabled,
-        ...i18nProps,
+        useCustomAccessForm:
+          teamId === "cm0154tiv0000lr2t6nr5c6kp" ||
+          teamId === "clup33by90000oewh4rfvp2eg" ||
+          teamId === "cm76hfyvy0002q623hmen99pf",
+        logoOnAccessForm: teamId === "cm7nlkrhm0000qgh0nvyrrywr",
       },
-      revalidate: brand || recordMap ? 10 : 60,
+      revalidate: brand || recordMap ? 10 : false,
     };
   } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    console.error("Fetching error:", message);
-    return { props: { error: true }, revalidate: 30 };
+    console.error("Fetching error:", error);
+    return { notFound: true };
   }
 }
 

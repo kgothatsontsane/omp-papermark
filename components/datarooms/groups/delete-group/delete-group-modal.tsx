@@ -18,6 +18,7 @@ import { Input } from "@/components/ui/input";
 import { Modal } from "@/components/ui/modal";
 
 import { useAnalytics } from "@/lib/analytics";
+import { useMediaQuery } from "@/lib/utils/use-media-query";
 
 function DeleteGroupModal({
   dataroomId,
@@ -64,16 +65,15 @@ function DeleteGroupModal({
     });
   }
 
+  const { isMobile } = useMediaQuery();
+
   return (
     <Modal
       showModal={showDeleteGroupModal}
       setShowModal={setShowDeleteGroupModal}
     >
       <div className="flex flex-col items-center justify-center space-y-3 border-b border-border bg-white px-4 py-4 pt-8 dark:border-gray-900 dark:bg-gray-900 sm:px-8">
-        <CardTitle>Delete Data Room Group</CardTitle>
-        <CardDescription className="text-md font-semibold text-foreground">
-          {groupName}
-        </CardDescription>
+        <CardTitle>Delete Group</CardTitle>
         <CardDescription>
           Warning: This will permanently delete your dataroom group, all
           associated links and their respective views.
@@ -93,23 +93,22 @@ function DeleteGroupModal({
       >
         <div>
           <label
-            htmlFor="verification"
-            className="block text-sm text-muted-foreground"
+            htmlFor="group-name"
+            className="block text-sm font-medium text-muted-foreground"
           >
-            To verify, type{" "}
-            <span className="font-semibold text-foreground">
-              confirm delete group
-            </span>{" "}
-            below
+            Enter the group name{" "}
+            <span className="font-semibold text-foreground">{groupName}</span>{" "}
+            to continue:
           </label>
           <div className="relative mt-1 rounded-md shadow-sm">
             <Input
               type="text"
-              name="verification"
-              id="verification"
-              pattern="confirm delete group"
-              required
+              name="group-name"
+              id="group-name"
+              autoFocus={!isMobile}
               autoComplete="off"
+              required
+              pattern={groupName}
               className="bg-white dark:border-gray-500 dark:bg-gray-800 focus:dark:bg-transparent"
             />
           </div>

@@ -11,7 +11,7 @@ import {
   Section,
   Tailwind,
   Text,
-} from "react-email";
+} from "@react-email/components";
 
 const Onboarding1Email = () => {
   const previewText = `Share documents not attachments`;
@@ -36,21 +36,21 @@ const Onboarding1Email = () => {
               With Papermark you can upload different kind of documents and turn
               them into shareable links:
             </Text>
-            <ul className="list-inside list-disc text-sm">
-              <li>PDFs</li>
-              <li>Microsoft Office files</li>
-              <li>Excel, CSV files</li>
-              <li>Notion via link</li>
-            </ul>
             <Text className="text-sm">
-              (All Notion changes are instantly reflected in shared documents)
+              <ul className="list-inside list-disc text-sm">
+                <li>PDFs</li>
+                <li>Excel, CSV files</li>
+                <li>Notion via link</li>
+              </ul>
+              <Text className="text-sm">
+                (All Notion changes are instantly reflected in shared documents)
+              </Text>
             </Text>
             <Text className="text-sm">
-              You can also use{" "}
-              <span className="font-semibold">Bulk upload 💫</span> Just drop
-              multiple documents at once
+              You can also use <strong>Bulk upload 💫</strong> Just drop many
+              documents at once
             </Text>
-            <Section className="my-8 text-center">
+            <Section className="mb-[32px] mt-[32px] text-center">
               <Button
                 className="rounded bg-black text-center text-xs font-semibold text-white no-underline"
                 href={`https://app.papermark.com/documents?utm_source=onboarding&utm_medium=email&utm_campaign=20240723&utm_content=upload_documents`}
@@ -63,10 +63,16 @@ const Onboarding1Email = () => {
               After sharing start tracking document activity on each page
             </Text>
             <Hr />
-            <Section className="text-gray-400">
+            <Section className="mt-8 text-gray-400">
               <Text className="text-xs">
-                © {new Date().getFullYear()} Papermark, Inc. All rights
-                reserved.
+                © {new Date().getFullYear()}{" "}
+                <a
+                  href="https://www.papermark.com"
+                  className="text-gray-400 no-underline hover:text-gray-400"
+                  target="_blank"
+                >
+                  papermark.com
+                </a>
               </Text>
               <Text className="text-xs">
                 If you have any feedback or questions about this email, simply

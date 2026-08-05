@@ -3,7 +3,6 @@ import { useRouter } from "next/router";
 import { useState } from "react";
 
 import { useTeam } from "@/context/team-context";
-import { SnowflakeIcon } from "lucide-react";
 import { toast } from "sonner";
 import { mutate } from "swr";
 
@@ -17,7 +16,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 
-import useDataroomsSimple from "@/lib/swr/use-datarooms-simple";
+import useDatarooms from "@/lib/swr/use-datarooms";
 
 import {
   Select,
@@ -49,7 +48,7 @@ export function AddFolderToDataroomModal({
   const teamInfo = useTeam();
   const teamId = teamInfo?.currentTeam?.id;
 
-  const { datarooms } = useDataroomsSimple();
+  const { datarooms } = useDatarooms();
 
   const handleSubmit = async (event: any) => {
     event.preventDefault();
@@ -123,18 +122,12 @@ export function AddFolderToDataroomModal({
               <SelectItem
                 key={dataroom.id}
                 value={dataroom.id}
-                disabled={dataroom.id === dataroomId || dataroom.isFrozen}
+                disabled={dataroom.id === dataroomId}
                 className="break-words"
               >
-                <span className="flex items-center gap-1.5 break-words line-clamp-1">
-                  {dataroom.isFrozen && (
-                    <SnowflakeIcon className="h-3.5 w-3.5 shrink-0 text-blue-500" />
-                  )}
-                  <span className={dataroom.isFrozen ? "text-muted-foreground" : ""}>
-                    {dataroom.name}
-                    {dataroom.id === dataroomId ? " (current)" : ""}
-                    {dataroom.isFrozen ? " (frozen)" : ""}
-                  </span>
+                <span className="break-words line-clamp-1">
+                  {dataroom.name}
+                  {dataroom.id === dataroomId ? " (current)" : ""}
                 </span>
               </SelectItem>
             ))}

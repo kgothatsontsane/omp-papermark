@@ -45,10 +45,7 @@ export const newId = new IdGenerator({
   webhook: "wh",
   webhookEvent: "evt",
   webhookSecret: "whsec",
-  token: "pmk", // legacy dashboard token prefix (still accepted)
-  tokenLive: "pm_live",
+  token: "pmk",
   clickEvent: "click",
   preset: "preset",
-  pending: "pending", // for pending uploads
-  upload: "upload", // opaque public upload session handle
 }).id;

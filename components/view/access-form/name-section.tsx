@@ -1,31 +1,24 @@
 import { Dispatch, SetStateAction, useEffect } from "react";
-import type { CSSProperties } from "react";
 
 import { Brand, DataroomBrand } from "@prisma/client";
-import { useTranslation } from "react-i18next";
+
+import { determineTextColor } from "@/lib/utils/determine-text-color";
 
 import { DEFAULT_ACCESS_FORM_TYPE } from ".";
-import { useAccessFormTheme } from "./access-form-theme";
 
 export default function NameSection({
   data,
   setData,
   brand,
-  disableEditName,
 }: {
   data: DEFAULT_ACCESS_FORM_TYPE;
   setData: Dispatch<SetStateAction<DEFAULT_ACCESS_FORM_TYPE>>;
   brand?: Partial<Brand> | Partial<DataroomBrand> | null;
-  disableEditName?: boolean;
 }) {
   const { name } = data;
-  const theme = useAccessFormTheme();
-  const { t } = useTranslation("access-form");
 
   useEffect(() => {
-    if (disableEditName) {
-      return;
-    }
+    // Load name from localStorage when the component mounts
     const storedName = window.localStorage.getItem("papermark.name");
     if (storedName) {
       setData((prevData) => ({
@@ -33,11 +26,13 @@ export default function NameSection({
         name: storedName,
       }));
     }
-  }, [setData, disableEditName]);
+  }, [setData]);
 
   const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newName = e.target.value;
+    // Store the new email in localStorage
     window.localStorage.setItem("papermark.name", newName);
+    // Update the state
     setData({ ...data, name: newName });
   };
 
@@ -46,9 +41,11 @@ export default function NameSection({
       <label
         htmlFor="name"
         className="block text-sm font-medium leading-6 text-white"
-        style={{ color: theme.textColor }}
+        style={{
+          color: determineTextColor(brand?.accentColor),
+        }}
       >
-        {t("fields.name.label", "Name")}
+        Name
       </label>
       <input
         name="name"
@@ -57,19 +54,15 @@ export default function NameSection({
         autoCorrect="off"
         autoComplete="off"
         autoFocus
-        translate="no"
-        className="notranslate flex w-full cursor-text rounded-md border-0 bg-black py-1.5 text-white shadow-sm ring-1 ring-inset ring-gray-600 placeholder:text-[var(--access-placeholder)] focus:ring-2 focus:ring-inset focus:ring-[var(--access-input-focus)] disabled:cursor-not-allowed disabled:opacity-90 sm:text-sm sm:leading-6"
+        className="flex w-full rounded-md border-0 bg-black py-1.5 text-white shadow-sm ring-1 ring-inset ring-gray-600 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-gray-300 sm:text-sm sm:leading-6"
         style={{
-          backgroundColor: theme.controlBgColor,
-          borderColor: theme.controlBorderColor,
-          "--access-placeholder": theme.controlPlaceholderColor,
-          "--access-input-focus": theme.controlBorderStrongColor,
-          color: disableEditName ? theme.subtleTextColor : theme.textColor,
-        } as CSSProperties}
+          backgroundColor:
+            brand && brand.accentColor ? brand.accentColor : "black",
+          color: determineTextColor(brand?.accentColor),
+        }}
         value={name || ""}
-        placeholder={t("fields.name.placeholder", "Enter your full name")}
+        placeholder="Enter your full name"
         onChange={handleNameChange}
-        disabled={disableEditName}
         aria-invalid="true"
         data-1p-ignore
       />

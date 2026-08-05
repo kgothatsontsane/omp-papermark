@@ -20,38 +20,38 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     return res.status(400).json({ error: "Invalid teamId" });
   }
 
-  const userId = (session.user as CustomUser).id;
-
-  const teamAccess = await prisma.userTeam.findUnique({
+  const team = await prisma.team.findFirst({
     where: {
-      userId_teamId: {
-        userId,
-        teamId,
+      id: teamId,
+      users: {
+        some: {
+          userId: (session.user as CustomUser).id,
+        },
       },
     },
-    select: { role: true },
+    include: {
+      users: true,
+    },
   });
 
-  if (!teamAccess) {
+  if (!team) {
     return res.status(404).json({ error: "Team not found" });
   }
 
-  if (req.method === "GET") {
-    const team = await prisma.team.findUnique({
-      where: { id: teamId },
-      select: { globalBlockList: true },
-    });
+  const isUserAdminOrManager = team.users.some(
+    (user) =>
+      (user.role === "ADMIN" || user.role === "MANAGER") && user.userId === (session.user as CustomUser).id,
+  );
 
-    return res.status(200).json(team?.globalBlockList || []);
+  if (!isUserAdminOrManager) {
+    return res.status(403).json({ error: "Forbidden" });
+  }
+
+  if (req.method === "GET") {
+    return res.status(200).json(team.globalBlockList || []);
   }
 
   if (req.method === "PUT") {
-    if (teamAccess.role !== "ADMIN" && teamAccess.role !== "MANAGER") {
-      return res.status(403).json({
-        error: "Only admins and managers can manage the block list.",
-      });
-    }
-
     try {
       const { blockList } = req.body;
 
@@ -62,8 +62,12 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       const uniqueBlockList = sanitizeList(blockList.join("\n"), "both");
 
       await prisma.team.update({
-        where: { id: teamId },
-        data: { globalBlockList: uniqueBlockList },
+        where: {
+          id: teamId,
+        },
+        data: {
+          globalBlockList: uniqueBlockList,
+        },
       });
 
       return res.status(200).json({ message: "Global block list updated" });

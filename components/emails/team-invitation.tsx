@@ -11,15 +11,13 @@ import {
   Section,
   Tailwind,
   Text,
-} from "react-email";
-
-import { Footer } from "./shared/footer";
+} from "@react-email/components";
 
 export default function TeamInvitation({
   senderName,
   senderEmail,
   teamName,
-  url = "https://app.papermark.com",
+  url,
 }: {
   senderName: string;
   senderEmail: string;
@@ -36,7 +34,7 @@ export default function TeamInvitation({
             <Text className="mx-0 mb-8 mt-4 p-0 text-center text-2xl font-normal">
               <span className="font-bold tracking-tighter">Papermark</span>
             </Text>
-            <Text className="mx-0 mb-8 mt-4 p-0 text-center text-xl">
+            <Text className="font-seminbold mx-0 mb-8 mt-4 p-0 text-center text-xl">
               {`Join ${teamName} on Papermark`}
             </Text>
             <Text className="text-sm leading-6 text-black">Hey!</Text>
@@ -61,7 +59,23 @@ export default function TeamInvitation({
             <Text className="max-w-sm flex-wrap break-words font-medium text-purple-600 no-underline">
               {url.replace(/^https?:\/\//, "")}
             </Text>
-            <Footer />
+            <Hr />
+            <Section className="mt-8 text-gray-400">
+              <Text className="text-xs">
+                © {new Date().getFullYear()}{" "}
+                <a
+                  href="https://www.papermark.com"
+                  className="text-gray-400 no-underline hover:text-gray-400"
+                  target="_blank"
+                >
+                  papermark.com
+                </a>
+              </Text>
+              <Text className="text-xs">
+                If you have any feedback or questions about this email, simply
+                reply to it.
+              </Text>
+            </Section>
           </Container>
         </Body>
       </Tailwind>

@@ -2,8 +2,6 @@ import { useState } from "react";
 
 import { EyeIcon, EyeOffIcon } from "lucide-react";
 
-import { cn } from "@/lib/utils";
-
 import { Button } from "@/components/ui/button";
 import { ButtonTooltip } from "@/components/ui/tooltip";
 
@@ -16,7 +14,6 @@ interface DocumentPreviewButtonProps {
     type?: string | null;
     numPages?: number | null;
   };
-  advancedExcelEnabled?: boolean;
   isProcessing?: boolean;
   variant?: "ghost" | "outline" | "default";
   size?: "sm" | "default" | "lg" | "icon";
@@ -28,7 +25,6 @@ interface DocumentPreviewButtonProps {
 export function DocumentPreviewButton({
   documentId,
   primaryVersion,
-  advancedExcelEnabled = false,
   isProcessing = false,
   variant = "ghost",
   size = "icon",
@@ -48,9 +44,7 @@ export function DocumentPreviewButton({
     // Support image documents
     if (primaryVersion.type === "image") return true;
 
-    // Support Excel sheets with advanced mode enabled
-    if (primaryVersion.type === "sheet" && advancedExcelEnabled) return true;
-
+    // Don't support sheets, notion, videos, etc.
     return false;
   };
 
@@ -67,29 +61,18 @@ export function DocumentPreviewButton({
     setIsPreviewOpen(true);
   };
 
-  // Stop propagation on the container to prevent parent click handlers from firing
-  const handleContainerClick = (e: React.MouseEvent<HTMLDivElement>) => {
-    e.stopPropagation();
-  };
-
   const button = (
     <Button
       variant={variant}
       size={size}
       onClick={handlePreviewClick}
       disabled={isProcessing}
-      className={cn(
-        size !== "icon" &&
-          "max-md:h-8 max-md:w-8 max-md:min-w-8 max-md:shrink-0 max-md:gap-0 max-md:px-0 max-md:[&_svg]:size-4",
-        className,
-      )}
+      className={className}
     >
       {children || (
         <>
           <EyeIcon className="h-4 w-4" />
-          {size !== "icon" && (
-            <span className="ml-1 hidden md:inline">Preview</span>
-          )}
+          {size !== "icon" && <span className="ml-1">Preview</span>}
         </>
       )}
     </Button>
@@ -110,14 +93,14 @@ export function DocumentPreviewButton({
   );
 
   return (
-    <div onClick={handleContainerClick} onMouseDown={handleContainerClick}>
+    <>
       {wrappedButton}
       <DocumentPreviewModal
         documentId={documentId}
         isOpen={isPreviewOpen}
         onClose={() => setIsPreviewOpen(false)}
       />
-    </div>
+    </>
   );
 }
 

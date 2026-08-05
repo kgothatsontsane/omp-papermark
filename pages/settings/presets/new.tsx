@@ -1,9 +1,10 @@
 import { useRouter } from "next/router";
 
+
+
 import { FormEvent, useState } from "react";
 
 import { useTeam } from "@/context/team-context";
-import ConfidentialViewSection from "@/ee/features/permissions/components/confidential-view/confidential-view-section";
 import { PlanEnum } from "@/ee/stripe/constants";
 import { LinkType } from "@prisma/client";
 import { ArrowLeft } from "lucide-react";
@@ -31,7 +32,6 @@ import ExpirationInSection from "@/components/links/link-sheet/expirationIn-sect
 import { LinkUpgradeOptions } from "@/components/links/link-sheet/link-options";
 import OGSection from "@/components/links/link-sheet/og-section";
 import PasswordSection from "@/components/links/link-sheet/password-section";
-import { ProBannerSection } from "@/components/links/link-sheet/pro-banner-section";
 import ScreenshotProtectionSection from "@/components/links/link-sheet/screenshot-protection-section";
 import WatermarkSection from "@/components/links/link-sheet/watermark-section";
 import Preview from "@/components/settings/og-preview";
@@ -57,8 +57,13 @@ export default function NewPreset() {
     name: "",
   });
 
-  const { isPro, isBusiness, isDatarooms, isDataroomsPlus, isTrial } =
-    usePlan();
+  const {
+    isPro,
+    isBusiness,
+    isDatarooms,
+    isDataroomsPlus,
+    isTrial,
+  } = usePlan();
   const { limits } = useLimits();
   const allowAdvancedLinkControls = limits
     ? limits?.advancedLinkControlsOnPro
@@ -125,7 +130,6 @@ export default function NewPreset() {
           expiresAt: data.expiresAt,
           expiresIn: data.expiresIn || null,
           enableScreenshotProtection: data.enableScreenshotProtection,
-          enableConfidentialView: data.enableConfidentialView,
           enableAgreement: data.enableAgreement,
           agreementId: data.agreementId,
           enableCustomFields: data.customFields
@@ -133,7 +137,6 @@ export default function NewPreset() {
             : false,
           customFields: data.customFields,
           enableNotification: data.enableNotification,
-          showBanner: data.showBanner,
         }),
       });
 
@@ -290,14 +293,6 @@ export default function NewPreset() {
                   }
                   handleUpgradeStateChange={handleUpgradeStateChange}
                 />
-                <ConfidentialViewSection
-                  data={data}
-                  setData={setData}
-                  isAllowed={
-                    isTrial || isBusiness || isDatarooms || isDataroomsPlus
-                  }
-                  handleUpgradeStateChange={handleUpgradeStateChange}
-                />
                 <AgreementSection
                   data={data}
                   setData={setData}
@@ -316,22 +311,6 @@ export default function NewPreset() {
                   }
                   handleUpgradeStateChange={handleUpgradeStateChange}
                   presets={null}
-                />
-              </div>
-
-              <div className="rounded-lg border p-6">
-                <h3 className="mb-4 text-lg font-medium">Branding</h3>
-                <ProBannerSection
-                  data={data}
-                  setData={setData}
-                  isAllowed={
-                    isTrial ||
-                    (isPro && allowAdvancedLinkControls) ||
-                    isBusiness ||
-                    isDatarooms ||
-                    isDataroomsPlus
-                  }
-                  handleUpgradeStateChange={handleUpgradeStateChange}
                 />
               </div>
             </div>

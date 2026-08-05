@@ -2,12 +2,12 @@ import { NextApiRequest, NextApiResponse } from "next";
 
 import { PutObjectCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
+import slugify from "@sindresorhus/slugify";
 import { getServerSession } from "next-auth";
 import path from "node:path";
 
 import { ONE_HOUR, ONE_SECOND } from "@/lib/constants";
 import { getTeamS3ClientAndConfig } from "@/lib/files/aws-client";
-import { buildContentDisposition, safeSlugify } from "@/lib/utils";
 import prisma from "@/lib/prisma";
 import { CustomUser } from "@/lib/types";
 
@@ -53,13 +53,8 @@ export default async function handler(
     // Get the basename and extension for the file
     const { name, ext } = path.parse(fileName);
 
-    const slugifiedName = safeSlugify(name) + ext;
-    const originalFileName = `${name}${ext}`;
+    const slugifiedName = slugify(name) + ext;
     const key = `${team.id}/${docId}/${slugifiedName}`;
-    const contentDisposition = buildContentDisposition(
-      originalFileName,
-      slugifiedName,
-    );
 
     const { client, config } = await getTeamS3ClientAndConfig(team.id);
 
@@ -67,16 +62,14 @@ export default async function handler(
       Bucket: config.bucket,
       Key: key,
       ContentType: contentType,
-      ContentDisposition: contentDisposition,
+      ContentDisposition: `attachment; filename="${slugifiedName}"`,
     });
 
     const url = await getSignedUrl(client, putObjectCommand, {
       expiresIn: ONE_HOUR / ONE_SECOND,
     });
 
-    return res
-      .status(200)
-      .json({ url, key, docId, fileName: slugifiedName, contentDisposition });
+    return res.status(200).json({ url, key, docId, fileName: slugifiedName });
   } catch (error) {
     return res.status(500).json({ error: "Internal server error" });
   }

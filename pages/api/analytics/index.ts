@@ -4,7 +4,6 @@ import { addDays } from "date-fns";
 import { getServerSession } from "next-auth";
 import { z } from "zod";
 
-import { enforceDataroomMemberScope } from "@/lib/api/rbac/guard";
 import prisma from "@/lib/prisma";
 import {
   getTotalDocumentDuration,
@@ -70,30 +69,11 @@ export default async function handler(
           },
         },
       },
-      select: {
-        id: true,
-        plan: true,
-        pauseStartsAt: true,
-        timezone: true,
-      },
     });
 
     if (!team) {
       return res.status(401).json({ error: "Unauthorized" });
     }
-
-    // Team-wide analytics is not part of the dataroom-scoped surface.
-    const denied = await enforceDataroomMemberScope({
-      userId: (session.user as CustomUser).id,
-      teamId,
-      res,
-    });
-    if (denied) return;
-
-    // Get pause date filter if team is paused
-    const pauseStartsAt = team.pauseStartsAt;
-    // Get team timezone for analytics display (defaults to UTC)
-    const timezone = team.timezone || "Etc/UTC";
 
     // Check if free plan user is trying to access data beyond 30 days
     if (interval === "custom" && team.plan.includes("free")) {
@@ -168,7 +148,8 @@ export default async function handler(
 
     switch (type) {
       case "overview": {
-        const [viewStats, graphData, linkCount] = await Promise.all([
+        const [viewStats, graphData] = await Promise.all([
+          // Get view stats with relational counts
           prisma.view.findMany({
             where: {
               teamId,
@@ -184,12 +165,11 @@ export default async function handler(
               viewerId: true,
             },
           }),
-          // Note: We use timezone-aware date truncation to ensure dates are grouped
-          // correctly based on the team's timezone setting, avoiding one-day offset issues
+          // Get views data for graph grouped by day
           interval === "24h"
             ? prisma.$queryRaw`
                 SELECT 
-                  DATE_TRUNC('hour', "viewedAt" AT TIME ZONE 'UTC' AT TIME ZONE ${timezone}) as date,
+                  DATE_TRUNC('hour', "viewedAt") as date,
                   COUNT(*) as views
                 FROM "View"
                 WHERE 
@@ -197,13 +177,13 @@ export default async function handler(
                   AND "viewedAt" >= ${startDate}
                   AND "isArchived" = false
                   AND "viewType" = 'DOCUMENT_VIEW'
-                GROUP BY 1
+                GROUP BY DATE_TRUNC('hour', "viewedAt")
                 ORDER BY date ASC
               `
             : interval === "custom"
               ? prisma.$queryRaw`
                 SELECT 
-                  DATE_TRUNC('day', "viewedAt" AT TIME ZONE 'UTC' AT TIME ZONE ${timezone}) as date,
+                  DATE_TRUNC('day', "viewedAt") as date,
                   COUNT(*) as views
                 FROM "View"
                 WHERE 
@@ -212,12 +192,12 @@ export default async function handler(
                   AND "viewedAt" <= ${endDate}
                   AND "isArchived" = false
                   AND "viewType" = 'DOCUMENT_VIEW'
-                GROUP BY 1
+                GROUP BY DATE_TRUNC('day', "viewedAt")
                 ORDER BY date ASC
               `
               : prisma.$queryRaw`
                 SELECT 
-                  DATE_TRUNC('day', "viewedAt" AT TIME ZONE 'UTC' AT TIME ZONE ${timezone}) as date,
+                  DATE_TRUNC('day', "viewedAt") as date,
                   COUNT(*) as views
                 FROM "View"
                 WHERE 
@@ -225,14 +205,12 @@ export default async function handler(
                   AND "viewedAt" >= ${startDate}
                   AND "isArchived" = false
                   AND "viewType" = 'DOCUMENT_VIEW'
-                GROUP BY 1
+                GROUP BY DATE_TRUNC('day', "viewedAt")
                 ORDER BY date ASC
               `,
-          prisma.link.count({
-            where: { teamId, deletedAt: null },
-          }),
         ]);
 
+        // Calculate counts from viewStats
         const uniqueLinks = new Set(viewStats.map((view) => view.linkId));
         const uniqueDocuments = new Set(
           viewStats.map((view) => view.documentId),
@@ -252,8 +230,6 @@ export default async function handler(
               views: Number(point.views),
             }),
           ),
-          timezone,
-          hasLinks: linkCount > 0,
         });
       }
 
@@ -261,6 +237,7 @@ export default async function handler(
         const links = await prisma.link.findMany({
           where: {
             teamId,
+            isArchived: false,
             views: {
               some: {
                 viewedAt: intervalFilter,
@@ -268,7 +245,6 @@ export default async function handler(
                 isArchived: false,
               },
             },
-            deletedAt: null,
           },
           select: {
             id: true,
@@ -452,23 +428,12 @@ export default async function handler(
       }
 
       case "visitors": {
-        // Build interval filter that respects pause date
-        // Use the earlier of endDate or pauseStartsAt as the effective upper bound
-        const effectiveVisitorsEndDate =
-          pauseStartsAt && pauseStartsAt < endDate ? pauseStartsAt : endDate;
-        const visitorsIntervalFilter: any = {
-          gte: startDate,
-          ...(pauseStartsAt && pauseStartsAt < endDate
-            ? { lt: effectiveVisitorsEndDate }
-            : { lte: effectiveVisitorsEndDate }),
-        };
-
         const viewers = await prisma.viewer.findMany({
           where: {
             teamId,
             views: {
               some: {
-                viewedAt: visitorsIntervalFilter,
+                viewedAt: intervalFilter,
                 isArchived: false,
                 viewType: "DOCUMENT_VIEW",
               },
@@ -481,27 +446,12 @@ export default async function handler(
               },
               where: {
                 viewType: "DOCUMENT_VIEW",
-                viewedAt: visitorsIntervalFilter,
+                viewedAt: intervalFilter,
                 isArchived: false,
               },
             },
           },
         });
-
-        // Count hidden views from pause (clamp pauseStartsAt to startDate if it's earlier)
-        const hiddenFromPause = pauseStartsAt
-          ? await prisma.view.count({
-              where: {
-                teamId,
-                viewedAt: {
-                  gte: pauseStartsAt < startDate ? startDate : pauseStartsAt,
-                  lte: endDate,
-                },
-                isArchived: false,
-                viewType: "DOCUMENT_VIEW",
-              },
-            })
-          : 0;
 
         // Transform the data to match the table requirements
         const transformedVisitors = await Promise.all(
@@ -529,11 +479,6 @@ export default async function handler(
               console.error("Error fetching Tinybird data:", error);
             }
 
-            // Get the name from the most recent view that has a name
-            const viewerName = viewer.views.find(
-              (v) => v.viewerName,
-            )?.viewerName;
-
             return {
               email: viewer.email,
               viewerId: viewer.id,
@@ -542,33 +487,18 @@ export default async function handler(
               uniqueDocuments: uniqueDocuments.size,
               verified: viewer.verified,
               totalDuration,
-              viewerName: viewerName || null,
             };
           }),
         );
 
-        return res.status(200).json({
-          visitors: transformedVisitors,
-          hiddenFromPause,
-        });
+        return res.status(200).json(transformedVisitors);
       }
 
       case "views": {
-        // Build interval filter that respects pause date
-        // Use the earlier of endDate or pauseStartsAt as the effective upper bound
-        const effectiveViewsEndDate =
-          pauseStartsAt && pauseStartsAt < endDate ? pauseStartsAt : endDate;
-        const viewsIntervalFilter: any = {
-          gte: startDate,
-          ...(pauseStartsAt && pauseStartsAt < endDate
-            ? { lt: effectiveViewsEndDate }
-            : { lte: effectiveViewsEndDate }),
-        };
-
         const views = await prisma.view.findMany({
           where: {
             teamId,
-            viewedAt: viewsIntervalFilter,
+            viewedAt: intervalFilter,
             isArchived: false,
             viewType: "DOCUMENT_VIEW",
           },
@@ -600,21 +530,6 @@ export default async function handler(
             viewedAt: "desc",
           },
         });
-
-        // Count hidden views from pause (clamp pauseStartsAt to startDate if it's earlier)
-        const hiddenFromPause = pauseStartsAt
-          ? await prisma.view.count({
-              where: {
-                teamId,
-                viewedAt: {
-                  gte: pauseStartsAt < startDate ? startDate : pauseStartsAt,
-                  lte: endDate,
-                },
-                isArchived: false,
-                viewType: "DOCUMENT_VIEW",
-              },
-            })
-          : 0;
 
         // Transform the data to match the table requirements
         const transformedViews = await Promise.all(
@@ -668,10 +583,7 @@ export default async function handler(
           }),
         );
 
-        return res.status(200).json({
-          views: transformedViews,
-          hiddenFromPause,
-        });
+        return res.status(200).json(transformedViews);
       }
 
       default: {

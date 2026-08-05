@@ -2,7 +2,7 @@ import { NextApiRequest, NextApiResponse } from "next";
 
 import { stripeInstance } from "@/ee/stripe";
 import { isOldAccount } from "@/ee/stripe/utils";
-import { authOptions } from "@/lib/auth/auth-options";
+import { authOptions } from "@/pages/api/auth/[...nextauth]";
 import { waitUntil } from "@vercel/functions";
 import { getServerSession } from "next-auth/next";
 
@@ -62,10 +62,7 @@ export async function handleRoute(req: NextApiRequest, res: NextApiResponse) {
           stripe.subscriptions.update(team.subscriptionId, {
             cancel_at_period_end: true,
           }),
-          // Delete discount if one exists - catch errors since subscription may not have a discount
-          stripe.subscriptions.deleteDiscount(team.subscriptionId).catch(() => {
-            // Ignore error - subscription may not have a discount applied
-          }),
+          stripe.subscriptions.deleteDiscount(team.subscriptionId),
           prisma.team.update({
             where: { id: teamId },
             data: {

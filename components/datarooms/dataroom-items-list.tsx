@@ -40,10 +40,7 @@ import { useMediaQuery } from "@/lib/utils/use-media-query";
 
 import { useRemoveDataroomItemsModal } from "@/components/datarooms/actions/remove-document-modal";
 import DataroomDocumentCard from "@/components/datarooms/dataroom-document-card";
-import {
-  SetUnifiedPermissionsModal,
-  type UnifiedPermissionItem,
-} from "@/components/datarooms/groups/set-unified-permissions-modal";
+import { SetUnifiedPermissionsModal } from "@/components/datarooms/groups/set-unified-permissions-modal";
 import { useDeleteFolderModal } from "@/components/documents/actions/delete-folder-modal";
 import { DraggableItem } from "@/components/documents/drag-and-drop/draggable-item";
 import { DroppableFolder } from "@/components/documents/drag-and-drop/droppable-folder";
@@ -53,12 +50,11 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Portal } from "@/components/ui/portal";
 import { ButtonTooltip } from "@/components/ui/tooltip";
-import {
-  useUploadCallbacks,
-  useUploadProgress,
-} from "@/context/upload-progress-context";
-
-import UploadZone from "@/components/upload-zone";
+import { UploadNotificationDrawer } from "@/components/upload-notification";
+import UploadZone, {
+  RejectedFile,
+  UploadState,
+} from "@/components/upload-zone";
 
 import { itemsMessage } from "./folders/utils";
 import { MoveToDataroomFolderModal } from "./move-dataroom-folder-modal";
@@ -88,20 +84,18 @@ export function DataroomItemsList({
   const { isMobile } = useMediaQuery();
   const { applyPermissions } = useDataroomPermissions();
 
-  const { setRejectedFiles, cancelledItemIdsRef } = useUploadProgress();
-  const {
-    onTraversalStart,
-    onUploadBatchStart,
-    onUploadBatchUpdate,
-    onUploadRejected,
-    onUploadAborted,
-  } = useUploadCallbacks();
-
+  const [uploads, setUploads] = useState<UploadState[]>([]);
+  const [rejectedFiles, setRejectedFiles] = useState<RejectedFile[]>([]);
   const [showGroupPermissions, setShowGroupPermissions] = useState(false);
-  const [permissionItems, setPermissionItems] = useState<
-    UnifiedPermissionItem[]
+  const [uploadedFiles, setUploadedFiles] = useState<
+    {
+      documentId: string;
+      dataroomDocumentId: string;
+      fileName: string;
+    }[]
   >([]);
 
+  const [showDrawer, setShowDrawer] = useState(false);
   const [moveFolderOpen, setMoveFolderOpen] = useState<boolean>(false);
 
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
@@ -137,6 +131,9 @@ export function DataroomItemsList({
     [mixedItems, setFolderToDelete, setDeleteModalOpen, setSelectedFolders],
   );
 
+  const handleCloseDrawer = () => {
+    setShowDrawer(false);
+  };
 
   const { setShowRemoveDataroomItemModal, RemoveDataroomItemModal } =
     useRemoveDataroomItemsModal({
@@ -555,9 +552,7 @@ export function DataroomItemsList({
       fileName: string;
       documentId: string;
       dataroomDocumentId: string;
-      topLevelDataroomFolderId?: string;
     }[],
-    folders?: { dataroomFolderId: string; name: string }[],
   ) => {
     // Check if there are any groups to apply permissions to
     const hasAnyGroups =
@@ -567,84 +562,62 @@ export function DataroomItemsList({
     if (!hasAnyGroups) return;
 
     const documentIds = files.map((file) => file.documentId);
-    const groupStrategy =
-      dataroom?.defaultGroupPermissionStrategy ||
-      DefaultPermissionStrategy.INHERIT_FROM_PARENT;
-    const linkStrategy =
+    const strategy =
       dataroom?.defaultPermissionStrategy ||
       DefaultPermissionStrategy.INHERIT_FROM_PARENT;
 
-    // The unified modal handles both viewer-group and permission-group
-    // configuration in one pass, so prompt if either side requests it.
-    const shouldAsk =
-      groupStrategy === DefaultPermissionStrategy.ASK_EVERY_TIME ||
-      linkStrategy === DefaultPermissionStrategy.ASK_EVERY_TIME;
-
-    if (shouldAsk) {
-      // Build the list of items to configure. For folder uploads we show the
-      // folder itself (which cascades to every file/sub-folder inside)
-      // instead of every individual file — one decision instead of N.
-      const folderItems: UnifiedPermissionItem[] = (folders ?? []).map(
-        (folder) => ({
-          fileName: folder.name,
-          itemType: "folder" as const,
-          dataroomFolderId: folder.dataroomFolderId,
-        }),
-      );
-      // Standalone files (those NOT uploaded as part of a top-level folder)
-      // still get their own row so users can configure them individually.
-      const looseFileItems: UnifiedPermissionItem[] = files
-        .filter((file) => !file.topLevelDataroomFolderId)
-        .map((file) => ({
-          fileName: file.fileName,
-          itemType: "document" as const,
-          documentId: file.documentId,
-          dataroomDocumentId: file.dataroomDocumentId,
-        }));
-
-      const combined = [...folderItems, ...looseFileItems];
-      if (combined.length === 0) return;
+    if (strategy === DefaultPermissionStrategy.ASK_EVERY_TIME) {
       setShowGroupPermissions(true);
-      setPermissionItems(combined);
-      return;
+      setUploadedFiles(files);
+    } else if (strategy === DefaultPermissionStrategy.INHERIT_FROM_PARENT) {
+      const isRootLevel = !folderPathName || folderPathName.length === 0;
+
+      applyPermissions(
+        dataroomId,
+        documentIds,
+        "INHERIT_FROM_PARENT",
+        isRootLevel ? undefined : folderPathName?.join("/"),
+        (message: string) => toast.error(message),
+      ).catch((error: any) => {
+        console.error("Failed to apply permissions:", error);
+        toast.error("Failed to apply permissions");
+      });
     }
-
-    if (
-      groupStrategy === DefaultPermissionStrategy.HIDDEN_BY_DEFAULT &&
-      linkStrategy === DefaultPermissionStrategy.HIDDEN_BY_DEFAULT
-    ) {
-      return;
-    }
-
-    const isRootLevel = !folderPathName || folderPathName.length === 0;
-
-    // applyPermissions never rejects — it returns { success, error } and routes
-    // failures through the onError callback below — so there's nothing to
-    // .catch(). Errors surface as a toast via onError.
-    void applyPermissions(
-      dataroomId,
-      documentIds,
-      { groupStrategy, linkStrategy },
-      isRootLevel ? undefined : folderPathName?.join("/"),
-      (message: string) => toast.error(message),
-    );
+    // strategy === DefaultPermissionStrategy.HIDDEN_BY_DEFAULT - do nothing
   };
 
   return (
     <>
       <UploadZone
         folderPathName={folderPathName?.join("/")}
-        onTraversalStart={onTraversalStart}
-        onUploadBatchStart={onUploadBatchStart}
-        onUploadBatchUpdate={onUploadBatchUpdate}
-        onUploadRejected={onUploadRejected}
-        onUploadAborted={onUploadAborted}
+        onUploadStart={(newUploads) => {
+          setUploads((prevUploads) => [...prevUploads, ...newUploads]);
+          setShowDrawer(true);
+        }}
+        onUploadProgress={(index, progress, documentId) => {
+          setUploads((prevUploads) => {
+            const recentBatchStartIndex = prevUploads.length - index - 1;
+            if (
+              recentBatchStartIndex < 0 ||
+              recentBatchStartIndex >= prevUploads.length
+            ) {
+              return prevUploads;
+            }
+            return prevUploads.map((upload, i) =>
+              i === recentBatchStartIndex
+                ? { ...upload, progress, documentId }
+                : upload,
+            );
+          });
+        }}
         onUploadSuccess={handleUploadSuccess}
+        onUploadRejected={(rejected) => {
+          setRejectedFiles((prevRejected) => [...prevRejected, ...rejected]);
+          setShowDrawer(true);
+        }}
+        setUploads={setUploads}
         setRejectedFiles={setRejectedFiles}
-        cancelledItemIdsRef={cancelledItemIdsRef}
         dataroomId={dataroomId}
-        dataroomName={dataroom?.name}
-        disabled={dataroom?.isFrozen ?? false}
       >
         {isMobile ? (
           <div>
@@ -658,7 +631,7 @@ export function DataroomItemsList({
             </Portal>
             {mixedItems.length === 0 && (
               <div className="flex h-full justify-center">
-                <EmptyDocuments isDataroom={true} />
+                <EmptyDocuments />
               </div>
             )}
           </div>
@@ -727,7 +700,7 @@ export function DataroomItemsList({
 
               {mixedItems.length === 0 && (
                 <div className="flex h-full justify-center">
-                  <EmptyDocuments isDataroom={true} />
+                  <EmptyDocuments />
                 </div>
               )}
             </DndContext>
@@ -747,16 +720,27 @@ export function DataroomItemsList({
           </>
         )}
       </UploadZone>
+      {showDrawer ? (
+        <UploadNotificationDrawer
+          open={showDrawer}
+          onOpenChange={setShowDrawer}
+          uploads={uploads}
+          handleCloseDrawer={handleCloseDrawer}
+          setUploads={setUploads}
+          rejectedFiles={rejectedFiles}
+          setRejectedFiles={setRejectedFiles}
+        />
+      ) : null}
 
       {showGroupPermissions && dataroomId && (
         <SetUnifiedPermissionsModal
           open={showGroupPermissions}
           setOpen={setShowGroupPermissions}
           dataroomId={dataroomId}
-          uploadedFiles={permissionItems}
+          uploadedFiles={uploadedFiles}
           onComplete={() => {
             setShowGroupPermissions(false);
-            setPermissionItems([]);
+            setUploadedFiles([]);
           }}
         />
       )}

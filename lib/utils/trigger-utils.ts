@@ -1,10 +1,24 @@
 import { BasePlan } from "../swr/use-billing";
 
-/**
- * Returns the conversion queue name for the given plan.
- * Queue definitions are in lib/trigger/queues.ts.
- */
-export const conversionQueueName = (plan: string): string => {
+type TQueueConfig = {
+  name: string;
+  concurrencyLimit: number;
+};
+
+const concurrencyConfig: Record<string, number> = {
+  free: 1,
+  starter: 1,
+  pro: 2,
+  business: 10,
+  datarooms: 10,
+  "datarooms-plus": 10,
+};
+
+export const conversionQueue = (plan: string): TQueueConfig => {
   const planName = plan.split("+")[0] as BasePlan;
-  return `conversion-${planName}`;
+
+  return {
+    name: `conversion-${planName}`,
+    concurrencyLimit: concurrencyConfig[planName],
+  };
 };

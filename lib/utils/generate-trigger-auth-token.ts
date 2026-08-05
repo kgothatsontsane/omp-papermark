@@ -1,4 +1,4 @@
-import { auth } from "@trigger.dev/sdk";
+import { auth } from "@trigger.dev/sdk/v3";
 
 export async function generateTriggerPublicAccessToken(tag: string) {
   return auth.createPublicToken({

@@ -2,70 +2,69 @@ import React from "react";
 
 import {
   Body,
+  Button,
   Container,
   Head,
-  Heading,
   Hr,
   Html,
-  Link,
+  Preview,
   Section,
   Tailwind,
   Text,
-} from "react-email";
+} from "@react-email/components";
 
-const VerificationCodeEmail = ({
-  email = "user@example.com",
-  code = "45PFSNUDYW",
+const VerificationLinkEmail = ({
+  url = "https://www.papermark.com",
 }: {
-  email?: string;
-  code?: string;
+  url: string;
 }) => {
   return (
     <Html>
       <Head />
+      <Preview>Login to your Papermark account with a link</Preview>
       <Tailwind>
         <Body className="mx-auto my-auto bg-white font-sans">
-          <Container className="mx-auto my-10 max-w-[600px] rounded border border-solid border-neutral-200 px-10 py-5">
-            <Section className="mt-8">
-              <Text className="text-2xl font-bold tracking-tighter">
-                Papermark
-              </Text>
-            </Section>
-            <Heading className="mx-0 my-7 p-0 text-xl font-semibold text-black">
-              Your login code
-            </Heading>
-            <Text className="text-sm leading-6 text-neutral-600">
-              A login code was requested for Papermark. Use this code to
-              continue in Papermark:
+          <Container className="mx-auto my-10 max-w-[500px] rounded border border-solid border-gray-200 px-10 py-5">
+            <Text className="mx-0 mb-8 mt-4 p-0 text-center text-2xl font-normal">
+              <span className="font-bold tracking-tighter">Papermark</span>
             </Text>
-            <Section className="my-6">
-              <Text
-                className="m-0 rounded-lg bg-neutral-100 px-4 py-3 text-center text-xl font-semibold text-black"
-                style={{
-                  fontFamily:
-                    "ui-monospace, SFMono-Regular, Menlo, Consolas, monospace",
-                  letterSpacing: "0.15em",
-                }}
+            <Text className="mx-0 my-7 p-0 text-center text-xl font-semibold text-black">
+              Your Papermark Login Link
+            </Text>
+
+            <Text className="text-sm leading-6 text-black">
+              Please click the magic link below to sign in to your account.
+            </Text>
+            <Section className="my-8 text-center">
+              <Button
+                className="rounded bg-black text-center text-xs font-semibold text-white no-underline"
+                href={url}
+                style={{ padding: "12px 20px" }}
               >
-                {code}
-              </Text>
+                Sign in
+              </Button>
             </Section>
-            <Text className="text-sm leading-6 text-neutral-600">
-              This code will expire in 15 minutes.
+            <Text className="text-sm leading-6 text-black">
+              or copy and paste this URL into your browser:
             </Text>
-            <Text className="mt-4 text-sm leading-5 text-neutral-500">
-              This email was intended for{" "}
-              <span className="text-black">{email}</span>. If you didn&apos;t
-              request this code, you can safely ignore this email.
+            <Text className="max-w-sm flex-wrap break-words font-medium text-purple-600 no-underline">
+              {url.replace(/^https?:\/\//, "")}
             </Text>
-            <Hr className="my-6" />
-            <Section className="text-gray-400">
-              <Text className="text-xs text-neutral-500">
-                Papermark, Inc.
-                <br />
-                1111B S Governors Ave #28117
-                <br />
-                Dover, DE 19904
+            <Hr />
+            <Section className="mt-8 text-gray-400">
+              <Text className="text-xs">
+                © {new Date().getFullYear()}{" "}
+                <a
+                  href="https://www.papermark.com"
+                  className="text-gray-400 no-underline hover:text-gray-400"
+                  target="_blank"
+                >
+                  papermark.com
+                </a>
+              </Text>
+              <Text className="text-xs">
+                If you have any feedback or questions about this email, simply
+                reply to it. I&apos;d love to hear from you!
               </Text>
             </Section>
           </Container>
@@ -75,4 +74,4 @@ const VerificationCodeEmail = ({
   );
 };
 
-export default VerificationCodeEmail;
+export default VerificationLinkEmail;

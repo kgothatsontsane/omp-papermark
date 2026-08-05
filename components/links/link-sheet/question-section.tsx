@@ -50,7 +50,7 @@ export default function QuestionSection({
   return (
     <div className="pb-5">
       <LinkItem
-        title="Feedback question"
+        title="Feedback Question"
         tooltipContent="Create a concise question for visitor feedback."
         enabled={enabled}
         action={handleQuestion}

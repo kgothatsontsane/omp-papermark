@@ -17,7 +17,6 @@ import {
   useSensors,
 } from "@dnd-kit/core";
 import {
-  EyeOffIcon,
   FileIcon,
   FolderIcon,
   FolderInputIcon,
@@ -26,22 +25,20 @@ import {
 } from "lucide-react";
 import { motion } from "motion/react";
 import { toast } from "sonner";
-import { mutate } from "swr";
 
 import { moveDocumentToFolder } from "@/lib/documents/move-documents";
 import { moveFolderToFolder } from "@/lib/documents/move-folder";
 import { DataroomFolderWithCount } from "@/lib/swr/use-dataroom";
-import { FolderWithCount, FolderWithCountAndPath } from "@/lib/swr/use-documents";
+import { FolderWithCount } from "@/lib/swr/use-documents";
 import { DocumentWithLinksAndLinkCountAndViewCount } from "@/lib/types";
 import { useMediaQuery } from "@/lib/utils/use-media-query";
 
-import {
-  useUploadCallbacks,
-  useUploadProgress,
-} from "@/context/upload-progress-context";
-
 import { Skeleton } from "@/components/ui/skeleton";
-import UploadZone from "@/components/upload-zone";
+import { UploadNotificationDrawer } from "@/components/upload-notification";
+import UploadZone, {
+  RejectedFile,
+  UploadState,
+} from "@/components/upload-zone";
 
 import { itemsMessage } from "../datarooms/folders/utils";
 import { Button } from "../ui/button";
@@ -57,6 +54,16 @@ import { EmptyDocuments } from "./empty-document";
 import FolderCard from "./folder-card";
 import { MoveToFolderModal, TSelectedFolder } from "./move-folder-modal";
 
+export type Upload = {
+  fileName: string;
+  progress: number;
+  documentId?: string;
+};
+
+export type File = {
+  fileName: string;
+  message: string;
+};
 
 export function DocumentsList({
   folders,
@@ -66,7 +73,7 @@ export function DocumentsList({
   loading,
   foldersLoading,
 }: {
-  folders: FolderWithCount[] | FolderWithCountAndPath[] | undefined;
+  folders: FolderWithCount[] | undefined;
   documents: DocumentWithLinksAndLinkCountAndViewCount[] | undefined;
   teamInfo: TeamContextType | null;
   folderPathName?: string[];
@@ -74,17 +81,13 @@ export function DocumentsList({
   foldersLoading: boolean;
 }) {
   const { isMobile } = useMediaQuery();
-  const { setRejectedFiles, cancelledItemIdsRef } = useUploadProgress();
-  const {
-    onTraversalStart,
-    onUploadBatchStart,
-    onUploadBatchUpdate,
-    onUploadRejected,
-    onUploadAborted,
-  } = useUploadCallbacks();
 
+  const [uploads, setUploads] = useState<UploadState[]>([]);
+  const [rejectedFiles, setRejectedFiles] = useState<RejectedFile[]>([]);
   const [selectedDocuments, setSelectedDocuments] = useState<string[]>([]);
   const [selectedFolders, setSelectedFolders] = useState<string[]>([]);
+
+  const [showDrawer, setShowDrawer] = useState<boolean>(false);
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
   const [draggedDocument, setDraggedDocument] =
     useState<DocumentWithLinksAndLinkCountAndViewCount | null>(null);
@@ -335,93 +338,14 @@ export function DocumentsList({
     setIsOverFolder(false);
   };
 
+  const handleCloseDrawer = () => {
+    setShowDrawer(false);
+  };
 
   const resetSelection = () => {
     setSelectedDocuments([]);
     setSelectedFolders([]);
   };
-
-  const [isHiding, setIsHiding] = useState(false);
-
-  const handleBulkHide = useCallback(async () => {
-    if (selectedDocuments.length === 0 && selectedFolders.length === 0) return;
-
-    setIsHiding(true);
-
-    try {
-      const promises: Promise<Response>[] = [];
-
-      // Hide documents
-      if (selectedDocuments.length > 0) {
-        promises.push(
-          fetch(`/api/teams/${teamInfo?.currentTeam?.id}/documents/hide`, {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              documentIds: selectedDocuments,
-              hidden: true,
-            }),
-          }),
-        );
-      }
-
-      // Hide folders (cascades to children)
-      if (selectedFolders.length > 0) {
-        promises.push(
-          fetch(`/api/teams/${teamInfo?.currentTeam?.id}/folders/hide`, {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              folderIds: selectedFolders,
-              hidden: true,
-            }),
-          }),
-        );
-      }
-
-      const results = await Promise.all(promises);
-
-      // Check for errors
-      for (const res of results) {
-        if (!res.ok) {
-          const error = await res.json();
-          throw new Error(error.message || "Failed to hide items");
-        }
-      }
-
-      // Revalidate data
-      mutate(`/api/teams/${teamInfo?.currentTeam?.id}/folders?root=true`);
-      mutate(`/api/teams/${teamInfo?.currentTeam?.id}/folders`);
-      mutate(`/api/teams/${teamInfo?.currentTeam?.id}/documents`);
-
-      if (folderPathName && folderPathName.length > 0) {
-        mutate(
-          `/api/teams/${teamInfo?.currentTeam?.id}/folders/${folderPathName.join("/")}`,
-        );
-        mutate(
-          `/api/teams/${teamInfo?.currentTeam?.id}/folder-documents/${folderPathName.join("/")}`,
-        );
-      }
-
-      // Reset selection
-      setSelectedDocuments([]);
-      setSelectedFolders([]);
-
-      toast.success(
-        `Successfully hidden ${selectedDocuments.length > 0 ? `${selectedDocuments.length} document${selectedDocuments.length > 1 ? "s" : ""}` : ""}${selectedDocuments.length > 0 && selectedFolders.length > 0 ? " and " : ""}${selectedFolders.length > 0 ? `${selectedFolders.length} folder${selectedFolders.length > 1 ? "s" : ""}` : ""} from All Documents`,
-      );
-    } catch (error) {
-      toast.error(
-        error instanceof Error ? error.message : "Failed to hide items",
-      );
-    } finally {
-      setIsHiding(false);
-    }
-  }, [selectedDocuments, selectedFolders, teamInfo?.currentTeam?.id, folderPathName]);
 
   const HeaderContent = memo(() => {
     if (selectedDocumentsLength > 0 || selectedFoldersLength > 0) {
@@ -487,17 +411,6 @@ export function DocumentsList({
               <FolderInputIcon className="h-5 w-5" />
             </Button>
           </ButtonTooltip>
-          <ButtonTooltip content="Hide from All Documents">
-            <Button
-              onClick={handleBulkHide}
-              disabled={isHiding}
-              className="mx-1.5 my-1 size-8 rounded-full hover:bg-gray-200 hover:dark:bg-gray-700"
-              variant="ghost"
-              size="icon"
-            >
-              <EyeOffIcon className="h-5 w-5" />
-            </Button>
-          </ButtonTooltip>
           <ButtonTooltip content="Delete">
             <Button
               onClick={() => setShowDeleteItemsModal(true)}
@@ -539,13 +452,32 @@ export function DocumentsList({
     <>
       <UploadZone
         folderPathName={folderPathName?.join("/")}
-        onTraversalStart={onTraversalStart}
-        onUploadBatchStart={onUploadBatchStart}
-        onUploadBatchUpdate={onUploadBatchUpdate}
-        onUploadRejected={onUploadRejected}
-        onUploadAborted={onUploadAborted}
+        onUploadStart={(newUploads) => {
+          setUploads((prevUploads) => [...prevUploads, ...newUploads]);
+          setShowDrawer(true);
+        }}
+        onUploadProgress={(index, progress, documentId) => {
+          setUploads((prevUploads) => {
+            const recentBatchStartIndex = prevUploads.length - index - 1;
+            if (
+              recentBatchStartIndex < 0 ||
+              recentBatchStartIndex >= prevUploads.length
+            ) {
+              return prevUploads;
+            }
+            return prevUploads.map((upload, i) =>
+              i === recentBatchStartIndex
+                ? { ...upload, progress, documentId }
+                : upload,
+            );
+          });
+        }}
+        onUploadRejected={(rejected) => {
+          setRejectedFiles((prevRejected) => [...prevRejected, ...rejected]);
+          setShowDrawer(true);
+        }}
+        setUploads={setUploads}
         setRejectedFiles={setRejectedFiles}
-        cancelledItemIdsRef={cancelledItemIdsRef}
       >
         {isMobile ? (
           <div className="space-y-4">
@@ -813,6 +745,17 @@ export function DocumentsList({
           </>
         )}
       </UploadZone>
+      {showDrawer ? (
+        <UploadNotificationDrawer
+          open={showDrawer}
+          onOpenChange={setShowDrawer}
+          uploads={uploads}
+          handleCloseDrawer={handleCloseDrawer}
+          setUploads={setUploads}
+          rejectedFiles={rejectedFiles}
+          setRejectedFiles={setRejectedFiles}
+        />
+      ) : null}
       <DeleteFolderModal />
       <DeleteItemsModal />
     </>

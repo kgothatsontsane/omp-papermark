@@ -8,7 +8,6 @@ import { TeamContextType } from "@/context/team-context";
 import {
   ArchiveXIcon,
   BetweenHorizontalStartIcon,
-  FilePenIcon,
   FileSlidersIcon,
   FolderInputIcon,
   MoreVertical,
@@ -21,10 +20,6 @@ import { type DataroomFolderDocument } from "@/lib/swr/use-dataroom";
 import { type DocumentWithLinksAndLinkCountAndViewCount } from "@/lib/types";
 import { cn, nFormatter, timeAgo } from "@/lib/utils";
 import { fileIcon } from "@/lib/utils/get-file-icon";
-import {
-  HIERARCHICAL_DISPLAY_STYLE,
-  useHierarchicalDisplayName,
-} from "@/lib/utils/hierarchical-display";
 
 import BarChart from "@/components/shared/icons/bar-chart";
 import { Button } from "@/components/ui/button";
@@ -40,7 +35,6 @@ import {
 import { AddToDataroomModal } from "../documents/add-document-to-dataroom-modal";
 import { DocumentPreviewButton } from "../documents/document-preview-button";
 import FileProcessStatusBar from "../documents/file-process-status-bar";
-import { EditDataroomDocumentModal } from "./edit-dataroom-document-modal";
 import { SetUnifiedPermissionsModal } from "./groups/set-unified-permissions-modal";
 import { MoveToDataroomFolderModal } from "./move-dataroom-folder-modal";
 
@@ -67,16 +61,9 @@ export default function DataroomDocumentCard({
     theme === "light" || (theme === "system" && systemTheme === "light");
   const router = useRouter();
 
-  // Get hierarchical display name
-  const displayName = useHierarchicalDisplayName(
-    dataroomDocument.document.name,
-    dataroomDocument.hierarchicalIndex,
-  );
-
   const [isFirstClick, setIsFirstClick] = useState<boolean>(false);
   const [menuOpen, setMenuOpen] = useState<boolean>(false);
   const [moveFolderOpen, setMoveFolderOpen] = useState<boolean>(false);
-  const [renameOpen, setRenameOpen] = useState<boolean>(false);
   const dropdownRef = useRef<HTMLDivElement | null>(null);
   const [addDataRoomOpen, setAddDataRoomOpen] = useState<boolean>(false);
 
@@ -94,14 +81,6 @@ export default function DataroomDocumentCard({
       });
     }
   }, [moveFolderOpen]);
-
-  useEffect(() => {
-    if (!renameOpen) {
-      setTimeout(() => {
-        document.body.style.pointerEvents = "";
-      });
-    }
-  }, [renameOpen]);
 
   useEffect(() => {
     function handleClickOutside(event: { target: any }) {
@@ -139,7 +118,7 @@ export default function DataroomDocumentCard({
     }
 
     const endpoint = currentFolderPath
-      ? `/folder-documents/${currentFolderPath.join("/")}`
+      ? `/folders/documents/${currentFolderPath.join("/")}`
       : "/documents";
 
     toast.promise(
@@ -148,11 +127,7 @@ export default function DataroomDocumentCard({
         {
           method: "DELETE",
         },
-      ).then(async (res) => {
-        if (!res.ok) {
-          const error = await res.json();
-          throw new Error(error.message || "Failed to remove document");
-        }
+      ).then(() => {
         mutate(
           `/api/teams/${teamInfo?.currentTeam?.id}/datarooms/${dataroomId}${endpoint}`,
           null,
@@ -170,7 +145,7 @@ export default function DataroomDocumentCard({
       {
         loading: "Removing document...",
         success: "Document removed successfully.",
-        error: (err) => err.message || "Failed to remove document. Try again.",
+        error: "Failed to remove document. Try again.",
       },
     );
   };
@@ -191,12 +166,12 @@ export default function DataroomDocumentCard({
   };
 
   const handleCardClick = (e: React.MouseEvent) => {
-    if (isDragging || menuOpen) {
+    if (isDragging) {
       e.preventDefault();
       e.stopPropagation();
       return;
     }
-    router.push(`/datarooms/${dataroomId}/document/${dataroomDocument.id}`);
+    router.push(`/documents/${dataroomDocument.document.id}`);
   };
 
   return (
@@ -215,9 +190,9 @@ export default function DataroomDocumentCard({
             isProcessing && "opacity-60",
           )}
         >
-          <div className="flex min-w-0 flex-1 shrink items-center space-x-2 sm:space-x-4">
+          <div className="flex min-w-0 shrink items-center space-x-2 sm:space-x-4">
             {!isSelected && !isHovered ? (
-              <div className="mx-0.5 flex w-8 shrink-0 items-center justify-center text-center sm:mx-1">
+              <div className="mx-0.5 flex w-8 items-center justify-center text-center sm:mx-1">
                 {fileIcon({
                   fileType: dataroomDocument.document.type ?? "",
                   className: "h-8 w-8",
@@ -225,19 +200,16 @@ export default function DataroomDocumentCard({
                 })}
               </div>
             ) : (
-              <div className="mx-0.5 w-8 shrink-0 sm:mx-1"></div>
+              <div className="mx-0.5 w-8 sm:mx-1"></div>
             )}
 
-            <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
-              <div className="flex min-w-0 items-center">
-                <h2
-                  className="min-w-0 flex-1 truncate text-sm font-semibold leading-6 text-foreground sm:max-w-none"
-                  style={HIERARCHICAL_DISPLAY_STYLE}
-                >
-                  {displayName}
+            <div className="flex-col">
+              <div className="flex items-center">
+                <h2 className="min-w-0 max-w-[150px] truncate text-sm font-semibold leading-6 text-foreground sm:max-w-md">
+                  {dataroomDocument.document.name}
                 </h2>
               </div>
-              <div className="mt-1 flex min-w-0 items-center space-x-1 overflow-hidden text-xs leading-5 text-muted-foreground">
+              <div className="mt-1 flex items-center space-x-1 text-xs leading-5 text-muted-foreground">
                 <p className="truncate">
                   {timeAgo(dataroomDocument.createdAt)}
                 </p>
@@ -257,13 +229,13 @@ export default function DataroomDocumentCard({
             </div>
           </div>
 
-          <div className="flex shrink-0 flex-row space-x-2">
+          <div className="flex flex-row space-x-2">
             <Link
               onClick={(e) => {
                 e.stopPropagation();
               }}
-              href={`/datarooms/${dataroomId}/document/${dataroomDocument.id}`}
-              className="z-10 flex shrink-0 items-center space-x-1 rounded-md bg-gray-200 px-1.5 py-0.5 transition-all duration-75 hover:scale-105 active:scale-100 dark:bg-gray-700 sm:px-2"
+              href={`/documents/${dataroomDocument.document.id}`}
+              className="z-10 flex items-center space-x-1 rounded-md bg-gray-200 px-1.5 py-0.5 transition-all duration-75 hover:scale-105 active:scale-100 dark:bg-gray-700 sm:px-2"
             >
               <BarChart className="h-3 w-3 text-muted-foreground sm:h-4 sm:w-4" />
               <p className="whitespace-nowrap text-xs text-muted-foreground sm:text-sm">
@@ -278,22 +250,19 @@ export default function DataroomDocumentCard({
                 hasPages:
                   dataroomDocument.document.versions?.[0]?.hasPages || false,
                 type: dataroomDocument.document.type,
-                numPages: null,
+                numPages: null, // Not available in this context
               }}
-              advancedExcelEnabled={
-                dataroomDocument.document.advancedExcelEnabled
-              }
               variant="outline"
               size="icon"
-              className="z-10 h-8 w-8 shrink-0 border-gray-200 bg-transparent hover:bg-gray-200 dark:border-gray-700 hover:dark:bg-gray-700 lg:h-9 lg:w-9"
+              className="z-10 h-8 w-8 border-gray-200 bg-transparent hover:bg-gray-200 dark:border-gray-700 hover:dark:bg-gray-700 lg:h-9 lg:w-9"
             />
 
             <DropdownMenu open={menuOpen} onOpenChange={handleMenuStateChange}>
               <DropdownMenuTrigger asChild>
                 <Button
-                  onClick={(e) => e.stopPropagation()}
+                  // size="icon"
                   variant="outline"
-                  className="z-10 h-8 w-8 shrink-0 border-gray-200 bg-transparent p-0 hover:bg-gray-200 dark:border-gray-700 hover:dark:bg-gray-700 lg:h-9 lg:w-9"
+                  className="z-10 h-8 w-8 border-gray-200 bg-transparent p-0 hover:bg-gray-200 dark:border-gray-700 hover:dark:bg-gray-700 lg:h-9 lg:w-9"
                 >
                   <span className="sr-only">Open menu</span>
                   <MoreVertical className="h-4 w-4" />
@@ -301,15 +270,6 @@ export default function DataroomDocumentCard({
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" ref={dropdownRef}>
                 <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                <DropdownMenuItem
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setRenameOpen(true);
-                  }}
-                >
-                  <FilePenIcon className="mr-2 h-4 w-4" />
-                  Rename
-                </DropdownMenuItem>
                 <DropdownMenuItem
                   onClick={(e) => {
                     e.stopPropagation();
@@ -376,15 +336,6 @@ export default function DataroomDocumentCard({
             />
           )}
       </div>
-      {renameOpen ? (
-        <EditDataroomDocumentModal
-          open={renameOpen}
-          setOpen={setRenameOpen}
-          documentId={dataroomDocument.document.id}
-          documentName={dataroomDocument.document.name}
-          dataroomId={dataroomId}
-        />
-      ) : null}
       {addDataRoomOpen ? (
         <AddToDataroomModal
           open={addDataRoomOpen}

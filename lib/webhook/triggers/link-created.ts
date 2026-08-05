@@ -1,5 +1,3 @@
-import { isTeamPausedById } from "@/ee/features/billing/cancellation/lib/is-team-paused";
-
 import prisma from "@/lib/prisma";
 import { log } from "@/lib/utils";
 import { sendWebhooks } from "@/lib/webhook/send-webhooks";
@@ -28,15 +26,12 @@ export async function sendLinkCreatedWebhook({
       select: { plan: true },
     });
 
-    if (team?.plan === "free" || team?.plan === "pro") {
-      // team is not on a webhook-eligible plan, so we don't send webhooks
-      return;
-    }
-
-    // check if team is paused
-    const teamIsPaused = await isTeamPausedById(teamId);
-    if (teamIsPaused) {
-      // team is paused, so we don't send webhooks
+    if (
+      team?.plan === "free" ||
+      team?.plan === "pro" ||
+      team?.plan.includes("trial")
+    ) {
+      // team is not on paid plan, so we don't need to send webhooks
       return;
     }
 
@@ -91,7 +86,6 @@ export async function sendLinkCreatedWebhook({
       enabledFeedback: link.enableFeedback ?? false,
       enabledQuestion: link.enableQuestion ?? false,
       enabledScreenshotProtection: link.enableScreenshotProtection ?? false,
-      enabledConfidentialView: link.enableConfidentialView ?? false,
       enabledAgreement: link.enableAgreement ?? false,
       enabledWatermark: link.enableWatermark ?? false,
       metaTitle: link.metaTitle,

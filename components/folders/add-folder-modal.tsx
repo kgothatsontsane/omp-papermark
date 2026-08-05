@@ -1,22 +1,13 @@
 import { useRouter } from "next/router";
 
-import { useRef, useState } from "react";
+import { useState } from "react";
 
 import { useTeam } from "@/context/team-context";
 import { PlanEnum } from "@/ee/stripe/constants";
+import slugify from "@sindresorhus/slugify";
 import { toast } from "sonner";
 import { mutate } from "swr";
 import { z } from "zod";
-
-import {
-  DEFAULT_FOLDER_COLOR,
-  DEFAULT_FOLDER_ICON,
-  FolderColorId,
-  FolderIconId,
-} from "@/lib/constants/folder-constants";
-import { safeSlugify } from "@/lib/utils";
-import { useAnalytics } from "@/lib/analytics";
-import { usePlan } from "@/lib/swr/use-billing";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -31,65 +22,47 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
+import { useAnalytics } from "@/lib/analytics";
+import { usePlan } from "@/lib/swr/use-billing";
+
 import { UpgradePlanModal } from "../billing/upgrade-plan-modal";
-import { FolderIconColorPicker } from "./folder-icon-picker";
 
 export function AddFolderModal({
-  open: openProp,
-  onOpenChange,
+  // open,
+  // setOpen,
   onAddition,
   isDataroom,
   dataroomId,
   children,
 }: {
-  /** Controlled open state. Pair with `onOpenChange` to drive from outside. */
-  open?: boolean;
-  onOpenChange?: (open: boolean) => void;
+  // open?: boolean;
+  // setOpen?: React.Dispatch<React.SetStateAction<boolean>>;
   onAddition?: (folderName: string) => void;
   isDataroom?: boolean;
   dataroomId?: string;
   children?: React.ReactNode;
 }) {
   const router = useRouter();
-  const folderNameInputRef = useRef<HTMLInputElement>(null);
   const [folderName, setFolderName] = useState<string>("");
-  const [folderIcon, setFolderIcon] = useState<FolderIconId>(DEFAULT_FOLDER_ICON);
-  const [folderColor, setFolderColor] = useState<FolderColorId>(DEFAULT_FOLDER_COLOR);
   const [loading, setLoading] = useState<boolean>(false);
-  const [uncontrolledOpen, setUncontrolledOpen] = useState<boolean>(false);
-  const isControlled = openProp !== undefined;
-  const open = isControlled ? openProp : uncontrolledOpen;
-  const setOpen = (next: boolean) => {
-    if (!isControlled) setUncontrolledOpen(next);
-    onOpenChange?.(next);
-  };
+  const [open, setOpen] = useState<boolean>(false);
 
   const teamInfo = useTeam();
   const { isFree, isTrial } = usePlan();
   const analytics = useAnalytics();
-
-  // Free plans (outside of trial) can't create folders. Centralize the gate
-  // so it applies to both trigger usage (`children`) and controlled usage
-  // (`open`/`onOpenChange`); otherwise a programmatic open would bypass it.
-  const isCreationAllowed = !(isFree && !isTrial);
 
   /** current folder name */
   const currentFolderPath = router.query.name as string[] | undefined;
 
   const folderPath =
     isDataroom && dataroomId
-      ? `/datarooms/${dataroomId}/documents/${currentFolderPath ? currentFolderPath?.join("/") : ""}/${"/" + safeSlugify(folderName.trim())}`
-      : `/documents/tree/${currentFolderPath ? currentFolderPath?.join("/") : ""}${"/" + safeSlugify(folderName.trim())}`;
+      ? `/datarooms/${dataroomId}/documents/${currentFolderPath ? currentFolderPath?.join("/") : ""}/${"/" + slugify(folderName.trim())}`
+      : `/documents/tree/${currentFolderPath ? currentFolderPath?.join("/") : ""}${"/" + slugify(folderName.trim())}`;
 
   const addFolderSchema = z.object({
-    name: z
-      .string()
-      .min(3, {
-        message: "Please provide a folder name with at least 3 characters.",
-      })
-      .max(256, {
-        message: "Folder name must be 256 characters or less.",
-      }),
+    name: z.string().min(3, {
+      message: "Please provide a folder name with at least 3 characters.",
+    }),
   });
 
   const validation = addFolderSchema.safeParse({ name: folderName });
@@ -97,13 +70,6 @@ export function AddFolderModal({
   const handleSubmit = async (event: any) => {
     event.preventDefault();
     event.stopPropagation();
-
-    // Defense in depth: the form isn't rendered when creation is blocked,
-    // but guard the creation path so a stale/leaked submission can't slip past.
-    if (!isCreationAllowed) {
-      setOpen(false);
-      return;
-    }
 
     if (!validation.success) {
       toast.error(validation.error.errors[0].message);
@@ -125,8 +91,6 @@ export function AddFolderModal({
           body: JSON.stringify({
             name: folderName.trim(),
             path: currentFolderPath?.join("/"),
-            icon: folderIcon,
-            color: folderColor,
           }),
         },
       );
@@ -142,8 +106,6 @@ export function AddFolderModal({
 
       analytics.capture("Folder Added", {
         folderName: folderName.trim(),
-        icon: folderIcon,
-        color: folderColor,
         dataroomId,
       });
       toast.success(`Folder added successfully!`, {
@@ -168,90 +130,52 @@ export function AddFolderModal({
       return;
     } finally {
       setFolderName("");
-      setFolderIcon(DEFAULT_FOLDER_ICON);
-      setFolderColor(DEFAULT_FOLDER_COLOR);
       setLoading(false);
       setOpen(false);
     }
   };
 
-  // If the team is on a free plan, show the upgrade modal regardless of how
-  // the consumer opens the dialog (trigger child or controlled props).
-  if (!isCreationAllowed) {
+  // If the team is on a free plan, show the upgrade modal
+  if (isFree && !isTrial) {
     if (children) {
       return (
         <UpgradePlanModal
           clickedPlan={PlanEnum.Pro}
           trigger={"add_folder_button"}
-          highlightItem={["folder", "folder-sharing", "datarooms"]}
+          highlightItem={["folder", "multi-file"]}
         >
           {children}
         </UpgradePlanModal>
       );
     }
-    // Controlled/programmatic usage: surface the upgrade modal in place of the
-    // create-folder dialog so callers can't bypass the gate by passing `open`.
-    return (
-      <UpgradePlanModal
-        clickedPlan={PlanEnum.Pro}
-        trigger={"add_folder_button"}
-        highlightItem={["folder", "folder-sharing", "datarooms"]}
-        open={open}
-        setOpen={(next) => {
-          const value = typeof next === "function" ? next(open) : next;
-          setOpen(value);
-        }}
-      />
-    );
   }
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      {children ? <DialogTrigger asChild>{children}</DialogTrigger> : null}
-      <DialogContent
-        className="sm:max-w-[425px]"
-        onOpenAutoFocus={(e) => {
-          // Override Radix's default focus (which lands on the icon picker
-          // button) so the user can start typing the folder name immediately.
-          e.preventDefault();
-          folderNameInputRef.current?.focus();
-        }}
-      >
+      <DialogTrigger asChild>{children}</DialogTrigger>
+      <DialogContent className="sm:max-w-[425px]">
         <DialogHeader className="text-start">
           <DialogTitle>Add Folder</DialogTitle>
-          <DialogDescription>
-            Create a new folder with a custom icon and color.
-          </DialogDescription>
+          <DialogDescription>You can easily add a folder.</DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit}>
           <Label htmlFor="folder-name" className="opacity-80">
             Folder Name
           </Label>
-          <div className="mb-4 mt-1 flex items-center gap-2">
-            <FolderIconColorPicker
-              iconValue={folderIcon}
-              colorValue={folderColor}
-              onIconChange={setFolderIcon}
-              onColorChange={setFolderColor}
-            />
-            <Input
-              ref={folderNameInputRef}
-              id="folder-name"
-              placeholder="Choose a helpful name"
-              className="flex-1"
-              autoFocus
-              value={folderName}
-              onChange={(e) => setFolderName(e.target.value)}
-            />
-          </div>
+          <Input
+            id="folder-name"
+            placeholder="folder-123"
+            className="mb-4 mt-1 w-full"
+            onChange={(e) => setFolderName(e.target.value)}
+          />
           <DialogFooter>
             <Button
               type="submit"
               className="h-9 w-full"
-              disabled={!validation.success || !isCreationAllowed}
+              disabled={!validation.success}
               loading={loading}
             >
-              Create
+              Add new folder
             </Button>
           </DialogFooter>
         </form>

@@ -3,7 +3,7 @@ import { NextApiRequest, NextApiResponse } from "next";
 import { stripeInstance } from "@/ee/stripe";
 import { getCouponFromPlan } from "@/ee/stripe/functions/get-coupon-from-plan";
 import { isOldAccount } from "@/ee/stripe/utils";
-import { authOptions } from "@/lib/auth/auth-options";
+import { authOptions } from "@/pages/api/auth/[...nextauth]";
 import { waitUntil } from "@vercel/functions";
 import { getServerSession } from "next-auth/next";
 
@@ -83,7 +83,7 @@ export async function handleRoute(req: NextApiRequest, res: NextApiResponse) {
 
       waitUntil(
         log({
-          message: `Retention offer applied to team ${teamId}: 30% off for ${
+          message: `Retention offer applied to team ${teamId}: 50% off for ${
             isAnnualPlan ? "12 months" : "3 months"
           }`,
           type: "info",

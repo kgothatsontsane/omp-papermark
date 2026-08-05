@@ -1,10 +1,5 @@
 import { useEffect, useState } from "react";
 
-import { Brand, DataroomBrand } from "@prisma/client";
-import { Trans, useTranslation } from "react-i18next";
-
-import { useMediaQuery } from "@/lib/utils/use-media-query";
-
 import { Button } from "@/components/ui/button";
 import {
   InputOTP,
@@ -12,7 +7,8 @@ import {
   InputOTPSlot,
 } from "@/components/ui/input-otp";
 import { DEFAULT_ACCESS_FORM_TYPE } from "@/components/view/access-form";
-import { createAccessFormTheme } from "@/components/view/access-form/access-form-theme";
+
+import { useMediaQuery } from "@/lib/utils/use-media-query";
 
 const REGEXP_ONLY_DIGITS = "^\\d+$";
 
@@ -24,7 +20,6 @@ export default function EmailVerificationMessage({
   setCode,
   isInvalidCode,
   setIsInvalidCode,
-  brand,
 }: {
   onSubmitHandler: React.FormEventHandler<HTMLFormElement>;
   data: DEFAULT_ACCESS_FORM_TYPE;
@@ -33,11 +28,8 @@ export default function EmailVerificationMessage({
   setCode: (code: string | null) => void;
   isInvalidCode: boolean;
   setIsInvalidCode: (invalidCode: boolean) => void;
-  brand?: Partial<Brand> | Partial<DataroomBrand> | null;
 }) {
   const { isMobile } = useMediaQuery();
-  const theme = createAccessFormTheme(brand?.accentColor);
-  const { t } = useTranslation("access-form");
   const [isResendLoading, setIsResendLoading] = useState(false);
   const [delaySeconds, setDelaySeconds] = useState(60);
 
@@ -54,35 +46,18 @@ export default function EmailVerificationMessage({
 
   return (
     <>
-      <div
-        className="flex h-screen flex-1 flex-col px-6 py-12 lg:px-8"
-        style={{
-          backgroundColor: theme.backgroundColor,
-        }}
-      >
+      <div className="flex h-screen flex-1 flex-col bg-black px-6 py-12 lg:px-8">
         <div className="sm:mx-auto sm:w-full sm:max-w-md">
-          <h2
-            className="mt-10 text-2xl font-bold leading-9 tracking-tight"
-            style={{ color: theme.textColor }}
-          >
-            {t("verification.title", "Verify your email address")}
+          <h2 className="mt-10 text-2xl font-bold leading-9 tracking-tight text-white">
+            Verify your email address
           </h2>
-          <p
-            className="text-pretty text-sm leading-6"
-            style={{ color: theme.textColor }}
-          >
-            <Trans
-              ns="access-form"
-              i18nKey="verification.description"
-              values={{ email: data.email ?? "" }}
-              components={{
-                email: (
-                  <strong className="font-medium" title={data.email ?? ""} />
-                ),
-              }}
-            />
+          <p className="text-pretty text-sm leading-6 text-white">
+            Enter the six digit verification code sent to{" "}
+            <strong className="font-medium" title={data.email ?? ""}>
+              {data.email}
+            </strong>
           </p>
-          <form onSubmit={onSubmitHandler} translate="no">
+          <form onSubmit={onSubmitHandler}>
             <InputOTP
               maxLength={6}
               pattern={REGEXP_ONLY_DIGITS}
@@ -93,7 +68,6 @@ export default function EmailVerificationMessage({
                 setCode(code || null);
               }}
               containerClassName="my-6"
-              accentColor={brand?.accentColor}
             >
               <InputOTPGroup>
                 {[0, 1, 2, 3, 4, 5].map((index) => (
@@ -104,7 +78,7 @@ export default function EmailVerificationMessage({
 
             {isInvalidCode && (
               <p className="mb-6 mt-2 text-sm text-red-500">
-                {t("verification.errorInvalid", "Invalid code. Please try again.")}
+                Invalid code. Please try again.
               </p>
             )}
 
@@ -112,31 +86,21 @@ export default function EmailVerificationMessage({
               type="submit"
               disabled={!code || isLoading}
               loading={isLoading && !isResendLoading}
-              className="hover:opacity-90"
-              style={{
-                backgroundColor: theme.ctaBgColor,
-                color: theme.ctaTextColor,
-              }}
+              className="bg-white text-black hover:bg-white/90"
             >
-              {isLoading && !isResendLoading
-                ? t("buttons.verifying", "Verifying...")
-                : t("buttons.continue", "Continue")}
+              {isLoading && !isResendLoading ? "Verifying..." : "Continue"}
             </Button>
           </form>
 
           <div className="mt-10 space-y-4">
             <div className="flex items-center">
-              <p
-                className="text-xs"
-                style={{ color: theme.subtleTextColor }}
-              >
-                {t("verification.noEmail", "Didn't receive the email?")}
+              <p className="text-xs text-gray-600">
+                Didn&apos;t receive the email?
               </p>{" "}
               <Button
                 variant="link"
                 size="sm"
-                className="text-xs font-normal"
-                style={{ color: theme.mutedTextColor }}
+                className="text-xs font-normal text-gray-500"
                 disabled={isLoading || delaySeconds > 0}
                 onClick={(e) => {
                   e.preventDefault();
@@ -150,10 +114,10 @@ export default function EmailVerificationMessage({
                 }}
               >
                 {isResendLoading && !isLoading
-                  ? t("verification.resending", "Resending code...")
+                  ? "Resending code..."
                   : delaySeconds > 0
-                    ? t("verification.resendIn", "Resend Code ({{seconds}}s)", { seconds: delaySeconds })
-                    : t("verification.resend", "Resend Code")}
+                    ? `Resend Code (${delaySeconds}s)`
+                    : "Resend Code"}
               </Button>
             </div>
           </div>

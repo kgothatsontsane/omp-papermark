@@ -1,35 +1,17 @@
 import sanitizeHtml from "sanitize-html";
-import { decodeHTML } from "entities";
 
-const plainTextSanitizeConfig = {
-  allowedTags: [],
-  allowedAttributes: {},
-};
-
-const controlCharsRegex = /[\u0000-\u001F\u007F-\u009F]/g;
-const invisibleControlRegex = /[\u200B-\u200D\uFEFF\u202A-\u202E\u2066-\u2069]/g;
-
-export function sanitizePlainText(content: string) {
-  const sanitized = sanitizeHtml(content, plainTextSanitizeConfig);
-  const decoded = decodeHTML(sanitized).normalize("NFC");
-
-  return decoded
-    .replace(controlCharsRegex, " ")
-    .replace(invisibleControlRegex, "")
-    .trim();
-}
-
-export const MAX_MESSAGE_LENGTH = 4000;
-
-export function validateContent(html: string, length: number = MAX_MESSAGE_LENGTH) {
-  if (html.length > length) {
-    throw new Error(`Content cannot be longer than ${length} characters`);
+export function validateContent(html: string) {
+  if (html.length > 1000) {
+    throw new Error("Content cannot be longer than 1000 characters");
   }
-  const sanitized = sanitizePlainText(html);
+  const sanitized = sanitizeHtml(html, {
+    allowedTags: [],
+    allowedAttributes: {},
+  });
 
   if (sanitized.length === 0 || sanitized === "") {
     throw new Error("Content cannot be empty");
   }
 
-  return sanitized;
+  return sanitized.trim();
 }

@@ -1,7 +1,5 @@
 import { NextApiRequest, NextApiResponse } from "next";
 
-import { isTeamPausedById } from "@/ee/features/billing/cancellation/lib/is-team-paused";
-import { authOptions } from "@/pages/api/auth/[...nextauth]";
 import { Prisma } from "@prisma/client";
 import { waitUntil } from "@vercel/functions";
 import { getServerSession } from "next-auth/next";
@@ -10,6 +8,8 @@ import { errorhandler } from "@/lib/errorHandler";
 import prisma from "@/lib/prisma";
 import { CustomUser } from "@/lib/types";
 import { sendLinkCreatedWebhook } from "@/lib/webhook/triggers/link-created";
+
+import { authOptions } from "../../auth/[...nextauth]";
 
 export const config = {
   // in order to enable `waitUntil` function
@@ -29,29 +29,22 @@ export default async function handle(
 
     const { id } = req.query as { id: string };
     const { teamId } = req.body as { teamId: string };
-    const userId = (session.user as CustomUser).id;
 
     try {
-      const teamAccess = await prisma.userTeam.findUnique({
+      const team = await prisma.team.findUnique({
         where: {
-          userId_teamId: {
-            userId,
-            teamId,
+          id: teamId,
+          users: {
+            some: {
+              userId: (session.user as CustomUser).id,
+            },
           },
         },
+        select: { id: true },
       });
 
-      if (!teamAccess) {
+      if (!team) {
         return res.status(401).end("Unauthorized");
-      }
-
-      // Check if team is paused
-      const teamIsPaused = await isTeamPausedById(teamId);
-      if (teamIsPaused) {
-        return res.status(403).json({
-          error:
-            "Team is currently paused. New link creation is not available.",
-        });
       }
 
       const link = await prisma.link.findUnique({
@@ -66,13 +59,6 @@ export default async function handle(
               },
             },
           },
-          permissionGroup: {
-            include: {
-              accessControls: true,
-            },
-          },
-          customFields: true,
-          visitorGroups: true,
         },
       });
 
@@ -80,18 +66,7 @@ export default async function handle(
         return res.status(404).json({ error: "Link not found" });
       }
 
-      if (link.deletedAt) {
-        return res.status(404).json({ error: "Link has been deleted" });
-      }
-
-      const {
-        tags,
-        permissionGroup,
-        permissionGroupId,
-        customFields,
-        visitorGroups,
-        ...rest
-      } = link;
+      const { tags, ...rest } = link;
       const linkTags = tags.map((t) => t.tag.id);
 
       const newLinkName = link.name
@@ -99,36 +74,6 @@ export default async function handle(
         : `Link #${link.id.slice(-5)} (Copy)`;
 
       const newLink = await prisma.$transaction(async (tx) => {
-        // Duplicate permission group if it exists
-        let newPermissionGroupId: string | null = null;
-        if (permissionGroup) {
-          // Create the new permission group
-          const newPermissionGroup = await tx.permissionGroup.create({
-            data: {
-              name: permissionGroup.name + " (Copy)",
-              description: permissionGroup.description,
-              dataroomId: permissionGroup.dataroomId,
-              teamId: permissionGroup.teamId,
-            },
-          });
-
-          // Duplicate all access controls
-          if (permissionGroup.accessControls.length > 0) {
-            await tx.permissionGroupAccessControls.createMany({
-              data: permissionGroup.accessControls.map((control) => ({
-                groupId: newPermissionGroup.id,
-                itemId: control.itemId,
-                itemType: control.itemType,
-                canView: control.canView,
-                canDownload: control.canDownload,
-                canDownloadOriginal: control.canDownloadOriginal,
-              })),
-            });
-          }
-
-          newPermissionGroupId = newPermissionGroup.id;
-        }
-
         const createdLink = await tx.link.create({
           data: {
             ...rest,
@@ -138,36 +83,6 @@ export default async function handle(
             watermarkConfig: link.watermarkConfig || Prisma.JsonNull,
             createdAt: undefined,
             updatedAt: undefined,
-            permissionGroupId: newPermissionGroupId,
-            ownerId: userId,
-            ...(customFields.length > 0 && {
-              customFields: {
-                createMany: {
-                  data: customFields.map((field) => ({
-                    type: field.type,
-                    identifier: field.identifier,
-                    label: field.label,
-                    placeholder: field.placeholder,
-                    required: field.required,
-                    disabled: field.disabled,
-                    orderIndex: field.orderIndex,
-                  })),
-                },
-              },
-            }),
-            ...(visitorGroups.length > 0 && {
-              visitorGroups: {
-                createMany: {
-                  data: visitorGroups.map((vg) => ({
-                    visitorGroupId: vg.visitorGroupId,
-                  })),
-                },
-              },
-            }),
-          },
-          include: {
-            customFields: true,
-            visitorGroups: true,
           },
         });
 

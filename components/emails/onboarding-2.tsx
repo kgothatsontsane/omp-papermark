@@ -11,13 +11,15 @@ import {
   Section,
   Tailwind,
   Text,
-} from "react-email";
+} from "@react-email/components";
 
 const Onboarding2Email = () => {
+  const previewText = `The document sharing infrastructure for the modern web`;
+
   return (
     <Html>
       <Head />
-      <Preview>The document sharing infrastructure for the modern web</Preview>
+      <Preview>{previewText}</Preview>
       <Tailwind>
         <Body className="mx-auto my-auto bg-white font-sans">
           <Container className="mx-auto my-10 w-[465px] p-5">
@@ -34,16 +36,19 @@ const Onboarding2Email = () => {
               With Papermark you can use different link settings for shared
               documents and data rooms:
             </Text>
-            <ul className="list-inside list-disc text-sm">
-              <li>Require email to view</li>
-              <li>Expiration date</li>
-              <li>Allow & block list 🌟</li>
-              <li>Email verification</li>
-              <li>Password protection</li>
-              <li>NDA and other agreements</li>
-              <li>Screenshot protection</li>
-            </ul>
-            <Section className="my-8 text-center">
+            <Text className="text-sm">
+              <ul className="list-inside list-disc text-sm">
+                <li>Require email to view</li>
+                <li>Expiration date</li>
+                <li>Allow & block list 🌟</li>
+                <li>Email verification</li>
+                <li>Password protection</li>
+                <li>NDA and other agreements</li>
+                <li>Screenshot protection</li>
+              </ul>
+            </Text>
+            {/* <Text className="text-sm">You can also use Bulk upload</Text> */}
+            <Section className="mb-[32px] mt-[32px] text-center">
               <Button
                 className="rounded bg-black text-center text-xs font-semibold text-white no-underline"
                 href={`https://app.papermark.com/documents?utm_source=onboarding&utm_medium=email&utm_campaign=20240723&utm_content=upload_documents`}
@@ -57,14 +62,20 @@ const Onboarding2Email = () => {
               feedback, and cta settings
             </Text>
             <Hr />
-            <Section className="text-gray-400">
+            <Section className="mt-8 text-gray-400">
               <Text className="text-xs">
-                © {new Date().getFullYear()} Papermark, Inc. All rights
-                reserved.
+                © {new Date().getFullYear()}{" "}
+                <a
+                  href="https://www.papermark.com"
+                  className="text-gray-400 no-underline hover:text-gray-400"
+                  target="_blank"
+                >
+                  papermark.com
+                </a>
               </Text>
               <Text className="text-xs">
                 If you have any feedback or questions about this email, simply
-                reply to it. I&apos;d love to hear from you!
+                reply to it. I&apos;d love to hear from you!{" "}
               </Text>
 
               <Text className="text-xs">Stop this onboarding sequence</Text>

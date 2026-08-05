@@ -1,20 +1,14 @@
 import { useEffect, useState } from "react";
 
-import { cn } from "@/lib/utils";
-
 import { DEFAULT_LINK_TYPE } from ".";
 import LinkItem from "./link-item";
 
 export default function AllowNotificationSection({
   data,
   setData,
-  title = "Receive email notification",
-  className = "pb-5",
 }: {
   data: DEFAULT_LINK_TYPE;
   setData: React.Dispatch<React.SetStateAction<DEFAULT_LINK_TYPE>>;
-  title?: string;
-  className?: string;
 }) {
   const { enableNotification } = data;
   const [enabled, setEnabled] = useState<boolean>(true);
@@ -30,9 +24,9 @@ export default function AllowNotificationSection({
   };
 
   return (
-    <div className={cn(className)}>
+    <div className="pb-5">
       <LinkItem
-        title={title}
+        title="Receive email notification"
         link="https://www.papermark.com/help/article/link-settings"
         enabled={enabled}
         action={handleEnableNotification}

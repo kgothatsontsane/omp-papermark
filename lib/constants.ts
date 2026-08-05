@@ -17,7 +17,7 @@ export const STAGGER_CHILD_VARIANTS = {
 export const PAPERMARK_HEADERS = {
   headers: {
     "x-powered-by":
-      "Papermark - Secure Data Room Infrastructure for the modern web",
+      "Papermark.io - Document sharing infrastructure for the modern web",
   },
 };
 
@@ -43,7 +43,6 @@ export const REACTIONS = [
 // time in milliseconds
 export const ONE_SECOND = 1000;
 export const ONE_MINUTE = ONE_SECOND * 60;
-export const TWO_MINUTES = ONE_MINUTE * 2;
 export const ONE_HOUR = ONE_MINUTE * 60;
 export const ONE_DAY = ONE_HOUR * 24;
 export const ONE_WEEK = ONE_DAY * 7;
@@ -58,7 +57,7 @@ export const BLOCKED_PATHNAMES = [
 ];
 
 // list of paths that should be excluded from team checks
-export const EXCLUDED_PATHS = ["/", "/register", "/privacy", "/view", "/notification-preferences"];
+export const EXCLUDED_PATHS = ["/", "/register", "/privacy", "/view"];
 
 // free limits
 export const LIMITS = {
@@ -70,66 +69,33 @@ export const SUPPORTED_DOCUMENT_MIME_TYPES = [
   "application/vnd.ms-excel", // .xls
   "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", // .xlsx
   "application/vnd.ms-excel.sheet.macroEnabled.12", // .xlsm
-  "application/vnd.ms-excel.sheet.binary.macroEnabled.12", // .xlsb
   "text/csv", // .csv
-  "text/tab-separated-values", // .tsv
   "application/vnd.oasis.opendocument.spreadsheet", // .ods
   "application/vnd.ms-powerpoint", // .ppt
   "application/vnd.openxmlformats-officedocument.presentationml.presentation", // .pptx
   "application/vnd.oasis.opendocument.presentation", // .odp
-  "application/vnd.apple.keynote", // .key
-  "application/x-iwork-keynote-sffkey", // .key (older format)
   "application/msword", // .doc
   "application/vnd.openxmlformats-officedocument.wordprocessingml.document", // .docx
   "application/vnd.oasis.opendocument.text", // .odt
   "application/rtf", // .rtf
   "text/rtf", // .rtf
-  "text/plain", // .txt, .log, .err, .prj, .jgw, .cpg
-  "text/markdown", // .md
+  "text/plain", // .txt
   "image/vnd.dwg", // .dwg
   "image/vnd.dxf", // .dxf
-  "image/tiff", // .tif, .tiff
-  "image/x-ecw", // .ecw (custom - GIS raster, no standard MIME)
-  "application/x-bak", // .bak (custom - generic backup file)
-  "application/x-spss-sav", // .sav (SPSS Statistics data file, no IANA MIME)
-  "application/x-esri-shape", // .shp (ESRI Shapefile geometry, custom - no standard MIME)
-  "application/x-esri-shape-index", // .shx (ESRI Shapefile index, custom)
-  "application/x-dbf", // .dbf (dBase attribute table, custom - de facto)
-  "application/x-esri-sbn", // .sbn (ESRI spatial bin index, custom)
-  "application/x-esri-sbx", // .sbx (ESRI spatial bin index, custom)
-  "application/x-mapserver-qix", // .qix (MapServer/GDAL quadtree spatial index, custom)
   "image/png", // .png
   "image/jpeg", // .jpeg
   "image/jpg", // .jpg
-  "image/gif", // .gif (also: animated overlays extracted from .pptx slides)
   "application/zip", // .zip
   "application/x-zip-compressed", // .zip
-  "application/vnd.rar", // .rar
-  "application/x-rar-compressed", // .rar (older MIME type)
-  "application/x-tar", // .tar
-  "application/gzip", // .gz, .tar.gz, .tgz
-  "application/x-gzip", // .gz, .tar.gz, .tgz (older MIME type)
-  "application/x-compressed-tar", // .tar.gz, .tgz (custom - sometimes returned by browsers)
   "video/mp4", // .mp4
   "video/quicktime", // .mov
   "video/x-msvideo", // .avi
   "video/webm", // .webm
   "video/ogg", // .ogg
-  "audio/mp4", // .m4a
-  "audio/x-m4a", // .m4a (older MIME type)
-  "audio/m4a", // .m4a (alternative MIME type)
-  "audio/mpeg", // .mp3
   "application/vnd.google-earth.kml+xml", // .kml
   "application/vnd.google-earth.kmz", // .kmz
   "application/vnd.ms-outlook", // .msg
-  "message/rfc822", // .eml
-  "text/html", // .html, .htm
 ];
-
-// Merged into the dropzone accept map only when the `htmlDocuments` flag is on.
-export const HTML_ACCEPTED_FILE_TYPES = {
-  "text/html": [".html", ".htm"],
-};
 
 // Upload configurations for different plan types and contexts
 export const FREE_PLAN_ACCEPTED_FILE_TYPES = {
@@ -148,112 +114,49 @@ export const FULL_PLAN_ACCEPTED_FILE_TYPES = {
   "application/vnd.ms-excel": [], // ".xls"
   "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": [], // ".xlsx"
   "application/vnd.ms-excel.sheet.macroEnabled.12": [".xlsm"], // ".xlsm"
-  "application/vnd.ms-excel.sheet.binary.macroEnabled.12": [".xlsb"], // ".xlsb"
   "text/csv": [], // ".csv"
-  "text/tab-separated-values": [".tsv"], // ".tsv"
   "application/vnd.oasis.opendocument.spreadsheet": [], // ".ods"
   "application/vnd.ms-powerpoint": [], // ".ppt"
   "application/vnd.openxmlformats-officedocument.presentationml.presentation":
     [], // ".pptx"
   "application/vnd.oasis.opendocument.presentation": [], // ".odp"
-  "application/vnd.apple.keynote": [".key"], // ".key"
-  "application/x-iwork-keynote-sffkey": [".key"], // ".key"
   "application/msword": [], // ".doc"
   "application/vnd.openxmlformats-officedocument.wordprocessingml.document": [], // ".docx"
   "application/vnd.oasis.opendocument.text": [], // ".odt"
   "application/rtf": [], // ".rtf"
   "text/rtf": [], // ".rtf"
-  "text/plain": [".txt", ".log", ".err", ".prj", ".jgw", ".cpg"], // ".txt", ".log", ".err", ".prj", ".jgw", ".cpg"
-  "text/markdown": [".md", ".markdown"], // ".md", ".markdown"
+  "text/plain": [], // ".txt"
   "image/vnd.dwg": [".dwg"], // ".dwg"
   "image/vnd.dxf": [".dxf"], // ".dxf"
-  "image/tiff": [".tif", ".tiff"], // ".tif", ".tiff"
-  "image/x-ecw": [".ecw"], // ".ecw"
-  "application/x-bak": [".bak"], // ".bak"
-  "application/x-spss-sav": [".sav"], // ".sav"
-  "application/x-esri-shape": [".shp"], // ".shp"
-  "application/x-esri-shape-index": [".shx"], // ".shx"
-  "application/x-dbf": [".dbf"], // ".dbf"
-  "application/x-esri-sbn": [".sbn"], // ".sbn"
-  "application/x-esri-sbx": [".sbx"], // ".sbx"
-  "application/x-mapserver-qix": [".qix"], // ".qix"
   "image/png": [], // ".png"
   "image/jpeg": [], // ".jpeg"
   "image/jpg": [], // ".jpg"
   "application/zip": [], // ".zip"
   "application/x-zip-compressed": [], // ".zip"
-  "application/vnd.rar": [".rar"], // ".rar"
-  "application/x-rar-compressed": [".rar"], // ".rar"
-  "application/x-tar": [".tar"], // ".tar"
-  "application/gzip": [".gz", ".tar.gz", ".tgz"], // ".gz", ".tar.gz", ".tgz"
-  "application/x-gzip": [".gz", ".tar.gz", ".tgz"], // ".gz", ".tar.gz", ".tgz"
-  "application/x-compressed-tar": [".tar.gz", ".tgz"], // ".tar.gz", ".tgz"
-  "video/mp4": [".mp4"], // ".mp4"
-  "video/quicktime": [".mov"], // ".mov"
-  "video/x-msvideo": [".avi"], // ".avi"
-  "video/webm": [".webm"], // ".webm"
-  "video/ogg": [".ogg"], // ".ogg"
-  "audio/mp4": [".m4a"], // ".m4a"
-  "audio/x-m4a": [".m4a"], // ".m4a"
-  "audio/m4a": [".m4a"], // ".m4a"
-  "audio/mpeg": [".mp3"], // ".mp3"
+  "video/mp4": [], // ".mp4"
+  "video/quicktime": [], // ".mov"
+  "video/x-msvideo": [], // ".avi"
+  "video/webm": [], // ".webm"
+  "video/ogg": [], // ".ogg"
   "application/vnd.google-earth.kml+xml": [".kml"], // ".kml"
   "application/vnd.google-earth.kmz": [".kmz"], // ".kmz"
   "application/vnd.ms-outlook": [".msg"], // ".msg"
-  "message/rfc822": [".eml"], // ".eml"
 };
 
 export const VIEWER_ACCEPTED_FILE_TYPES = {
   "application/pdf": [], // ".pdf"
   "application/vnd.ms-excel": [], // ".xls"
   "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": [], // ".xlsx"
-  "application/vnd.ms-excel.sheet.macroEnabled.12": [".xlsm"], // ".xlsm"
-  "application/vnd.ms-excel.sheet.binary.macroEnabled.12": [".xlsb"], // ".xlsb"
   "text/csv": [], // ".csv"
-  "text/tab-separated-values": [".tsv"], // ".tsv"
   "application/vnd.oasis.opendocument.spreadsheet": [], // ".ods"
-  "application/vnd.ms-powerpoint": [], // ".ppt"
-  "application/vnd.openxmlformats-officedocument.presentationml.presentation":
-    [], // ".pptx"
-  "application/vnd.oasis.opendocument.presentation": [], // ".odp"
-  "application/vnd.apple.keynote": [".key"], // ".key"
-  "application/x-iwork-keynote-sffkey": [".key"], // ".key"
-  "application/msword": [], // ".doc"
-  "application/vnd.openxmlformats-officedocument.wordprocessingml.document": [], // ".docx"
-  "application/vnd.oasis.opendocument.text": [], // ".odt"
-  "application/rtf": [], // ".rtf"
-  "text/rtf": [], // ".rtf"
-  "text/plain": [".txt", ".log", ".err", ".prj", ".jgw", ".cpg"], // ".txt", ".log", ".err", ".prj", ".jgw", ".cpg"
-  "text/markdown": [".md", ".markdown"], // ".md", ".markdown"
-  "image/tiff": [".tif", ".tiff"], // ".tif", ".tiff"
-  "image/x-ecw": [".ecw"], // ".ecw"
-  "application/x-bak": [".bak"], // ".bak"
-  "application/x-spss-sav": [".sav"], // ".sav"
-  "application/x-esri-shape": [".shp"], // ".shp"
-  "application/x-esri-shape-index": [".shx"], // ".shx"
-  "application/x-dbf": [".dbf"], // ".dbf"
-  "application/x-esri-sbn": [".sbn"], // ".sbn"
-  "application/x-esri-sbx": [".sbx"], // ".sbx"
-  "application/x-mapserver-qix": [".qix"], // ".qix"
+  "image/jpeg": [], // ".jpg"
   "image/png": [], // ".png"
-  "image/jpeg": [], // ".jpeg"
   "image/jpg": [], // ".jpg"
-  "application/zip": [".zip"], // ".zip"
-  "application/x-zip-compressed": [".zip"], // ".zip"
-  "application/vnd.rar": [".rar"], // ".rar"
-  "application/x-rar-compressed": [".rar"], // ".rar"
-  "application/x-tar": [".tar"], // ".tar"
-  "application/gzip": [".gz", ".tar.gz", ".tgz"], // ".gz", ".tar.gz", ".tgz"
-  "application/x-gzip": [".gz", ".tar.gz", ".tgz"], // ".gz", ".tar.gz", ".tgz"
-  "application/x-compressed-tar": [".tar.gz", ".tgz"], // ".tar.gz", ".tgz"
-  "application/vnd.ms-outlook": [".msg"], // ".msg"
-  "message/rfc822": [".eml"], // ".eml"
 };
 
 export const SUPPORTED_DOCUMENT_SIMPLE_TYPES = [
   "pdf",
   "notion",
-  "link",
   "sheet",
   "slides",
   "docs",
@@ -263,8 +166,6 @@ export const SUPPORTED_DOCUMENT_SIMPLE_TYPES = [
   "video",
   "map",
   "email",
-  "html",
-  "other",
 ] as const;
 
 export const VIDEO_EVENT_TYPES = [

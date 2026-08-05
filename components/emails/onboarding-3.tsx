@@ -11,13 +11,15 @@ import {
   Section,
   Tailwind,
   Text,
-} from "react-email";
+} from "@react-email/components";
 
 const Onboarding3Email = () => {
+  const previewText = `The document sharing infrastructure for the modern web`;
+
   return (
     <Html>
       <Head />
-      <Preview>The document sharing infrastructure for the modern web</Preview>
+      <Preview>{previewText}</Preview>
       <Tailwind>
         <Body className="mx-auto my-auto bg-white font-sans">
           <Container className="mx-auto my-10 w-[465px] p-5">
@@ -34,17 +36,22 @@ const Onboarding3Email = () => {
               With Papermark you can track progress on each page of your
               document and other analytics:
             </Text>
-            <ul className="list-inside list-disc text-sm">
-              <li>
-                Track time on{" "}
-                <span className="font-semibold">each page 💫</span>
-              </li>
-              <li>See who viewed your documents</li>
-              <li>Capture email </li>
-              <li>Receive feedback</li>
-              <li>Ask questions and get answers</li>
-            </ul>
-            <Section className="my-8 text-center">
+            <Text className="text-sm">
+              <ul className="list-inside list-disc text-sm">
+                <li>
+                  Track time on <strong>each page 💫</strong>{" "}
+                </li>
+                <li>See who viewed your documents</li>
+                <li>Capture email </li>
+                <li>Receive feedback</li>
+                <li>Ask questions and get answers</li>
+              </ul>
+              {/* <Text className="text-sm">
+                (All Notion changes are instantly reflected in shared documents)
+              </Text> */}
+            </Text>
+            {/* <Text className="text-sm">You can also use Bulk upload</Text> */}
+            <Section className="mb-[32px] mt-[32px] text-center">
               <Button
                 className="rounded bg-black text-center text-xs font-semibold text-white no-underline"
                 href={`https://app.papermark.com/documents?utm_source=onboarding&utm_medium=email&utm_campaign=20240723&utm_content=upload_documents`}
@@ -59,8 +66,14 @@ const Onboarding3Email = () => {
             <Hr />
             <Section className="mt-8 text-gray-400">
               <Text className="text-xs">
-                © {new Date().getFullYear()} Papermark, Inc. All rights
-                reserved.
+                © {new Date().getFullYear()}{" "}
+                <a
+                  href="https://www.papermark.com"
+                  className="text-gray-400 no-underline hover:text-gray-400"
+                  target="_blank"
+                >
+                  papermark.com
+                </a>
               </Text>
               <Text className="text-xs">
                 If you have any feedback or questions about this email, simply

@@ -15,18 +15,8 @@ const PreviewButton = ({
   isProcessing: boolean;
   onPreview: (link: LinkWithViews) => void;
 }) => {
-  const handleClick = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    e.preventDefault();
-    onPreview(link);
-  };
-
-  const handleContainerClick = (e: React.MouseEvent) => {
-    e.stopPropagation();
-  };
-
   return (
-    <div className="relative" onClick={handleContainerClick} onMouseDown={handleContainerClick}>
+    <div className="relative">
       <ButtonTooltip
         content={isProcessing ? "Preparing preview" : "Preview link"}
       >
@@ -35,7 +25,7 @@ const PreviewButton = ({
             variant={"link"}
             size={"icon"}
             className="group h-7 w-8"
-            onClick={handleClick}
+            onClick={() => onPreview(link)}
             disabled={isProcessing}
           >
             <span className="sr-only">Preview link</span>

@@ -1,6 +1,5 @@
 import { useState } from "react";
 
-import ConfidentialViewSection from "@/ee/features/permissions/components/confidential-view/confidential-view-section";
 import { PlanEnum } from "@/ee/stripe/constants";
 import { LinkAudienceType, LinkType } from "@prisma/client";
 import { LinkPreset } from "@prisma/client";
@@ -65,7 +64,6 @@ export const OnboardingLinkOptions = ({
     ? limits?.advancedLinkControlsOnPro
     : false;
   const allowWatermarkOnBusiness = limits?.watermarkOnBusiness ?? false;
-  const allowAgreementOnBusiness = limits?.agreementOnBusiness ?? false;
 
   const [openUpgradeModal, setOpenUpgradeModal] = useState<boolean>(false);
   const [trigger, setTrigger] = useState<string>("");
@@ -195,11 +193,6 @@ export const OnboardingLinkOptions = ({
         }
         handleUpgradeStateChange={handleUpgradeStateChange}
       />
-      <ConfidentialViewSection
-        {...{ data, setData }}
-        isAllowed={isTrial || isBusiness || isDatarooms || isDataroomsPlus}
-        handleUpgradeStateChange={handleUpgradeStateChange}
-      />
       <WatermarkSection
         {...{ data, setData }}
         isAllowed={
@@ -211,17 +204,17 @@ export const OnboardingLinkOptions = ({
       <AgreementSection
         {...{ data, setData }}
         isAllowed={
-          isTrial || isDatarooms || isDataroomsPlus || allowAgreementOnBusiness
+          isTrial || isDatarooms || isDataroomsPlus || allowWatermarkOnBusiness
         }
         handleUpgradeStateChange={handleUpgradeStateChange}
       />
-      {linkType === LinkType.DATAROOM_LINK ? (
+      {linkType === LinkType.DATAROOM_LINK &&
+      limits?.conversationsInDataroom ? (
         <ConversationSection
           {...{ data, setData }}
           isAllowed={
-            isTrial ||
             isDataroomsPlus ||
-            ((isBusiness || isDatarooms) && !!limits?.conversationsInDataroom)
+            ((isBusiness || isDatarooms) && limits?.conversationsInDataroom)
           }
           handleUpgradeStateChange={handleUpgradeStateChange}
         />

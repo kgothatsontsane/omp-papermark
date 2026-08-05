@@ -3,13 +3,10 @@ import { useRouter } from "next/router";
 import { useEffect, useRef } from "react";
 
 import { Download } from "lucide-react";
-import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 
 import { useSafePageViewTracker } from "@/lib/tracking/safe-page-view-tracker";
 import { getTrackingOptions } from "@/lib/tracking/tracking-config";
-import { downloadFromLinkEndpoint } from "@/lib/utils/download-document";
-import { ensureFileExtension } from "@/lib/utils/get-content-type";
 
 import { Button } from "@/components/ui/button";
 
@@ -30,7 +27,6 @@ export default function DownloadOnlyViewer({
   navData: TNavData;
 }) {
   const router = useRouter();
-  const { t } = useTranslation("viewer");
   const startTimeRef = useRef(Date.now());
   const visibilityRef = useRef<boolean>(true);
 
@@ -68,10 +64,10 @@ export default function DownloadOnlyViewer({
       );
     };
 
-    if (router.isReady && router.query.token) {
+    if (router.query.token) {
       removeQueryParams(["token", "email", "domain", "slug", "linkId"]);
     }
-  }, [router, router.isReady]);
+  }, []);
 
   useEffect(() => {
     const handleVisibilityChange = () => {
@@ -196,25 +192,52 @@ export default function DownloadOnlyViewer({
 
   const downloadFile = async () => {
     if (isPreview) {
-      toast.error(t("toasts.cannotDownloadPreview", "You cannot download documents in preview mode."));
+      toast.error("You cannot download documents in preview mode.");
       return;
     }
     if (!allowDownload) return;
+    try {
+      const response = await fetch(`/api/links/download`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ linkId, viewId }),
+      });
 
-    const downloadPromise = downloadFromLinkEndpoint({
-      endpoint: "/api/links/download",
-      body: { linkId, viewId },
-      fallbackFileName: ensureFileExtension({
-        name: documentName || "document",
-        contentType: "application/pdf",
-      }),
-    });
+      if (!response.ok) {
+        toast.error("Error downloading file");
+        return;
+      }
 
-    toast.promise(downloadPromise, {
-      loading: t("toasts.preparingDownload", "Preparing download..."),
-      success: t("toasts.downloadSuccess", "File downloaded successfully"),
-      error: (err) => err.message || t("toasts.downloadFailed", "Failed to download file"),
-    });
+      // Check if the response is a PDF file (for watermarked PDFs)
+      const contentType = response.headers.get("content-type");
+      if (contentType === "application/pdf") {
+        // Handle direct PDF download (watermarked PDFs)
+        const pdfBlob = await response.blob();
+        const url = URL.createObjectURL(pdfBlob);
+
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `${documentName || "document"}.pdf`;
+        a.rel = "noopener noreferrer";
+        document.body.appendChild(a);
+        a.click();
+
+        // Clean up
+        setTimeout(() => {
+          URL.revokeObjectURL(url);
+          document.body.removeChild(a);
+        }, 100);
+      } else {
+        // Handle JSON response with downloadUrl (non-watermarked files)
+        const { downloadUrl } = await response.json();
+        window.open(downloadUrl, "_blank");
+      }
+    } catch (error) {
+      console.error("Error downloading file:", error);
+      toast.error("Error downloading file");
+    }
   };
 
   return (
@@ -229,15 +252,15 @@ export default function DownloadOnlyViewer({
             <Download className="h-12 w-12 text-gray-600 dark:text-gray-300" />
           </div>
           <h2 className="text-xl font-medium text-gray-900 dark:text-gray-100">
-            {documentName || t("downloadOnly.title", "Download Document")}
+            {documentName || "Download Document"}
           </h2>
           <p className="text-sm text-gray-500 dark:text-gray-400">
-            {t("downloadOnly.description", "This document is available for download only")}
+            This document is available for download only
           </p>
           {allowDownload && (
             <Button onClick={downloadFile} className="w-full space-x-2">
               <Download className="h-4 w-4" />
-              <span>{t("downloadOnly.button", "Download Now")}</span>
+              <span>Download Now</span>
             </Button>
           )}
         </div>

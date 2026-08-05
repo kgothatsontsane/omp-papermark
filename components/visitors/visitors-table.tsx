@@ -1,5 +1,3 @@
-import Link from "next/link";
-
 import { useState } from "react";
 
 import { useTeam } from "@/context/team-context";
@@ -12,10 +10,8 @@ import {
   BadgeCheckIcon,
   BadgeInfoIcon,
   DownloadCloudIcon,
-  DownloadIcon,
   FileBadgeIcon,
   FileDigitIcon,
-  FileSignatureIcon,
   MoreHorizontalIcon,
   ServerIcon,
   ThumbsDownIcon,
@@ -26,10 +22,6 @@ import { mutate } from "swr";
 
 import { usePlan } from "@/lib/swr/use-billing";
 import { useDocumentVisits } from "@/lib/swr/use-document";
-import {
-  buildTeamSignedAgreementDownloadUrl,
-  downloadSignedAgreement,
-} from "@/lib/signing/download";
 import { durationFormat, timeAgo } from "@/lib/utils";
 
 import ChevronDown from "@/components/shared/icons/chevron-down";
@@ -48,10 +40,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { TimestampTooltip } from "@/components/ui/timestamp-tooltip";
 import { BadgeTooltip } from "@/components/ui/tooltip";
-
-import { Badge } from "@/components/ui/badge";
 
 import { UpgradePlanModal } from "../billing/upgrade-plan-modal";
 import { Pagination } from "../documents/pagination";
@@ -72,70 +61,12 @@ import VisitorUserAgent from "./visitor-useragent";
 import VisitorUserAgentPlaceholder from "./visitor-useragent-placeholder";
 import VisitorVideoChart from "./visitor-video-chart";
 
-type AgreementResponseSummary = {
-  id: string;
-  agreementId: string;
-  signingStatus: string;
-  agreement: {
-    name: string;
-    contentType: string;
-    signingProvider: string;
-  };
-};
-
-const isSignedAgreementResponse = (
-  response: AgreementResponseSummary | null | undefined,
-) => {
-  if (!response) return false;
-  const isSigningAgreement =
-    response.agreement.signingProvider === "DOCUMENSO" ||
-    response.agreement.contentType === "SIGNING";
-
-  return (
-    isSigningAgreement &&
-    (response.signingStatus === "SIGNED" ||
-      response.signingStatus === "COMPLETED")
-  );
-};
-
 export default function VisitorsTable({
   primaryVersion,
   isVideo = false,
-  documentId,
-  dataroomId,
-  viewScope = "all",
-  title = "All visitors",
-  emptyMessage = "No views yet. Try sharing a link.",
-  hideWhenEmpty = false,
 }: {
   primaryVersion: DocumentVersion;
   isVideo?: boolean;
-  /**
-   * Explicit document id. Defaults to router.query.id when omitted. Pass this
-   * on the dataroom-scoped document page where router.query.id is the dataroom
-   * id, not the document id.
-   */
-  documentId?: string;
-  /**
-   * Scope the visits to a single data room. Required for `viewScope` to take
-   * effect. Passed on the dataroom-scoped document page.
-   */
-  dataroomId?: string;
-  /**
-   * `dataroom` → only this room's visits; `other` → only the document's
-   * direct-link visits; `all` → every visit (default). Only `dataroom`/`other`
-   * require `dataroomId`.
-   */
-  viewScope?: "all" | "dataroom" | "other";
-  /** Heading shown above the table. */
-  title?: string;
-  /** Message rendered when there are no visits to show. */
-  emptyMessage?: string;
-  /**
-   * When true, the whole section is hidden (renders nothing) while loading or
-   * when there are no visits. Used for the optional "other visits" section.
-   */
-  hideWhenEmpty?: boolean;
 }) {
   const teamInfo = useTeam();
   const teamId = teamInfo?.currentTeam?.id;
@@ -145,12 +76,8 @@ export default function VisitorsTable({
   const { views, mutate: mutateViews } = useDocumentVisits(
     currentPage,
     pageSize,
-    documentId,
-    dataroomId && viewScope !== "all"
-      ? { dataroomId, scope: viewScope }
-      : undefined,
   );
-  const { plan, isTrial, isPaused } = usePlan();
+  const { plan, isTrial } = usePlan();
   const isFreePlan = plan === "free";
 
   const [isLoading, setIsLoading] = useState(false);
@@ -159,44 +86,6 @@ export default function VisitorsTable({
   const handlePageSizeChange = (newSize: number) => {
     setPageSize(newSize);
     setCurrentPage(1);
-  };
-
-  const handleDownloadSignedAgreement = async ({
-    teamId,
-    agreementId,
-    responseId,
-    agreementName,
-  }: {
-    teamId: string;
-    agreementId: string;
-    responseId: string;
-    agreementName: string;
-  }) => {
-    const url = buildTeamSignedAgreementDownloadUrl({
-      teamId,
-      agreementId,
-      responseId,
-    });
-
-    const safeName = agreementName
-      .replace(/[^a-z0-9\-_]/gi, "_")
-      .toLowerCase()
-      .substring(0, 50);
-
-    await toast.promise(
-      downloadSignedAgreement({
-        url,
-        fallbackFilename: `${safeName || "agreement"}_signed.pdf`,
-      }),
-      {
-        loading: "Preparing signed NDA...",
-        success: "Signed NDA downloaded",
-        error: (error: unknown) =>
-          error instanceof Error
-            ? error.message
-            : "Failed to download the signed NDA.",
-      },
-    );
   };
 
   const handleArchiveView = async (
@@ -226,14 +115,9 @@ export default function VisitorsTable({
 
     // mutate the views on the current page
     mutateViews();
-    // mutate the stats (covers both the plain and dataroom-scoped stats keys)
-    const statsKeyPrefix = `/api/teams/${teamId}/documents/${encodeURIComponent(
-      targetId,
-    )}/stats`;
+    // mutate the stats
     mutate(
-      (key) => typeof key === "string" && key.startsWith(statsKeyPrefix),
-      undefined,
-      { revalidate: true },
+      `/api/teams/${teamId}/documents/${encodeURIComponent(targetId)}/stats`,
     );
 
     toast.success(
@@ -244,34 +128,18 @@ export default function VisitorsTable({
     setIsLoading(false);
   };
 
-  const hasNoViews =
-    !!views &&
-    views.viewsWithDuration.length === 0 &&
-    views.hiddenViewCount === 0;
-
-  // Optional sections (e.g. "other visits from document link") hide themselves
-  // entirely while loading or when empty, so no empty header is shown.
-  if (hideWhenEmpty && (!views || hasNoViews)) {
-    return null;
-  }
-
   return (
     <div className="w-full">
-      <div className="mb-2 flex items-center gap-2 md:mb-4">
-        <h2>{title}</h2>
-        {views && views.totalViews > 0 && (
-          <Badge variant="outline" className="text-muted-foreground">
-            {views.totalViews}
-          </Badge>
-        )}
+      <div className="mb-2 md:mb-4">
+        <h2>All visitors</h2>
       </div>
-      <div className="overflow-x-auto rounded-md border">
-        <Table className="min-w-[700px]">
+      <div className="rounded-md border">
+        <Table>
           <TableHeader>
             <TableRow className="*:whitespace-nowrap *:font-medium hover:bg-transparent">
               <TableHead>Name</TableHead>
-              <TableHead>View Duration</TableHead>
-              <TableHead>View Completion</TableHead>
+              <TableHead>Visit Duration</TableHead>
+              <TableHead>Visit Completion</TableHead>
               <TableHead>Last Viewed</TableHead>
               <TableHead className="text-center sm:text-right"></TableHead>
             </TableRow>
@@ -282,62 +150,11 @@ export default function VisitorsTable({
                 <TableRow>
                   <TableCell colSpan={5}>
                     <div className="flex h-40 w-full items-center justify-center">
-                      <p>{emptyMessage}</p>
+                      <p>No visits yet. Try sharing a link.</p>
                     </div>
                   </TableCell>
                 </TableRow>
               )}
-            {views?.hiddenViewCount! > 0 && (
-              <>
-                <TableRow className="">
-                  <TableCell colSpan={5} className="text-left sm:text-center">
-                    {isPaused &&
-                    views?.hiddenFromPause &&
-                    views.hiddenFromPause > 0 ? (
-                      // Show pause-specific message if team is paused and has hidden views from pause
-                      <div className="flex flex-col items-start justify-center gap-2 sm:flex-row sm:items-center">
-                        <span className="flex items-center gap-x-1">
-                          <AlertTriangleIcon className="inline-block h-4 w-4 text-orange-500" />
-                          {views.hiddenFromPause} visit
-                          {views.hiddenFromPause !== 1 ? "s" : ""} occurred
-                          after your team was paused and{" "}
-                          {views.hiddenFromPause !== 1 ? "are" : "is"}{" "}
-                          hidden.{" "}
-                        </span>
-                        <Link
-                          href="/settings/billing"
-                          className="font-medium text-orange-600 underline hover:text-orange-700"
-                        >
-                          Unpause subscription to see all visits
-                        </Link>
-                      </div>
-                    ) : (
-                      // Show regular free plan message
-                      <div className="flex flex-col items-start justify-center gap-1 sm:flex-row sm:items-center">
-                        <span className="flex items-center gap-x-1">
-                          <AlertTriangleIcon className="inline-block h-4 w-4 text-yellow-500" />
-                          Some older visits may not be shown because your
-                          document has more than 20 views.{" "}
-                        </span>
-                        <UpgradePlanModal
-                          clickedPlan={
-                            isTrial ? PlanEnum.Business : PlanEnum.Pro
-                          }
-                          trigger=""
-                        >
-                          <button className="underline hover:text-gray-800">
-                            Upgrade to see full history
-                          </button>
-                        </UpgradePlanModal>
-                      </div>
-                    )}
-                  </TableCell>
-                </TableRow>
-                {Array.from({ length: views?.hiddenViewCount! }).map((_, i) => (
-                  <VisitorBlurred key={i} />
-                ))}
-              </>
-            )}
             {views?.viewsWithDuration ? (
               views.viewsWithDuration.map((view) => {
                 if (view.isArchived) {
@@ -357,20 +174,13 @@ export default function VisitorsTable({
                             <div className="focus:outline-none">
                               <p className="flex items-center gap-x-2 overflow-visible text-sm font-medium text-gray-800 dark:text-gray-200">
                                 {view.viewerEmail ? (
-                                  <>{view.viewerName || view.viewerEmail}</>
+                                  <>{view.viewerEmail}</>
                                 ) : (
                                   "Anonymous"
                                 )}
                               </p>
-                              {view.viewerName && view.viewerEmail && (
-                                <p className="text-xs text-muted-foreground/60">
-                                  {view.viewerEmail}
-                                </p>
-                              )}
                               <p className="text-xs text-muted-foreground/60 sm:text-sm">
-                                {view.link && view.link.name
-                                  ? view.link.name
-                                  : view.linkId}
+                                {view.link.name ? view.link.name : view.linkId}
                               </p>
                             </div>
                           </div>
@@ -394,18 +204,9 @@ export default function VisitorsTable({
                       </TableCell>
                       {/* Last Viewed */}
                       <TableCell className="text-sm text-muted-foreground">
-                        <TimestampTooltip
-                          timestamp={view.viewedAt}
-                          side="right"
-                          rows={["local", "utc", "unix"]}
-                        >
-                          <time
-                            className="select-none"
-                            dateTime={new Date(view.viewedAt).toISOString()}
-                          >
-                            {timeAgo(view.viewedAt)}
-                          </time>
-                        </TimestampTooltip>
+                        <time dateTime={new Date(view.viewedAt).toISOString()}>
+                          {timeAgo(view.viewedAt)}
+                        </time>
                       </TableCell>
 
                       {/* Actions */}
@@ -454,10 +255,7 @@ export default function VisitorsTable({
                   <Collapsible key={view.id} asChild>
                     <>
                       <CollapsibleTrigger asChild>
-                        <TableRow
-                          key={view.id}
-                          className="group/row cursor-pointer [&[data-state=open]_.chevron]:rotate-180"
-                        >
+                        <TableRow key={view.id} className="group/row">
                           {/* Name */}
                           <TableCell>
                             <div className="flex items-center overflow-visible sm:space-x-3">
@@ -467,7 +265,7 @@ export default function VisitorsTable({
                                   <p className="flex items-center gap-x-2 overflow-visible text-sm font-medium text-gray-800 dark:text-gray-200">
                                     {view.viewerEmail ? (
                                       <>
-                                        {view.viewerName || view.viewerEmail}{" "}
+                                        {view.viewerEmail}{" "}
                                         {view.verified && (
                                           <BadgeTooltip
                                             content="Verified visitor"
@@ -486,22 +284,10 @@ export default function VisitorsTable({
                                         )}
                                         {view.agreementResponse && (
                                           <BadgeTooltip
-                                            content={
-                                              isSignedAgreementResponse(
-                                                view.agreementResponse,
-                                              )
-                                                ? `Signed ${view.agreementResponse.agreement.name}`
-                                                : `Agreed to ${view.agreementResponse.agreement.name}`
-                                            }
+                                            content={`Agreed to ${view.agreementResponse.agreement.name}`}
                                             key={`agreement-${view.id}`}
                                           >
-                                            {isSignedAgreementResponse(
-                                              view.agreementResponse,
-                                            ) ? (
-                                              <FileSignatureIcon className="h-4 w-4 text-emerald-500 hover:text-emerald-600" />
-                                            ) : (
-                                              <FileBadgeIcon className="h-4 w-4 text-emerald-500 hover:text-emerald-600" />
-                                            )}
+                                            <FileBadgeIcon className="h-4 w-4 text-emerald-500 hover:text-emerald-600" />
                                           </BadgeTooltip>
                                         )}
                                         {view.downloadedAt && (
@@ -538,13 +324,8 @@ export default function VisitorsTable({
                                       "Anonymous"
                                     )}
                                   </p>
-                                  {view.viewerName && view.viewerEmail && (
-                                    <p className="text-xs text-muted-foreground/60">
-                                      {view.viewerEmail}
-                                    </p>
-                                  )}
                                   <p className="text-xs text-muted-foreground/60 sm:text-sm">
-                                    {view.link && view.link.name
+                                    {view.link.name
                                       ? view.link.name
                                       : view.linkId}
                                   </p>
@@ -554,9 +335,8 @@ export default function VisitorsTable({
                           </TableCell>
                           {/* Duration */}
                           <TableCell className="">
-                            <div className="flex items-center space-x-1 text-sm text-muted-foreground">
-                              <span>{durationFormat(view.totalDuration)}</span>
-                              <ChevronDown className="chevron h-4 w-4 shrink-0 transition-transform duration-200" />
+                            <div className="text-sm text-muted-foreground">
+                              {durationFormat(view.totalDuration)}
                             </div>
                           </TableCell>
                           {/* Completion */}
@@ -571,60 +351,51 @@ export default function VisitorsTable({
                           </TableCell>
                           {/* Last Viewed */}
                           <TableCell className="text-sm text-muted-foreground">
-                            <TimestampTooltip
-                              timestamp={view.viewedAt}
-                              side="right"
-                              rows={["local", "utc", "unix"]}
+                            <time
+                              dateTime={new Date(view.viewedAt).toISOString()}
                             >
-                              <time
-                                className="select-none"
-                                dateTime={new Date(view.viewedAt).toISOString()}
-                              >
-                                {timeAgo(view.viewedAt)}
-                              </time>
-                            </TimestampTooltip>
+                              {timeAgo(view.viewedAt)}
+                            </time>
                           </TableCell>
 
                           {/* Actions */}
                           <TableCell className="text-center sm:text-right">
                             <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
-                                  <Button
-                                    variant="ghost"
-                                    className="h-8 w-8 p-0 group-hover/row:ring-1 group-hover/row:ring-gray-200 group-hover/row:dark:ring-gray-700"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      e.preventDefault();
-                                    }}
-                                  >
-                                    <span className="sr-only">Open menu</span>
-                                    <MoreHorizontalIcon className="h-4 w-4" />
-                                  </Button>
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent align="end">
-                                  <DropdownMenuLabel>
-                                    Actions
-                                  </DropdownMenuLabel>
+                              <DropdownMenuTrigger asChild>
+                                <Button
+                                  variant="ghost"
+                                  className="h-8 w-8 p-0 group-hover/row:ring-1 group-hover/row:ring-gray-200 group-hover/row:dark:ring-gray-700"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    e.preventDefault();
+                                  }}
+                                >
+                                  <span className="sr-only">Open menu</span>
+                                  <MoreHorizontalIcon className="h-4 w-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuLabel>Actions</DropdownMenuLabel>
 
-                                  <DropdownMenuSeparator />
-                                  <DropdownMenuItem
-                                    className="text-destructive focus:bg-destructive focus:text-destructive-foreground"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      e.preventDefault();
-                                      handleArchiveView(
-                                        view.id,
-                                        view.documentId ?? "",
-                                        view.isArchived,
-                                      );
-                                    }}
-                                    disabled={isLoading}
-                                  >
-                                    <ArchiveIcon className="mr-2 h-4 w-4" />
-                                    Archive
-                                  </DropdownMenuItem>
-                                </DropdownMenuContent>
-                              </DropdownMenu>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem
+                                  className="text-destructive focus:bg-destructive focus:text-destructive-foreground"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    e.preventDefault();
+                                    handleArchiveView(
+                                      view.id,
+                                      view.documentId ?? "",
+                                      view.isArchived,
+                                    );
+                                  }}
+                                  disabled={isLoading}
+                                >
+                                  <ArchiveIcon className="mr-2 h-4 w-4" />
+                                  Archive
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
                           </TableCell>
                         </TableRow>
                       </CollapsibleTrigger>
@@ -641,10 +412,7 @@ export default function VisitorsTable({
                                 />
                               )}
                               {!isFreePlan ? (
-                                <VisitorUserAgent
-                                  viewId={view.id}
-                                  documentId={view.documentId ?? undefined}
-                                />
+                                <VisitorUserAgent viewId={view.id} />
                               ) : (
                                 <VisitorUserAgentPlaceholder />
                               )}
@@ -655,77 +423,6 @@ export default function VisitorsTable({
                                   Version {view.versionNumber}
                                 </div>
                               </div>
-
-                              {isSignedAgreementResponse(
-                                view.agreementResponse,
-                              ) && teamId ? (
-                                <div className="pb-0.5 pl-0.5 md:pb-1 md:pl-1">
-                                  <div className="flex items-center justify-between gap-2 px-1">
-                                    <div className="flex min-w-0 items-center gap-x-1.5">
-                                      <FileSignatureIcon className="size-4 shrink-0 text-emerald-500" />
-                                      <span className="truncate">
-                                        Signed{" "}
-                                        {
-                                          view.agreementResponse!.agreement
-                                            .name
-                                        }
-                                      </span>
-                                      {view.agreementResponse!.signedAt ||
-                                      view.agreementResponse!.completedAt ? (
-                                        <TimestampTooltip
-                                          timestamp={new Date(
-                                            view.agreementResponse!.signedAt ||
-                                              view.agreementResponse!
-                                                .completedAt!,
-                                          )}
-                                          side="right"
-                                          rows={["local", "utc", "unix"]}
-                                        >
-                                          <time
-                                            className="select-none text-xs text-muted-foreground"
-                                            dateTime={new Date(
-                                              view.agreementResponse!
-                                                .signedAt ||
-                                                view.agreementResponse!
-                                                  .completedAt!,
-                                            ).toISOString()}
-                                          >
-                                            {timeAgo(
-                                              new Date(
-                                                view.agreementResponse!
-                                                  .signedAt ||
-                                                  view.agreementResponse!
-                                                    .completedAt!,
-                                              ),
-                                            )}
-                                          </time>
-                                        </TimestampTooltip>
-                                      ) : null}
-                                    </div>
-                                    <Button
-                                      variant="outline"
-                                      size="sm"
-                                      className="h-7 gap-1 px-2 text-xs"
-                                      onClick={() =>
-                                        handleDownloadSignedAgreement({
-                                          teamId,
-                                          agreementId:
-                                            view.agreementResponse!
-                                              .agreementId,
-                                          responseId:
-                                            view.agreementResponse!.id,
-                                          agreementName:
-                                            view.agreementResponse!.agreement
-                                              .name,
-                                        })
-                                      }
-                                    >
-                                      <DownloadIcon className="size-3.5" />
-                                      <span>Download signed NDA</span>
-                                    </Button>
-                                  </div>
-                                </div>
-                              ) : null}
 
                               {isVideo ? (
                                 <VisitorVideoChart
@@ -739,14 +436,9 @@ export default function VisitorsTable({
                                   viewId={view.id}
                                   totalPages={view.versionNumPages}
                                   versionNumber={view.versionNumber}
-                                  downloadType={view.downloadType}
-                                  downloadMetadata={
-                                    view.downloadMetadata as any
-                                  }
                                 />
                               )}
-                              {(!isFreePlan && primaryVersion.type === "pdf") ||
-                              primaryVersion.type === "link" ? (
+                              {!isFreePlan && primaryVersion.type === "pdf" ? (
                                 <VisitorClicks
                                   teamId={view.teamId!}
                                   documentId={view.documentId!}
@@ -776,6 +468,32 @@ export default function VisitorsTable({
                   <Skeleton className="h-6 w-24" />
                 </TableCell>
               </TableRow>
+            )}
+            {views?.hiddenViewCount! > 0 && (
+              <>
+                <TableRow className="">
+                  <TableCell colSpan={5} className="text-left sm:text-center">
+                    <div className="flex flex-col items-start justify-center gap-1 sm:flex-row sm:items-center">
+                      <span className="flex items-center gap-x-1">
+                        <AlertTriangleIcon className="inline-block h-4 w-4 text-yellow-500" />
+                        Some older visits may not be shown because your document
+                        has more than 20 views.{" "}
+                      </span>
+                      <UpgradePlanModal
+                        clickedPlan={isTrial ? PlanEnum.Business : PlanEnum.Pro}
+                        trigger=""
+                      >
+                        <button className="underline hover:text-gray-800">
+                          Upgrade to see full history
+                        </button>
+                      </UpgradePlanModal>
+                    </div>
+                  </TableCell>
+                </TableRow>
+                {Array.from({ length: views?.hiddenViewCount! }).map((_, i) => (
+                  <VisitorBlurred key={i} />
+                ))}
+              </>
             )}
           </TableBody>
         </Table>
