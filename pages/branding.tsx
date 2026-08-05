@@ -29,6 +29,7 @@ import { toast } from "sonner";
 import { mutate } from "swr";
 import { useDebounce } from "use-debounce";
 
+import { useFeatureFlags } from "@/lib/hooks/use-feature-flags";
 import { usePlan } from "@/lib/swr/use-billing";
 import { useBrand } from "@/lib/swr/use-brand";
 import { cn, convertDataUrlToFile, uploadImage } from "@/lib/utils";
@@ -59,6 +60,8 @@ export default function Branding() {
   const teamInfo = useTeam();
   const { brand } = useBrand();
   const { plan, isTrial, isBusiness, isDatarooms, isDataroomsPlus } = usePlan();
+  const { isFeatureEnabled } = useFeatureFlags();
+  const customPrivacyUrlEnabled = isFeatureEnabled("customPrivacyUrl");
 
   const [brandColor, setBrandColor] = useState<string>("#000000");
   const [accentColor, setAccentColor] = useState<string>("#030712");
@@ -67,6 +70,7 @@ export default function Branding() {
   const [ctaLabel, setCtaLabel] = useState<string>("");
   const [ctaUrl, setCtaUrl] = useState<string>("");
   const [logo, setLogo] = useState<string | null>(null);
+  const [hideLogo, setHideLogo] = useState<boolean>(false);
   const [blobUrl, setBlobUrl] = useState<string | null>(null);
   const [banner, setBanner] = useState<string | null>(null);
   const [bannerBlobUrl, setBannerBlobUrl] = useState<string | null>(null);
@@ -103,6 +107,13 @@ export default function Branding() {
   const [linkPreviewFavicon, setLinkPreviewFavicon] = useState<string | null>(
     null,
   );
+
+  const [privacyPolicyEnabled, setPrivacyPolicyEnabled] =
+    useState<boolean>(false);
+  const [privacyPolicyUrl, setPrivacyPolicyUrl] = useState<string>("");
+  const [privacyPolicyUrlError, setPrivacyPolicyUrlError] = useState<
+    string | null
+  >(null);
 
   // Auto-fill from website (brand lookup)
   const [autoFillUrl, setAutoFillUrl] = useState<string>("");
@@ -232,6 +243,7 @@ export default function Branding() {
       }
       if (data.logo) {
         setLogo(data.logo);
+        setHideLogo(false);
         setBlobUrl(null);
       }
       if (hasDataroomAccess && data.banner) {
@@ -290,6 +302,7 @@ export default function Branding() {
           reader.onload = (e) => {
             const dataUrl = e.target?.result as string;
             setLogo(dataUrl);
+            setHideLogo(false);
             // create a blob url for preview
             const blob = convertDataUrlToFile({ dataUrl });
             const blobUrl = URL.createObjectURL(blob);
@@ -355,6 +368,7 @@ export default function Branding() {
         (brand as any)?.accentButtonColor || brand.brandColor || "#000000",
       );
       setLogo(brand.logo || null);
+      setHideLogo(!!brand.hideLogo);
       setBanner(brand.banner || null);
       setApplyAccentColorToDataroomView(
         (brand as any)?.applyAccentColorToDataroomView ?? false,
@@ -364,6 +378,10 @@ export default function Branding() {
       setCtaLabel(initialCtaLabel);
       setCtaUrl(initialCtaUrl);
       setCtaEnabled(!!(initialCtaLabel || initialCtaUrl));
+      const initialPrivacyPolicyUrl = (brand as any)?.privacyPolicyUrl ?? "";
+      setPrivacyPolicyUrl(initialPrivacyPolicyUrl);
+      setPrivacyPolicyEnabled(!!initialPrivacyPolicyUrl);
+      setPrivacyPolicyUrlError(null);
       const savedMessage = brand.welcomeMessage ?? null;
       const message = savedMessage || DEFAULT_WELCOME_MESSAGE;
       setWelcomeMessage(message);
@@ -404,11 +422,15 @@ export default function Branding() {
     setAccentColor("#030712");
     setAccentButtonColor("#000000");
     setLogo(null);
+    setHideLogo(false);
     setBanner(null);
     setApplyAccentColorToDataroomView(false);
     setCtaEnabled(false);
     setCtaLabel("");
     setCtaUrl("");
+    setPrivacyPolicyEnabled(false);
+    setPrivacyPolicyUrl("");
+    setPrivacyPolicyUrlError(null);
     setWelcomeMessage(DEFAULT_WELCOME_MESSAGE);
     setWelcomeEnabled(false);
     setWelcomeMessageError(null);
@@ -428,6 +450,32 @@ export default function Branding() {
       hideFolderIconsInMain: false,
     };
   }, [brand]);
+
+  // Mirrors the server-side check in `validateRedirectUrl`: HTTPS only.
+  const validatePrivacyPolicyUrl = (url: string): string | null => {
+    const trimmed = url.trim();
+    if (!trimmed) return "Privacy policy URL cannot be empty";
+
+    let parsed: URL;
+    try {
+      parsed = new URL(trimmed);
+    } catch {
+      return "Enter a valid URL, e.g. https://example.com/privacy";
+    }
+
+    if (parsed.protocol !== "https:") {
+      return "Privacy policy URL must use HTTPS";
+    }
+
+    return null;
+  };
+
+  const handlePrivacyPolicyUrlChange = (value: string) => {
+    setPrivacyPolicyUrl(value);
+    setPrivacyPolicyUrlError(
+      value.trim() ? validatePrivacyPolicyUrl(value) : null,
+    );
+  };
 
   // Handle welcome message change with validation
   const handleWelcomeMessageChange = (value: string) => {
@@ -452,6 +500,15 @@ export default function Branding() {
       const welcomeError = validateWelcomeMessage(welcomeMessage);
       if (welcomeError) {
         setWelcomeMessageError(welcomeError);
+        toast.error("Please fix the validation errors before saving");
+        return;
+      }
+    }
+
+    if (customPrivacyUrlEnabled && privacyPolicyEnabled) {
+      const privacyError = validatePrivacyPolicyUrl(privacyPolicyUrl);
+      if (privacyError) {
+        setPrivacyPolicyUrlError(privacyError);
         toast.error("Please fix the validation errors before saving");
         return;
       }
@@ -512,6 +569,7 @@ export default function Branding() {
       accentButtonColor: accentButtonColor,
       applyAccentColorToDataroomView,
       logo: logoBlobUrl,
+      hideLogo,
       ctaLabel: hasBusinessMessagingAccess
         ? ctaEnabled
           ? ctaLabel.trim() || null
@@ -522,6 +580,11 @@ export default function Branding() {
           ? ctaUrl.trim() || null
           : null
         : ((brand as any)?.ctaUrl ?? null),
+      ...(customPrivacyUrlEnabled && {
+        privacyPolicyUrl: privacyPolicyEnabled
+          ? privacyPolicyUrl.trim() || null
+          : null,
+      }),
       // Custom Link Preview — only writable when the team plan grants the
       // Business messaging tier. Otherwise we mirror back what's already
       // persisted so the API doesn't clear it out from a lower tier.
@@ -610,6 +673,7 @@ export default function Branding() {
         revalidate: false,
       });
       setLogo(null);
+      setHideLogo(false);
       setBanner(null);
       setBrandColor("#000000");
       setAccentColor("#030712");
@@ -617,6 +681,9 @@ export default function Branding() {
       setCtaEnabled(false);
       setCtaLabel("");
       setCtaUrl("");
+      setPrivacyPolicyEnabled(false);
+      setPrivacyPolicyUrl("");
+      setPrivacyPolicyUrlError(null);
       setApplyAccentColorToDataroomView(false);
       setWelcomeMessage(DEFAULT_WELCOME_MESSAGE);
       setWelcomeEnabled(false);
@@ -813,6 +880,7 @@ export default function Branding() {
                                   reader.onload = (e) => {
                                     const dataUrl = e.target?.result as string;
                                     setLogo(dataUrl);
+                                    setHideLogo(false);
                                     const blob = convertDataUrlToFile({
                                       dataUrl,
                                     });
@@ -841,7 +909,10 @@ export default function Branding() {
                               <img
                                 src={logo}
                                 alt="Logo preview"
-                                className="max-h-full max-w-full object-contain"
+                                className={cn(
+                                  "max-h-full max-w-full object-contain",
+                                  hideLogo && "opacity-40",
+                                )}
                               />
                             </div>
                           )}
@@ -857,6 +928,30 @@ export default function Branding() {
                         {fileError && (
                           <p className="text-sm text-red-500">{fileError}</p>
                         )}
+                        <div className="rounded-md border border-border/70 p-3">
+                          <div className="flex items-start space-x-3">
+                            <Checkbox
+                              id="global-hide-logo"
+                              checked={hideLogo}
+                              onCheckedChange={(checked) =>
+                                setHideLogo(checked === true)
+                              }
+                              className="mt-0.5"
+                            />
+                            <div className="space-y-1">
+                              <Label
+                                htmlFor="global-hide-logo"
+                                className="cursor-pointer text-sm font-medium"
+                              >
+                                Show no logo
+                              </Label>
+                              <p className="text-xs text-muted-foreground">
+                                Visitors see no logo at all, not even the
+                                Papermark logo.
+                              </p>
+                            </div>
+                          </div>
+                        </div>
                       </div>
                     </CardContent>
                   </Card>
@@ -1447,6 +1542,74 @@ export default function Branding() {
                           )}
                         </CardContent>
                       </Card>
+
+                      {customPrivacyUrlEnabled && (
+                        <Card>
+                          <CardContent className="pt-6">
+                            <div className="space-y-3">
+                              <div className="flex items-center justify-between">
+                                <div className="flex flex-col">
+                                  <Label htmlFor="privacy-policy-enabled">
+                                    Custom Privacy Policy
+                                  </Label>
+                                  <p className="mt-1 text-xs text-muted-foreground">
+                                    Link visitors to your own privacy policy at
+                                    the bottom of the access screen instead of
+                                    Papermark&apos;s.
+                                  </p>
+                                </div>
+                                <Switch
+                                  id="privacy-policy-enabled"
+                                  checked={privacyPolicyEnabled}
+                                  onCheckedChange={(checked) => {
+                                    setPrivacyPolicyEnabled(checked);
+                                    if (!checked) {
+                                      setPrivacyPolicyUrlError(null);
+                                    }
+                                  }}
+                                />
+                              </div>
+                              {privacyPolicyEnabled && (
+                                <div className="space-y-2 border-t pt-4">
+                                  <Label htmlFor="privacy-policy-url">
+                                    Privacy policy URL
+                                  </Label>
+                                  <Input
+                                    id="privacy-policy-url"
+                                    placeholder="https://example.com/privacy"
+                                    value={privacyPolicyUrl}
+                                    onChange={(e) =>
+                                      handlePrivacyPolicyUrlChange(
+                                        e.target.value,
+                                      )
+                                    }
+                                    className={cn(
+                                      privacyPolicyUrlError &&
+                                        "border-red-500 focus:border-red-500 focus:ring-red-500",
+                                    )}
+                                  />
+                                  {privacyPolicyUrlError && (
+                                    <p className="text-xs text-red-500">
+                                      {privacyPolicyUrlError}
+                                    </p>
+                                  )}
+                                  <p className="text-xs text-muted-foreground">
+                                    Only applies to links shared on a{" "}
+                                    <Link
+                                      href="/settings/domains"
+                                      className="underline underline-offset-4"
+                                    >
+                                      custom domain
+                                    </Link>
+                                    . Links on papermark.com keep the default
+                                    privacy policy.
+                                  </p>
+                                </div>
+                              )}
+                            </div>
+                          </CardContent>
+                        </Card>
+                      )}
                     </div>
                   </CollapsibleBrandingSection>
                 </FadeScrollArea>
@@ -1566,7 +1729,12 @@ export default function Branding() {
                 <Button
                   onClick={saveBranding}
                   loading={isLoading}
-                  disabled={hasBusinessMessagingAccess && !!welcomeMessageError}
+                  disabled={
+                    (hasBusinessMessagingAccess && !!welcomeMessageError) ||
+                    (customPrivacyUrlEnabled &&
+                      privacyPolicyEnabled &&
+                      !!privacyPolicyUrlError)
+                  }
                   className="bg-black text-white hover:bg-gray-800"
                 >
                   Save changes
@@ -1637,6 +1805,7 @@ export default function Branding() {
                     brandColor: debouncedBrandColor,
                     accentColor: debouncedAccentColor,
                     brandLogo: blobUrl || logo || "",
+                    hideLogo: hideLogo ? "1" : "0",
                     accentButtonColor: debouncedAccentButtonColor,
                     ctaLabel: previewCtaLabel,
                     ctaUrl: previewCtaUrl,
@@ -1658,6 +1827,7 @@ export default function Branding() {
                       applyAccentColorToDataroomView:
                         applyAccentColorToDataroomView ? "1" : "0",
                       brandLogo: blobUrl || logo || "",
+                      hideLogo: hideLogo ? "1" : "0",
                       brandBanner:
                         banner === "no-banner"
                           ? "no-banner"
