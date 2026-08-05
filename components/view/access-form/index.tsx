@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 
+import { resolveBrandLogo } from "@/ee/features/branding/lib/brand-logo";
 import { Brand, CustomField, DataroomBrand, LinkType } from "@prisma/client";
 import { ArrowUpRightIcon } from "lucide-react";
 import { useTranslation } from "react-i18next";
@@ -90,6 +91,14 @@ export default function AccessForm({
     [brand?.accentColor],
   );
   const { t } = useTranslation("access-form");
+  const resolvedBrandLogo = resolveBrandLogo(brand);
+
+  // The server only leaves this set when the override actually applies.
+  const customPrivacyPolicyUrl =
+    brand && "privacyPolicyUrl" in brand ? brand.privacyPolicyUrl : null;
+  const privacyPolicyUrl =
+    customPrivacyPolicyUrl ||
+    `${process.env.NEXT_PUBLIC_MARKETING_URL}/privacy`;
 
   const isSigningAgreement =
     signingProvider === "DOCUMENSO" || agreementContentType === "SIGNING";
@@ -167,22 +176,22 @@ export default function AccessForm({
         }}
       >
         {/* Light Navbar */}
-        {logoOnAccessForm && brand && brand.logo && (
+        {logoOnAccessForm && resolvedBrandLogo.kind === "custom" ? (
           <nav
             className="w-full"
             style={{
-              backgroundColor: brand.brandColor ? brand.brandColor : "black",
+              backgroundColor: brand?.brandColor || "black",
             }}
           >
             <div className="flex h-16 items-center justify-start px-2 sm:px-6 lg:px-8">
               <img
-                src={brand.logo as string}
+                src={resolvedBrandLogo.src}
                 alt="Brand Logo"
                 className="h-16 w-auto object-contain"
               />
             </div>
           </nav>
-        )}
+        ) : null}
 
         <div className="flex flex-1 flex-col px-6 pb-12 pt-8 lg:px-8">
           <div className="sm:mx-auto sm:w-full sm:max-w-md">
@@ -295,7 +304,7 @@ export default function AccessForm({
           >
             {t("footer.seeHowWeProtect", "See how we protect your data in our")}{" "}
             <a
-              href={`${process.env.NEXT_PUBLIC_MARKETING_URL}/privacy`}
+              href={privacyPolicyUrl}
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex items-center gap-0.5"

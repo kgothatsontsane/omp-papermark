@@ -18,14 +18,19 @@ import {
 } from "@/lib/billing/team-plan-custom-messaging";
 import { validateRedirectUrl } from "@/lib/api/domains/validate-redirect-url";
 import { errorhandler } from "@/lib/errorHandler";
+import { getFeatureFlags } from "@/lib/featureFlags";
 import prisma from "@/lib/prisma";
-import { redis } from "@/lib/redis";
+import {
+  clearCachedBrandLogo,
+  writeCachedBrandLogo,
+} from "@/lib/redis/brand-logo-cache";
 import { CustomUser } from "@/lib/types";
 
 import { authOptions } from "../../auth/[...nextauth]";
 
 const updateBrandingSchema = z.object({
   logo: z.string().nullable().optional(),
+  hideLogo: z.boolean().optional(),
   banner: z.string().nullable().optional(),
   brandColor: z.string().nullable().optional(),
   accentColor: z.string().nullable().optional(),
@@ -39,6 +44,7 @@ const updateBrandingSchema = z.object({
   linkPreviewFavicon: z.string().nullable().optional(),
   ctaLabel: z.string().nullable().optional(),
   ctaUrl: z.string().nullable().optional(),
+  privacyPolicyUrl: z.string().nullable().optional(),
   cardLayout: DataroomCardLayoutSchema.optional(),
   showFolderTree: z.boolean().optional(),
   viewerLayoutPreset: DataroomViewerLayoutPresetSchema.optional(),
@@ -88,6 +94,34 @@ function sanitizeLayoutPayload(input: LayoutPayload): LayoutPayload {
     out.hideFolderIconsInMain = input.hideFolderIconsInMain;
   }
   return out;
+}
+
+// Returns `undefined` to leave the stored value untouched (Prisma skips it).
+async function resolvePrivacyPolicyUrl(
+  teamId: string,
+  value: string | null | undefined,
+): Promise<
+  { ok: true; url: string | null | undefined } | { ok: false; message: string }
+> {
+  const featureFlags = await getFeatureFlags({ teamId });
+  if (!featureFlags.customPrivacyUrl || value === undefined) {
+    return { ok: true, url: undefined };
+  }
+
+  const trimmed = value?.trim() ?? "";
+  if (!trimmed) {
+    return { ok: true, url: null };
+  }
+
+  const validation = await validateRedirectUrl(trimmed, teamId);
+  if (!validation.valid) {
+    return {
+      ok: false,
+      message: validation.message.replace("Redirect URL", "Privacy policy URL"),
+    };
+  }
+
+  return { ok: true, url: validation.url || null };
 }
 
 function maybeDeleteBlobAsset(url: string | null | undefined): Promise<void> {
@@ -192,6 +226,14 @@ export default async function handle(
       validatedCtaUrl = ctaValidation.url;
     }
 
+    const privacyPolicy = await resolvePrivacyPolicyUrl(
+      teamId,
+      body.privacyPolicyUrl,
+    );
+    if (!privacyPolicy.ok) {
+      return res.status(400).json({ message: privacyPolicy.message });
+    }
+
     // Use upsert so POST is idempotent: clients can hit POST even when a
     // Brand row already exists (e.g. SWR cache is stale and `brand` is
     // falsy on the client) without tripping the unique-teamId constraint.
@@ -199,6 +241,7 @@ export default async function handle(
       where: { teamId },
       create: {
         logo: body.logo,
+        hideLogo: body.hideLogo ?? false,
         banner: body.banner,
         brandColor: body.brandColor,
         accentColor: body.accentColor,
@@ -223,11 +266,13 @@ export default async function handle(
           : undefined,
         ctaLabel: messagingAllowed ? body.ctaLabel ?? undefined : undefined,
         ctaUrl: messagingAllowed ? validatedCtaUrl ?? undefined : undefined,
+        privacyPolicyUrl: privacyPolicy.url ?? undefined,
         ...layoutData,
         teamId: teamId,
       },
       update: {
         logo: body.logo,
+        hideLogo: body.hideLogo,
         banner: body.banner,
         brandColor: body.brandColor,
         accentColor: body.accentColor,
@@ -235,6 +280,7 @@ export default async function handle(
         applyAccentColorToDataroomView:
           body.applyAccentColorToDataroomView ?? false,
         welcomeMessage: messagingAllowed ? body.welcomeMessage ?? null : undefined,
+        privacyPolicyUrl: privacyPolicy.url,
         customLinkPreviewEnabled: messagingAllowed
           ? body.customLinkPreviewEnabled
           : undefined,
@@ -252,11 +298,7 @@ export default async function handle(
       },
     });
 
-    if (body.logo) {
-      await redis.set(`brand:logo:${teamId}`, body.logo);
-    } else if (body.logo === null) {
-      await redis.del(`brand:logo:${teamId}`);
-    }
+    await writeCachedBrandLogo(teamId, brand);
 
     return res.status(200).json(brand);
   } else if (req.method === "PUT") {
@@ -298,6 +340,14 @@ export default async function handle(
       validatedCtaUrl = ctaValidation.url;
     }
 
+    const privacyPolicy = await resolvePrivacyPolicyUrl(
+      teamId,
+      body.privacyPolicyUrl,
+    );
+    if (!privacyPolicy.ok) {
+      return res.status(400).json({ message: privacyPolicy.message });
+    }
+
     const resolvedWelcome = messagingAllowed
       ? body.welcomeMessage ?? null
       : (existingBrand?.welcomeMessage ?? null);
@@ -324,6 +374,7 @@ export default async function handle(
       },
       create: {
         logo: body.logo,
+        hideLogo: body.hideLogo ?? false,
         banner: body.banner,
         brandColor: body.brandColor,
         accentColor: body.accentColor,
@@ -347,17 +398,20 @@ export default async function handle(
           : undefined,
         ctaLabel: messagingAllowed ? body.ctaLabel ?? undefined : undefined,
         ctaUrl: messagingAllowed ? validatedCtaUrl ?? undefined : undefined,
+        privacyPolicyUrl: privacyPolicy.url ?? undefined,
         ...layoutData,
         teamId: teamId,
       },
       update: {
         logo: body.logo,
+        hideLogo: body.hideLogo,
         banner: body.banner,
         brandColor: body.brandColor,
         accentColor: body.accentColor,
         accentButtonColor: body.accentButtonColor ?? null,
         applyAccentColorToDataroomView: !!body.applyAccentColorToDataroomView,
         welcomeMessage: resolvedWelcome,
+        privacyPolicyUrl: privacyPolicy.url,
         // Preserve stored link-preview settings on partial PUTs: only write
         // these fields when they're explicitly present in the payload.
         // Prisma skips updates for `undefined` values. Plans without messaging
@@ -380,13 +434,7 @@ export default async function handle(
       },
     });
 
-    // Update logo in Redis cache
-    if (body.logo) {
-      await redis.set(`brand:logo:${teamId}`, body.logo);
-    } else {
-      // If logo is null or undefined, delete the cache
-      await redis.del(`brand:logo:${teamId}`);
-    }
+    await writeCachedBrandLogo(teamId, brand);
 
     return res.status(200).json(brand);
   } else if (req.method === "DELETE") {
@@ -411,8 +459,7 @@ export default async function handle(
       where: { teamId },
     });
 
-    // Remove logo from Redis cache
-    await redis.del(`brand:logo:${teamId}`);
+    await clearCachedBrandLogo(teamId);
 
     return res.status(204).end();
   } else {

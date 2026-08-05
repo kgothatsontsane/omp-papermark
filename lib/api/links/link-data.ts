@@ -1,3 +1,4 @@
+import { mergeBrandLogoFields } from "@/ee/features/branding/lib/brand-logo";
 import { resolvePublicLinkMeta } from "@/ee/features/branding/lib/resolve-public-link-meta";
 import type { ResolvedPublicLinkMeta } from "@/ee/features/branding/lib/resolve-public-link-meta";
 import {
@@ -315,6 +316,7 @@ export async function fetchDataroomLinkData({
     where: { dataroomId: linkData.dataroom.id },
     select: {
       logo: true,
+      hideLogo: true,
       banner: true,
       brandColor: true,
       accentColor: true,
@@ -336,6 +338,7 @@ export async function fetchDataroomLinkData({
     where: { teamId: linkData.dataroom.teamId },
     select: {
       logo: true,
+      hideLogo: true,
       banner: true,
       brandColor: true,
       accentColor: true,
@@ -350,11 +353,15 @@ export async function fetchDataroomLinkData({
       viewerHeaderStyle: true,
       hideFolderIconsInMain: true,
       defaultLanguage: true,
+      privacyPolicyUrl: true,
     },
   });
 
   const brand = {
-    logo: dataroomBrand?.logo || teamBrand?.logo,
+    ...mergeBrandLogoFields({
+      dataroom: dataroomBrand,
+      team: teamBrand,
+    }),
     banner: dataroomBrand?.banner || teamBrand?.banner || null,
     brandColor: dataroomBrand?.brandColor || teamBrand?.brandColor,
     accentColor: dataroomBrand?.accentColor || teamBrand?.accentColor,
@@ -393,6 +400,8 @@ export async function fetchDataroomLinkData({
       (dataroomBrand as any)?.defaultLanguage ??
       (teamBrand as any)?.defaultLanguage ??
       "en",
+    // Team-level only; `processLinkData` strips it again when it doesn't apply.
+    privacyPolicyUrl: (teamBrand as any)?.privacyPolicyUrl ?? null,
   };
 
   // Extract access controls from either ViewerGroup or PermissionGroup
@@ -522,6 +531,7 @@ export async function fetchDataroomDocumentLinkData({
     where: { dataroomId: linkData.dataroom.id },
     select: {
       logo: true,
+      hideLogo: true,
       banner: true,
       brandColor: true,
       accentColor: true,
@@ -543,6 +553,7 @@ export async function fetchDataroomDocumentLinkData({
     where: { teamId: linkData.dataroom.teamId },
     select: {
       logo: true,
+      hideLogo: true,
       banner: true,
       brandColor: true,
       accentColor: true,
@@ -557,11 +568,15 @@ export async function fetchDataroomDocumentLinkData({
       viewerHeaderStyle: true,
       hideFolderIconsInMain: true,
       defaultLanguage: true,
+      privacyPolicyUrl: true,
     },
   });
 
   const brand = {
-    logo: dataroomBrand?.logo || teamBrand?.logo,
+    ...mergeBrandLogoFields({
+      dataroom: dataroomBrand,
+      team: teamBrand,
+    }),
     banner: dataroomBrand?.banner || teamBrand?.banner || null,
     brandColor: dataroomBrand?.brandColor || teamBrand?.brandColor,
     accentColor: dataroomBrand?.accentColor || teamBrand?.accentColor,
@@ -596,6 +611,8 @@ export async function fetchDataroomDocumentLinkData({
       (dataroomBrand as any)?.defaultLanguage ??
       (teamBrand as any)?.defaultLanguage ??
       "en",
+    // Team-level only; `processLinkData` strips it again when it doesn't apply.
+    privacyPolicyUrl: (teamBrand as any)?.privacyPolicyUrl ?? null,
   };
 
   return { linkData, brand };
@@ -647,6 +664,7 @@ export async function fetchDocumentLinkData({
     where: { teamId: linkData.document.teamId },
     select: {
       logo: true,
+      hideLogo: true,
       brandColor: true,
       accentColor: true,
       accentButtonColor: true,
@@ -654,6 +672,7 @@ export async function fetchDocumentLinkData({
       ctaLabel: true,
       ctaUrl: true,
       defaultLanguage: true,
+      privacyPolicyUrl: true,
     },
   });
 
@@ -664,6 +683,27 @@ export async function fetchDocumentLinkData({
 // Unified Link Data Fetcher for getStaticProps
 // Avoids internal HTTP fetch which can be blocked by Vercel edge (403 errors)
 // ============================================================================
+
+// Strip the URL unless the override applies, so the viewer can treat a present
+// value as "use it".
+async function applyPrivacyPolicyUrlVisibility<
+  T extends Record<string, any> | null,
+>(
+  brand: T,
+  {
+    teamId,
+    isCustomDomain,
+  }: { teamId?: string | null; isCustomDomain?: boolean },
+): Promise<T> {
+  if (!brand || !brand.privacyPolicyUrl) return brand;
+
+  if (isCustomDomain && teamId) {
+    const featureFlags = await getFeatureFlags({ teamId });
+    if (featureFlags.customPrivacyUrl) return brand;
+  }
+
+  return { ...brand, privacyPolicyUrl: null };
+}
 
 /**
  * Core function to process link data after fetching the link record.
@@ -693,12 +733,17 @@ async function processLinkData(
         where: { teamId: link.teamId },
         select: {
           logo: true,
+          hideLogo: true,
           brandColor: true,
           accentColor: true,
           defaultLanguage: true,
+          privacyPolicyUrl: true,
         },
       });
-      brand = teamBrand;
+      brand = await applyPrivacyPolicyUrlVisibility(teamBrand, {
+        teamId: link.teamId,
+        isCustomDomain,
+      });
     }
 
     // For workflow links, return the link with minimal processing
@@ -925,17 +970,21 @@ async function processLinkData(
     });
   }
 
-  let dataroomIndexEnabledForViewer: boolean | undefined;
-  if (linkType === "DATAROOM_LINK" && link.teamId) {
-    dataroomIndexEnabledForViewer = await resolveDataroomIndexEnabledForViewer({
+  const [dataroomIndexEnabledForViewer, visibleBrand] = await Promise.all([
+    linkType === "DATAROOM_LINK" && link.teamId
+      ? resolveDataroomIndexEnabledForViewer({ teamId: link.teamId, teamPlan })
+      : Promise.resolve(undefined),
+    applyPrivacyPolicyUrlVisibility(brand, {
       teamId: link.teamId,
-      teamPlan,
-    });
-  }
+      isCustomDomain,
+    }),
+  ]);
 
   // Serialize to convert Date objects to strings (required for Next.js getStaticProps)
   const serializedLink = JSON.parse(JSON.stringify(returnLink));
-  const serializedBrand = brand ? JSON.parse(JSON.stringify(brand)) : null;
+  const serializedBrand = visibleBrand
+    ? JSON.parse(JSON.stringify(visibleBrand))
+    : null;
 
   return {
     status: "ok",
