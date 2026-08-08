@@ -8,6 +8,7 @@ import Cookies from "js-cookie";
 import { usePlausible } from "next-plausible";
 import { toast } from "sonner";
 
+import { BRAND_NAME } from "@/lib/branding";
 import { usePlan } from "@/lib/swr/use-billing";
 
 import X from "@/components/shared/icons/x";
@@ -44,7 +45,7 @@ export default function ProAnnualBanner({
         <span className="sr-only">Close</span>
       </button>
       <div className="flex space-x-2">
-        <span className="text-sm font-bold">Papermark Pro Annual ✨</span>
+        <span className="text-sm font-bold">{BRAND_NAME} Pro Annual ✨</span>
       </div>
       <p className="my-4 text-sm">
         Lock in a better price and get 2 months free.

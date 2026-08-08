@@ -4,6 +4,8 @@ import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
 
+import { BRAND_NAME } from "@/lib/branding";
+
 export default function InvitationStatusContent({
   status,
 }: {
@@ -37,7 +39,7 @@ export default function InvitationStatusContent({
       </div>
       <div className="w-full space-y-4">
         <h4 className="text-center text-sm font-medium text-gray-800">
-          Create your own Papermark account
+          Create your own {BRAND_NAME} account
         </h4>
         <div className="space-y-3">
           <Link href="/login" className="block w-full">

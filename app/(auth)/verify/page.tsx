@@ -8,21 +8,23 @@ import { generateChecksum } from "@/lib/utils/generate-checksum";
 import { LogoCloud } from "@/components/shared/logo-cloud";
 import { Button } from "@/components/ui/button";
 
+import { APP_URL, BRAND_NAME, BRAND_LOGO } from "@/lib/branding";
+
 const data = {
-  description: "Verify login to Papermark",
-  title: "Verify | Papermark",
+  description: `Verify login to ${BRAND_NAME}`,
+  title: `Verify | ${BRAND_NAME}`,
   url: "/verify",
 };
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://dealroom.open-mic.co.za"),
+  metadataBase: new URL(APP_URL),
   title: data.title,
   description: data.description,
   openGraph: {
     title: data.title,
     description: data.description,
     url: data.url,
-    siteName: "Papermark",
+    siteName: BRAND_NAME,
     images: [
       {
         url: "/_static/meta-image.png",
@@ -37,7 +39,6 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: data.title,
     description: data.description,
-    creator: "@papermarkio",
     images: ["/_static/meta-image.png"],
   },
 };
@@ -80,8 +81,8 @@ export default function VerifyPage({
         <div className="z-10 mx-5 mt-[calc(1vh)] h-fit w-full max-w-md overflow-hidden rounded-lg sm:mx-0 sm:mt-[calc(2vh)] md:mt-[calc(3vh)]">
           <div className="items-left flex flex-col space-y-3 px-4 py-6 pt-8 sm:px-12">
             <img
-              src="/_static/papermark-logo.svg"
-              alt="Papermark Logo"
+              src={BRAND_LOGO}
+              alt={`${BRAND_NAME} Logo`}
               className="-mt-8 mb-36 h-7 w-auto self-start sm:mb-32 md:mb-48"
             />
             <Link href="/">
@@ -104,7 +105,7 @@ export default function VerifyPage({
           </div>
           <p className="mt-10 w-full max-w-md px-4 text-xs text-muted-foreground sm:px-12">
             By clicking continue, you acknowledge that you have read and agree
-            to Papermark&apos;s{" "}
+            to {BRAND_NAME}&apos;s{" "}
             <a
               href={`${process.env.NEXT_PUBLIC_MARKETING_URL}/terms`}
               target="_blank"

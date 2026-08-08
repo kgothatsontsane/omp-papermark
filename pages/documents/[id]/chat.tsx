@@ -16,6 +16,8 @@ import prisma from "@/lib/prisma";
 import { usePlan } from "@/lib/swr/use-billing";
 import { CustomUser } from "@/lib/types";
 
+import { BRAND_NAME } from "@/lib/branding";
+
 export const getServerSideProps = async (context: any) => {
   const { id } = context.params;
   const session = await getServerSession(context.req, context.res, authOptions);
@@ -152,7 +154,7 @@ function Nav({ documentId }: { documentId: string }) {
           <div className="flex flex-1 items-center justify-center sm:items-stretch sm:justify-start">
             <div className="flex flex-shrink-0 items-center gap-x-2">
               <p className="text-2xl font-bold tracking-tighter text-white">
-                Papermark
+                {BRAND_NAME}
               </p>
               <Sparkle className="h-5 w-5 text-white" />
             </div>

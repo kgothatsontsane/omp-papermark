@@ -4,21 +4,23 @@ import { GTMComponent } from "@/components/gtm-component";
 
 import LoginClient from "./page-client";
 
+import { APP_URL, BRAND_NAME } from "@/lib/branding";
+
 const data = {
-  description: "Login to Papermark",
-  title: "Login | Papermark",
+  description: `Login to ${BRAND_NAME}`,
+  title: `Login | ${BRAND_NAME}`,
   url: "/login",
 };
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://dealroom.open-mic.co.za"),
+  metadataBase: new URL(APP_URL),
   title: data.title,
   description: data.description,
   openGraph: {
     title: data.title,
     description: data.description,
     url: data.url,
-    siteName: "Papermark",
+    siteName: BRAND_NAME,
     images: [
       {
         url: "/_static/meta-image.png",
@@ -33,7 +35,6 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: data.title,
     description: data.description,
-    creator: "@papermarkio",
     images: ["/_static/meta-image.png"],
   },
 };

@@ -12,6 +12,8 @@ import { z } from "zod";
 
 import { cn } from "@/lib/utils";
 
+import { BRAND_LOGO, BRAND_NAME, SUPPORT_EMAIL } from "@/lib/branding";
+
 import { LastUsed, useLastUsed } from "@/components/hooks/useLastUsed";
 import Google from "@/components/shared/icons/google";
 import LinkedIn from "@/components/shared/icons/linkedin";
@@ -55,13 +57,13 @@ export default function Login() {
         <div className="z-10 mx-5 mt-[calc(1vh)] h-fit w-full max-w-md overflow-hidden rounded-lg sm:mx-0 sm:mt-[calc(2vh)] md:mt-[calc(3vh)]">
           <div className="items-left flex flex-col space-y-3 px-4 py-6 pt-8 sm:px-12">
             <img
-              src="/_static/papermark-logo.svg"
-              alt="Papermark Logo"
+              src={BRAND_LOGO}
+              alt={`${BRAND_NAME} Logo`}
               className="md:mb-48s -mt-8 mb-36 h-7 w-auto self-start sm:mb-32"
             />
             <Link href="/">
               <span className="text-balance text-3xl font-semibold text-gray-900">
-                Welcome to Papermark
+                Welcome to {BRAND_NAME}
               </span>
             </Link>
             <h3 className="text-balance text-sm text-gray-800">
@@ -204,7 +206,7 @@ export default function Login() {
           </div>
           <p className="mt-10 w-full max-w-md px-4 text-xs text-muted-foreground sm:px-12">
             By clicking continue, you acknowledge that you have read and agree
-            to Papermark&apos;s{" "}
+            to {BRAND_NAME}&apos;s{" "}
             <a
               href={`${process.env.NEXT_PUBLIC_MARKETING_URL}/terms`}
               target="_blank"
@@ -245,10 +247,10 @@ export default function Login() {
               </div>
               {/* Text content */}
               <div className="max-w-xl text-center">
-                <blockquote className="text-balance font-normal leading-8 text-white sm:text-xl sm:leading-9">
+<blockquote className="text-balance font-normal leading-8 text-white sm:text-xl sm:leading-9">
                   <p>
-                    &quot;We raised our €30M Fund with Papermark Data Rooms.
-                    Love the customization, security and ease of use.&quot;
+                    "We raised our €30M Fund with {BRAND_NAME} Data Rooms.
+                    Love the customization, security and ease of use."
                   </p>
                 </blockquote>
                 <figcaption className="mt-4">
@@ -270,12 +272,12 @@ export default function Login() {
                 Trusted by teams at
               </div>
               <LogoCloud />
-              {/* <img
+              <img
                 src="https://assets.papermark.io/upload/file_7JEGY7zM9ZTfmxu8pe7vWj-Screenshot-2025-05-09-at-18.09.13.png"
                 alt="Trusted teams illustration"
                 className="mt-4 max-w-full h-auto object-contain"
                 style={{maxHeight: '120px'}}
-              /> */}
+              />
             </div>
           </div>
         </div>

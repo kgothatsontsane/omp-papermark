@@ -10,6 +10,7 @@ import { GroupNavigation } from "@/components/datarooms/groups/group-navigation"
 import AppLayout from "@/components/layouts/app";
 import { Form } from "@/components/ui/form";
 
+import { BRAND_NAME } from "@/lib/branding";
 import { useDataroom } from "@/lib/swr/use-dataroom";
 import { useDataroomGroup } from "@/lib/swr/use-dataroom-groups";
 
@@ -45,7 +46,7 @@ export default function DataroomGroupPage() {
           <div className="grid gap-6">
             <Form
               title="Group Name"
-              description="This is the name of your data room group on Papermark."
+              description={`This is the name of your data room group on ${BRAND_NAME}.`}
               inputAttrs={{
                 name: "name",
                 placeholder: "e.g. Management Team",

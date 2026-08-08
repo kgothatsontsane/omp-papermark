@@ -11,6 +11,7 @@ import { getPriceIdFromPlan } from "@/ee/stripe/functions/get-price-id-from-plan
 import { PLANS } from "@/ee/stripe/utils";
 import { CheckIcon, CircleHelpIcon, Users2Icon, XIcon } from "lucide-react";
 
+import { BRAND_NAME } from "@/lib/branding";
 import { useAnalytics } from "@/lib/analytics";
 import { usePlan } from "@/lib/swr/use-billing";
 import { capitalize, cn } from "@/lib/utils";
@@ -251,7 +252,7 @@ export function UpgradePlanModal({
                 <div className="mb-4 border-b border-gray-200 pb-2">
                   <div className="flex items-center justify-between">
                     <h3 className="text-balance text-xl font-medium text-gray-900 dark:text-white">
-                      Papermark {displayPlanName}
+                      {BRAND_NAME} {displayPlanName}
                     </h3>
                   </div>
                   <span

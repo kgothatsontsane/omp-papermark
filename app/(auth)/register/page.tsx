@@ -2,21 +2,23 @@ import { Metadata } from "next";
 
 import RegisterClient from "./page-client";
 
+import { APP_URL, BRAND_NAME } from "@/lib/branding";
+
 const data = {
-  description: "Signup to Papermark",
-  title: "Sign up | Papermark",
+  description: `Sign up to ${BRAND_NAME}`,
+  title: `Sign up | ${BRAND_NAME}`,
   url: "/register",
 };
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://dealroom.open-mic.co.za"),
+  metadataBase: new URL(APP_URL),
   title: data.title,
   description: data.description,
   openGraph: {
     title: data.title,
     description: data.description,
     url: data.url,
-    siteName: "Papermark",
+    siteName: BRAND_NAME,
     images: [
       {
         url: "/_static/meta-image.png",
@@ -31,7 +33,6 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: data.title,
     description: data.description,
-    creator: "@papermarkio",
     images: ["/_static/meta-image.png"],
   },
 };

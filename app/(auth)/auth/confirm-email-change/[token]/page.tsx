@@ -17,23 +17,25 @@ import EmailUpdated from "@/components/emails/email-updated";
 import ConfirmEmailChangePageClient from "./page-client";
 import { getSession } from "./utils";
 
+import { APP_URL, BRAND_NAME } from "@/lib/branding";
+
 export const runtime = "nodejs";
 
 const data = {
   description: "Confirm email change",
-  title: "Confirm email change | Papermark",
+  title: `Confirm email change | ${BRAND_NAME}`,
   url: "/auth/confirm-email-change",
 };
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://dealroom.open-mic.co.za"),
+  metadataBase: new URL(APP_URL),
   title: data.title,
   description: data.description,
   openGraph: {
     title: data.title,
     description: data.description,
     url: data.url,
-    siteName: "Papermark",
+    siteName: BRAND_NAME,
     images: [
       {
         url: "/_static/meta-image.png",
@@ -48,7 +50,6 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: data.title,
     description: data.description,
-    creator: "@papermarkio",
     images: ["/_static/meta-image.png"],
   },
 };
