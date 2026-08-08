@@ -13,6 +13,8 @@ import {
   Text,
 } from "@react-email/components";
 
+import { BRAND_NAME } from "@/lib/branding";
+
 export default function DataroomNotification({
   dataroomName,
   documentName,
@@ -34,7 +36,7 @@ export default function DataroomNotification({
         <Body className="mx-auto my-auto bg-white font-sans">
           <Container className="mx-auto my-10 w-[465px] p-5">
             <Text className="mx-0 mb-8 mt-4 p-0 text-center text-2xl font-normal">
-              <span className="font-bold tracking-tighter">Papermark</span>
+              <span className="font-bold tracking-tighter">{BRAND_NAME}</span>
             </Text>
             <Text className="font-seminbold mx-0 mb-8 mt-4 p-0 text-center text-xl">
               {`New document available for ${dataroomName}`}
@@ -43,7 +45,7 @@ export default function DataroomNotification({
               A new document{" "}
               <span className="font-semibold">{documentName}</span> has been
               added to <span className="font-semibold">{dataroomName}</span>{" "}
-              dataroom on Papermark.
+              dataroom on {BRAND_NAME}.
             </Text>
             <Section className="mb-[32px] mt-[32px] text-center">
               <Button
@@ -58,7 +60,7 @@ export default function DataroomNotification({
               or copy and paste this URL into your browser: <br />
               {`${url}`}
             </Text>
-            <Text className="text-sm text-gray-400">Papermark</Text>
+            <Text className="text-sm text-gray-400">{BRAND_NAME}</Text>
             <Hr />
             <Section className="mt-8 text-gray-400">
               <Text className="text-xs">
@@ -76,7 +78,7 @@ export default function DataroomNotification({
                 <span className="font-semibold">{senderEmail}</span> because you
                 viewed the dataroom{" "}
                 <span className="font-semibold">{dataroomName}</span> on
-                Papermark. If you have any feedback or questions about this
+                {BRAND_NAME}. If you have any feedback or questions about this
                 email, simply reply to it. To unsubscribe from updates about
                 this dataroom,{" "}
                 <a

@@ -13,6 +13,8 @@ import {
   Text,
 } from "@react-email/components";
 
+import { BRAND_NAME } from "@/lib/branding";
+
 const Onboarding1Email = () => {
   const previewText = `Share documents not attachments`;
 
@@ -24,7 +26,7 @@ const Onboarding1Email = () => {
         <Body className="mx-auto my-auto bg-white font-sans">
           <Container className="mx-auto my-10 w-[465px] p-5">
             <Text className="mx-0 mb-8 mt-4 p-0 text-center text-2xl font-normal">
-              <span className="font-bold tracking-tighter">Papermark</span>
+              <span className="font-bold tracking-tighter">{BRAND_NAME}</span>
             </Text>
             <Text className="mx-0 mb-8 mt-4 p-0 text-center text-2xl font-normal">
               Turn your documents into links
@@ -33,7 +35,7 @@ const Onboarding1Email = () => {
               It all starts from sharing your first document!
             </Text>
             <Text className="text-sm">
-              With Papermark you can upload different kind of documents and turn
+              With {BRAND_NAME} you can upload different kind of documents and turn
               them into shareable links:
             </Text>
             <Text className="text-sm">

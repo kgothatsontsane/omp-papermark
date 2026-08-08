@@ -13,6 +13,8 @@ import {
   Text,
 } from "@react-email/components";
 
+import { BRAND_NAME } from "@/lib/branding";
+
 const Onboarding4Email = () => {
   const previewText = `The document sharing infrastructure for the modern web`;
 
@@ -24,7 +26,7 @@ const Onboarding4Email = () => {
         <Body className="mx-auto my-auto bg-white font-sans">
           <Container className="mx-auto my-10 w-[465px] p-5">
             <Text className="mx-0 mb-8 mt-4 p-0 text-center text-2xl font-normal">
-              <span className="font-bold tracking-tighter">Papermark</span>
+              <span className="font-bold tracking-tighter">{BRAND_NAME}</span>
             </Text>
             <Text className="mx-0 mb-8 mt-4 p-0 text-center text-2xl font-normal">
               Custom domains and branding
@@ -32,7 +34,7 @@ const Onboarding4Email = () => {
             <Text className="text-sm">
               Look professional with custom branding!
             </Text>
-            <Text className="text-sm">With Papermark you can:</Text>
+            <Text className="text-sm">With {BRAND_NAME} you can:</Text>
             <Text className="text-sm">
               <ul className="list-inside list-disc text-sm">
                 <li>
@@ -40,7 +42,7 @@ const Onboarding4Email = () => {
                   <strong>custom domain💫</strong>{" "}
                 </li>
 
-                <li>Remove &quot;powered by Papermark&quot;</li>
+                <li>Remove &quot;powered by {BRAND_NAME}&quot;</li>
                 <li>Add logo and custom colors</li>
                 <li>Share data room with custom domain</li>
                 <li>Add banner and custom brand to data rooms</li>
