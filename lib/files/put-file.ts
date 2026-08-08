@@ -143,8 +143,12 @@ const putFileSingle = async ({
   );
 
   if (!presignedResponse.ok) {
+    const errorText = await presignedResponse.text();
+    console.error(
+      `Presigned URL request failed (${presignedResponse.status}): ${errorText}`,
+    );
     throw new Error(
-      `Failed to get presigned post url, failed with status code ${presignedResponse.status}`,
+      `Failed to get presigned post url, failed with status code ${presignedResponse.status}: ${errorText}`,
     );
   }
 
@@ -164,8 +168,12 @@ const putFileSingle = async ({
   });
 
   if (!response.ok) {
+    const errorText = await response.text();
+    console.error(
+      `File upload to S3 failed (${response.status}): ${errorText}`,
+    );
     throw new Error(
-      `Failed to upload file "${file.name}", failed with status code ${response.status}`,
+      `Failed to upload file "${file.name}", failed with status code ${response.status}: ${errorText}`,
     );
   }
 
