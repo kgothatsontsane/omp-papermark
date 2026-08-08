@@ -3,6 +3,7 @@ import { NextApiRequest, NextApiResponse } from "next";
 import { authOptions } from "@/pages/api/auth/[...nextauth]";
 import { getServerSession } from "next-auth/next";
 
+import { isSelfHostedMode } from "@/lib/self-hosted";
 import { errorhandler } from "@/lib/errorHandler";
 import prisma from "@/lib/prisma";
 import { CustomUser } from "@/lib/types";
@@ -51,6 +52,7 @@ export default async function handle(
       }
 
       if (
+        !isSelfHostedMode() &&
         (team.plan === "free" || team.plan === "pro") &&
         !team.plan.includes("drtrial")
       ) {

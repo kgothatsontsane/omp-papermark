@@ -5,6 +5,7 @@ import { useRouter } from "next/router";
 
 import * as React from "react";
 
+import { isSelfHostedMode } from "@/lib/self-hosted";
 import { PlanEnum } from "@/ee/stripe/constants";
 import { CrownIcon } from "lucide-react";
 
@@ -65,7 +66,7 @@ const NavItem: React.FC<Props["navigation"][0]> = ({
   limited,
 }) => {
   const router = useRouter();
-  // active is true if the segment included in the pathname, but not if it's the root pathname. unless the segment is the root pathname.
+  // ponytail: active is true if the segment included in the pathname, but not if it's the root pathname. unless the segment is the root pathname.
   let active =
     router.pathname.includes(segment as string) &&
     segment !== "/datarooms/[id]";
@@ -87,30 +88,19 @@ const NavItem: React.FC<Props["navigation"][0]> = ({
     active = false;
   }
 
-  return (
-    <li
-      key={label}
-      className={cn(
-        "flex shrink-0 list-none border-b-2 border-transparent p-2",
-        {
-          "border-primary": active,
-          hidden: disabled,
-        },
-      )}
-    >
-      {limited ? (
-        <UpgradePlanModal
-          key={label}
-          clickedPlan={PlanEnum.DataRoomsPlus}
-          trigger={label}
-          highlightItem={["qa"]}
-        >
-          <div className="text-content-subtle hover:bg-background-subtle -mx-3 flex items-center gap-1 rounded-lg px-3 py-2 text-sm font-medium hover:bg-muted hover:text-primary">
-            {label}
-            <CrownIcon className="h-4 w-4 text-muted-foreground" />
-          </div>
-        </UpgradePlanModal>
-      ) : (
+  // In self-hosted mode, render all items as regular links (no upgrade modal)
+  if (isSelfHostedMode() || !limited) {
+    return (
+      <li
+        key={label}
+        className={cn(
+          "flex shrink-0 list-none border-b-2 border-transparent p-2",
+          {
+            "border-primary": active,
+            hidden: disabled,
+          },
+        )}
+      >
         <Link
           href={href}
           className={cn(
@@ -127,7 +117,32 @@ const NavItem: React.FC<Props["navigation"][0]> = ({
             </div>
           ) : null}
         </Link>
+      </li>
+    );
+  }
+
+  return (
+    <li
+      key={label}
+      className={cn(
+        "flex shrink-0 list-none border-b-2 border-transparent p-2",
+        {
+          "border-primary": active,
+          hidden: disabled,
+        },
       )}
+    >
+      <UpgradePlanModal
+        key={label}
+        clickedPlan={PlanEnum.DataRoomsPlus}
+        trigger={label}
+        highlightItem={["qa"]}
+      >
+        <div className="text-content-subtle hover:bg-background-subtle -mx-3 flex items-center gap-1 rounded-lg px-3 py-2 text-sm font-medium hover:bg-muted hover:text-primary">
+          {label}
+          <CrownIcon className="h-4 w-4 text-muted-foreground" />
+        </div>
+      </UpgradePlanModal>
     </li>
   );
 };

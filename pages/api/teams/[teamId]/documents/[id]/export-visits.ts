@@ -5,6 +5,7 @@ import { getServerSession } from "next-auth/next";
 
 import prisma from "@/lib/prisma";
 import { jobStore } from "@/lib/redis-job-store";
+import { isSelfHostedMode } from "@/lib/self-hosted";
 import { exportVisitsTask } from "@/lib/trigger/export-visits";
 import { CustomUser } from "@/lib/types";
 
@@ -94,7 +95,7 @@ export default async function handler(
       return res.status(404).end("Team not found");
     }
 
-    if (team.plan.includes("free")) {
+    if (!isSelfHostedMode() && team.plan.includes("free")) {
       return res
         .status(403)
         .json({ message: "This feature is not available for your plan" });

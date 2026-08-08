@@ -2,6 +2,7 @@ import { NextApiRequest, NextApiResponse } from "next";
 
 import { sendViewedDataroomEmail } from "@/lib/emails/send-viewed-dataroom";
 import { sendViewedDocumentEmail } from "@/lib/emails/send-viewed-document";
+import { isSelfHostedMode } from "@/lib/self-hosted";
 import prisma from "@/lib/prisma";
 import { log } from "@/lib/utils";
 
@@ -178,9 +179,10 @@ export default async function handle(
   }
 
   const includeLocation =
-    !view.team?.plan?.includes("free") &&
-    !view.team?.plan?.includes("starter") &&
-    !view.team?.plan?.includes("pro");
+    isSelfHostedMode() ||
+    (!view.team?.plan?.includes("free") &&
+      !view.team?.plan?.includes("starter") &&
+      !view.team?.plan?.includes("pro"));
 
   const locationString =
     locationData.country === "US"

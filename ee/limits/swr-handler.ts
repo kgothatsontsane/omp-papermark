@@ -1,3 +1,4 @@
+import { isSelfHostedMode } from "@/lib/self-hosted";
 import { useTeam } from "@/context/team-context";
 import useSWR from "swr";
 import { z } from "zod";
@@ -14,6 +15,7 @@ export type LimitProps = z.infer<typeof configSchema> & {
     users: number;
   };
   dataroomUpload: boolean;
+  conversationsInDataroom?: boolean;
 };
 
 export function useLimits() {
@@ -34,8 +36,11 @@ export function useLimits() {
     : true;
   const canAddLinks = data?.links ? data?.usage?.links < data?.links : true;
   const canAddUsers = data?.users ? data?.usage?.users < data?.users : true;
-  const showUpgradePlanModal =
-    (isFree && !isTrial) || (isTrial && !canAddUsers);
+
+  // In self-hosted mode, never show upgrade modal
+  const showUpgradePlanModal = isSelfHostedMode()
+    ? false
+    : (isFree && !isTrial) || (isTrial && !canAddUsers);
 
   return {
     showUpgradePlanModal,

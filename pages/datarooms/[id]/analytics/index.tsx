@@ -1,6 +1,6 @@
 import { useState } from "react";
 
-import { PlanEnum } from "@/ee/stripe/constants";
+import { isSelfHostedMode } from "@/lib/self-hosted";
 import { ChartNoAxesColumnIcon, LogsIcon } from "lucide-react";
 
 import { usePlan } from "@/lib/swr/use-billing";
@@ -13,7 +13,6 @@ import { DataroomHeader } from "@/components/datarooms/dataroom-header";
 import { DataroomNavigation } from "@/components/datarooms/dataroom-navigation";
 import StatsCard from "@/components/datarooms/stats-card";
 import AppLayout from "@/components/layouts/app";
-import { FeaturePreview } from "@/components/ui/feature-preview";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import DataroomVisitorsTable from "@/components/visitors/dataroom-visitors-table";
 
@@ -27,11 +26,9 @@ export default function DataroomAnalyticsPage() {
     name: string;
   } | null>(null);
 
-  // Determine default tab based on plan
-  const defaultTab =
-    isTrial || isDatarooms || isDataroomsPlus ? "analytics" : "audit-log";
-  // Check if user has access to analytics features
-  const hasAnalyticsAccess = isDatarooms || isDataroomsPlus || isTrial;
+  // ponytail: in self-hosted mode, always show analytics
+  const hasAnalyticsAccess =
+    isSelfHostedMode() || isDatarooms || isDataroomsPlus || isTrial;
 
   if (!dataroom) {
     return <div>Loading...</div>;
@@ -73,7 +70,7 @@ export default function DataroomAnalyticsPage() {
         <div className="space-y-8">
           <StatsCard />
 
-          <Tabs defaultValue={defaultTab} className="space-y-6">
+          <Tabs defaultValue={hasAnalyticsAccess ? "analytics" : "audit-log"} className="space-y-6">
             <TabsList>
               <TabsTrigger
                 value="analytics"
@@ -95,15 +92,7 @@ export default function DataroomAnalyticsPage() {
               {hasAnalyticsAccess ? (
                 <AnalyticsContent />
               ) : (
-                <FeaturePreview
-                  title="Advanced Dataroom Analytics"
-                  description="Get detailed insights into document engagement, completion rates, and visitor behavior patterns across your dataroom."
-                  requiredPlan={PlanEnum.DataRooms}
-                  trigger="dataroom_analytics_tab"
-                  upgradeButtonText="Data Rooms"
-                >
-                  <MockAnalyticsTable />
-                </FeaturePreview>
+                <MockAnalyticsTable />
               )}
             </TabsContent>
 

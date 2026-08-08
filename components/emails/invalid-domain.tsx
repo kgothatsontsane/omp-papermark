@@ -15,7 +15,7 @@ import {
 } from "@react-email/components";
 
 export default function InvalidDomain({
-  domain = "papermark.com",
+  domain = "dealroom.open-mic.co.za",
   invalidDays = 14,
 }: {
   domain: string;
@@ -51,7 +51,7 @@ export default function InvalidDomain({
             <Section className="my-8 text-center">
               <Button
                 className="rounded bg-black text-center text-xs font-semibold text-white no-underline"
-                href={`https://app.papermark.com/settings/domains`}
+                href={`https://dealroom.open-mic.co.za/settings/domains`}
                 style={{ padding: "12px 20px" }}
               >
                 Configure domain
@@ -60,7 +60,7 @@ export default function InvalidDomain({
             <Text className="text-sm leading-6 text-black">
               If you do not want to keep this domain on Papermark, you can{" "}
               <Link
-                href={`https://app.papermark.com/settings/domains`}
+                href={`https://dealroom.open-mic.co.za/settings/domains`}
                 className="font-medium text-blue-600 no-underline"
               >
                 delete it
@@ -82,11 +82,11 @@ export default function InvalidDomain({
               <Text className="text-xs">
                 © {new Date().getFullYear()}{" "}
                 <a
-                  href="https://www.papermark.com"
+                  href="https://dealroom.open-mic.co.za"
                   className="text-gray-400 no-underline hover:text-gray-400"
                   target="_blank"
                 >
-                  papermark.com
+                  dealroom.open-mic.co.za
                 </a>
               </Text>
               <Text className="text-xs">

@@ -69,9 +69,9 @@ export async function sendLinkCreatedWebhook({
       id: link.id,
       url: link.domainId
         ? `https://${link.domainSlug}/${link.slug}`
-        : `https://www.papermark.com/view/${link.id}`,
+        : `https://dealroom.open-mic.co.za/view/${link.id}`,
       domain:
-        link.domainId && link.domainSlug ? link.domainSlug : "papermark.com",
+        link.domainId && link.domainSlug ? link.domainSlug : "dealroom.open-mic.co.za",
       key: link.domainId && link.slug ? link.slug : `view/${link.id}`,
       name: link.name,
       expiresAt: link.expiresAt?.toISOString() || null,

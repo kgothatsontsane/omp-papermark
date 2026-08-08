@@ -1,4 +1,5 @@
 import { useTeam } from "@/context/team-context";
+import { isSelfHostedMode } from "@/lib/self-hosted";
 import useSWR from "swr";
 
 import { fetcher } from "@/lib/utils";
@@ -17,6 +18,65 @@ export function SettingsHeader() {
     fetcher,
   );
 
+  const navigation = [
+    {
+      label: "Overview",
+      href: `/settings/general`,
+      segment: `general`,
+    },
+    {
+      label: "Team",
+      href: `/settings/people`,
+      segment: "people",
+    },
+    {
+      label: "Domains",
+      href: `/settings/domains`,
+      segment: "domains",
+    },
+    {
+      label: "Presets",
+      href: `/settings/presets`,
+      segment: "presets",
+    },
+    {
+      label: "Tags",
+      href: `/settings/tags`,
+      segment: "tags",
+    },
+    {
+      label: "Agreements",
+      href: `/settings/agreements`,
+      segment: "agreements",
+    },
+    {
+      label: "Webhooks",
+      href: `/settings/webhooks`,
+      segment: "webhooks",
+    },
+    {
+      label: "Tokens",
+      href: `/settings/tokens`,
+      segment: "tokens",
+      disabled: !features?.tokens,
+    },
+    {
+      label: "Incoming Webhooks",
+      href: `/settings/incoming-webhooks`,
+      segment: "incoming-webhooks",
+      disabled: !features?.incomingWebhooks,
+    },
+  ];
+
+  // ponytail: hide Billing in self-hosted mode
+  if (!isSelfHostedMode()) {
+    navigation.push({
+      label: "Billing",
+      href: `/settings/billing`,
+      segment: "billing",
+    });
+  }
+
   return (
     <header>
       <section className="mb-4 flex items-center justify-between md:mb-8 lg:mb-12">
@@ -30,62 +90,7 @@ export function SettingsHeader() {
         </div>
       </section>
 
-      <NavMenu
-        navigation={[
-          {
-            label: "Overview",
-            href: `/settings/general`,
-            segment: `general`,
-          },
-          {
-            label: "Team",
-            href: `/settings/people`,
-            segment: "people",
-          },
-          {
-            label: "Domains",
-            href: `/settings/domains`,
-            segment: "domains",
-          },
-          {
-            label: "Presets",
-            href: `/settings/presets`,
-            segment: "presets",
-          },
-          {
-            label: "Tags",
-            href: `/settings/tags`,
-            segment: "tags",
-          },
-          {
-            label: "Agreements",
-            href: `/settings/agreements`,
-            segment: "agreements",
-          },
-          {
-            label: "Webhooks",
-            href: `/settings/webhooks`,
-            segment: "webhooks",
-          },
-          {
-            label: "Tokens",
-            href: `/settings/tokens`,
-            segment: "tokens",
-            disabled: !features?.tokens,
-          },
-          {
-            label: "Incoming Webhooks",
-            href: `/settings/incoming-webhooks`,
-            segment: "incoming-webhooks",
-            disabled: !features?.incomingWebhooks,
-          },
-          {
-            label: "Billing",
-            href: `/settings/billing`,
-            segment: "billing",
-          },
-        ]}
-      />
+      <NavMenu navigation={navigation} />
     </header>
   );
 }

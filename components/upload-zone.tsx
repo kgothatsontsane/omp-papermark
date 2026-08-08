@@ -23,6 +23,7 @@ import {
   determineFolderPaths,
   isSystemFile,
 } from "@/lib/folders/create-folder";
+import { isSelfHostedMode } from "@/lib/self-hosted";
 import { usePlan } from "@/lib/swr/use-billing";
 import useLimits from "@/lib/swr/use-limits";
 import { CustomUser } from "@/lib/types";
@@ -103,20 +104,24 @@ export default function UploadZone({
 
   const uploadProgress = useRef<number[]>([]);
 
+  // ponytail: in self-hosted mode, use full file types and no upgrade messaging
+  const effectiveIsFree = isSelfHostedMode() ? false : isFree;
+  const effectiveIsTrial = isSelfHostedMode() ? false : isTrial;
+
   const fileSizeLimits = useMemo(
     () =>
       getFileSizeLimits({
         limits,
-        isFree,
-        isTrial,
+        isFree: effectiveIsFree,
+        isTrial: effectiveIsTrial,
       }),
-    [limits, isFree, isTrial],
+    [limits, effectiveIsFree, effectiveIsTrial],
   );
 
   const acceptableDropZoneFileTypes =
-    isFree && !isTrial
-      ? acceptableDropZoneMimeTypesWhenIsFreePlanAndNotTrial
-      : allAcceptableDropZoneMimeTypes;
+    isSelfHostedMode() || (!effectiveIsFree || effectiveIsTrial)
+      ? allAcceptableDropZoneMimeTypes
+      : acceptableDropZoneMimeTypesWhenIsFreePlanAndNotTrial;
 
   // this var will help to determine the correct api endpoint to request folder creation (If needed).
   const endpointTargetType = dataroomId
@@ -129,11 +134,16 @@ export default function UploadZone({
         let message = "";
         if (errors.find(({ code }) => code === "file-too-large")) {
           const fileSizeLimitMB = getFileSizeLimit(file.type, fileSizeLimits);
-          message = `File size too big (max. ${fileSizeLimitMB} MB). Upgrade to a paid plan to increase the limit.`;
+          message = `File size too big (max. ${fileSizeLimitMB} MB)`;
+          if (!isSelfHostedMode() && isFree && !isTrial) {
+            message += ". Upgrade to a paid plan to increase the limit.";
+          }
         } else if (errors.find(({ code }) => code === "file-invalid-type")) {
           const isSupported = SUPPORTED_DOCUMENT_MIME_TYPES.includes(file.type);
           message = `File type not supported ${
-            isFree && !isTrial && isSupported ? `on free plan` : ""
+            !isSelfHostedMode() && isFree && !isTrial && isSupported
+              ? `on free plan`
+              : ""
           }`;
         }
         return { fileName: file.name, message };

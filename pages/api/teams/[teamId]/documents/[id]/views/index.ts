@@ -5,6 +5,7 @@ import { View } from "@prisma/client";
 import { JsonValue } from "@prisma/client/runtime/library";
 import { getServerSession } from "next-auth/next";
 
+import { isSelfHostedMode } from "@/lib/self-hosted";
 import { LIMITS } from "@/lib/constants";
 import { errorhandler } from "@/lib/errorHandler";
 import prisma from "@/lib/prisma";
@@ -284,7 +285,9 @@ export default async function handle(
 
       // filter the last 20 views
       const limitedViews =
-        team.plan === "free" && offset >= LIMITS.views ? [] : views;
+        !isSelfHostedMode() && team.plan === "free" && offset >= LIMITS.views
+          ? []
+          : views;
 
       let viewsWithDuration;
       if (document.type === "video") {

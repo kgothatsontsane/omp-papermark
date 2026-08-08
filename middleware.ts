@@ -31,7 +31,7 @@ function isCustomDomain(host: string) {
       !(
         hostname.includes("localhost") ||
         hostname.includes("papermark.io") ||
-        hostname.includes("papermark.com") ||
+        hostname.includes("dealroom.open-mic.co.za") ||
         hostname.endsWith(".vercel.app")
       ))
   );

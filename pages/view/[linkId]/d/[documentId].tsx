@@ -256,7 +256,7 @@ export async function getStaticProps(context: GetStaticPropsContext) {
           metaDescription: link.metaDescription,
           metaImage: link.metaImage,
           metaFavicon: link.metaFavicon ?? "/favicon.ico",
-          metaUrl: `https://www.papermark.com/view/${linkId}`,
+          metaUrl: `https://dealroom.open-mic.co.za/view/${linkId}`,
         },
         showPoweredByBanner: false,
         showAccountCreationSlide: false,

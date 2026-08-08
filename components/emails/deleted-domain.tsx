@@ -14,7 +14,7 @@ import {
 } from "@react-email/components";
 
 export default function DomainDeleted({
-  domain = "papermark.com",
+  domain = "dealroom.open-mic.co.za",
 }: {
   domain: string;
 }) {
@@ -43,7 +43,7 @@ export default function DomainDeleted({
             <Section className="my-8 text-center">
               <Button
                 className="rounded bg-black text-center text-xs font-semibold text-white no-underline"
-                href={`https://app.papermark.com/settings/domains`}
+                href={`https://dealroom.open-mic.co.za/settings/domains`}
                 style={{ padding: "12px 20px" }}
               >
                 Set up your custom domain
@@ -58,11 +58,11 @@ export default function DomainDeleted({
               <Text className="text-xs">
                 © {new Date().getFullYear()}{" "}
                 <a
-                  href="https://www.papermark.com"
+                  href="https://dealroom.open-mic.co.za"
                   className="text-gray-400 no-underline hover:text-gray-400"
                   target="_blank"
                 >
-                  papermark.com
+                  dealroom.open-mic.co.za
                 </a>
               </Text>
               <Text className="text-xs">

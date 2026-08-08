@@ -1,6 +1,7 @@
 import { NextApiRequest, NextApiResponse } from "next";
 
 import { getLimits } from "@/ee/limits/server";
+import { isSelfHostedMode } from "@/lib/self-hosted";
 import { authOptions } from "@/pages/api/auth/[...nextauth]";
 import { getServerSession } from "next-auth/next";
 
@@ -23,7 +24,6 @@ export default async function handle(
     const userId = (session.user as CustomUser).id;
 
     try {
-      // TODO: move this to a cache layer
       const team = await prisma.team.findUnique({
         where: {
           id: teamId,
@@ -42,8 +42,12 @@ export default async function handle(
       const isTrial = team?.plan.includes("drtrial");
       const featureFlags = await getFeatureFlags({ teamId });
       const conversationsInDataroom =
-        featureFlags.conversations || limits.conversationsInDataroom || isTrial;
-      const dataroomUpload = featureFlags.dataroomUpload || isTrial;
+        isSelfHostedMode() ||
+        featureFlags.conversations ||
+        limits.conversationsInDataroom ||
+        isTrial;
+      const dataroomUpload =
+        isSelfHostedMode() || featureFlags.dataroomUpload || isTrial;
 
       return res.status(200).json({
         ...limits,

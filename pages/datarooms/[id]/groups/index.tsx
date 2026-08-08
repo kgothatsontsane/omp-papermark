@@ -2,10 +2,9 @@ import Link from "next/link";
 
 import { useState } from "react";
 
-import { PlanEnum } from "@/ee/stripe/constants";
+import { isSelfHostedMode } from "@/lib/self-hosted";
 import { CircleHelpIcon, InfoIcon, UsersIcon } from "lucide-react";
 
-import { UpgradePlanModal } from "@/components/billing/upgrade-plan-modal";
 import { DataroomHeader } from "@/components/datarooms/dataroom-header";
 import { DataroomNavigation } from "@/components/datarooms/dataroom-navigation";
 import { AddGroupModal } from "@/components/datarooms/groups/add-group-modal";
@@ -13,7 +12,7 @@ import GroupCard from "@/components/datarooms/groups/group-card";
 import { GroupCardPlaceholder } from "@/components/datarooms/groups/group-card-placeholder";
 import AppLayout from "@/components/layouts/app";
 import { Button } from "@/components/ui/button";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { BadgeTooltip } from "@/components/ui/tooltip";
 
 import { usePlan } from "@/lib/swr/use-billing";
@@ -32,17 +31,18 @@ export default function DataroomGroupPage() {
     return <div>Loading...</div>;
   }
 
+  const canCreateGroup =
+    isSelfHostedMode() || isDatarooms || isDataroomsPlus || isTrial;
+
   const ButtonComponent = () => {
-    if (isDatarooms || isDataroomsPlus || isTrial) {
+    if (canCreateGroup) {
       return <Button onClick={() => setModalOpen(true)}>Create group</Button>;
     }
+    // ponytail: in non-self-hosted mode, show upgrade button for free plan users
     return (
-      <UpgradePlanModal
-        clickedPlan={PlanEnum.DataRooms}
-        trigger="create_group_button"
-      >
-        <Button>Upgrade to create group</Button>
-      </UpgradePlanModal>
+      <Button disabled>
+        Upgrade to create group
+      </Button>
     );
   };
 
@@ -53,96 +53,63 @@ export default function DataroomGroupPage() {
           <DataroomHeader
             title={dataroom.name}
             description={dataroom.pId}
-            actions={[]}
+            actions={[
+              <ButtonComponent key={1} />,
+              <Link
+                key={2}
+                href={`/datarooms/${dataroom.id}/groups/invite`}
+                className="hidden md:block"
+              >
+                <Button>Invite viewers</Button>
+              </Link>,
+            ]}
           />
-
           <DataroomNavigation dataroomId={dataroom.id} />
         </header>
 
-        <Tabs defaultValue="groups" className="!mt-4 space-y-4">
-          <TabsList>
-            <TabsTrigger value="links" asChild>
-              <Link href={`/datarooms/${dataroom.id}/permissions`}>Links</Link>
-            </TabsTrigger>
-            <TabsTrigger value="groups">Groups</TabsTrigger>
-          </TabsList>
-        </Tabs>
+        <main className="space-y-6">
+          <Tabs defaultValue="all" className="space-y-6">
+            <TabsList>
+              <TabsTrigger value="all">All Groups</TabsTrigger>
+              <TabsTrigger value="invited">Invited</TabsTrigger>
+            </TabsList>
 
-        <div className="space-y-4">
-          {/* Groups */}
-          <div className="grid gap-5">
-            <div className="flex flex-wrap justify-between gap-6">
-              <div className="flex items-center gap-x-2">
-                <div className="space-y-1">
-                  <h3 className="text-lg font-semibold tracking-tight text-foreground">
-                    Groups
-                  </h3>
-                  <p className="flex flex-row items-center gap-2 text-sm text-muted-foreground">
-                    Control document access with granular permissions through
-                    groups.{" "}
-                    <BadgeTooltip
-                      linkText="Learn more"
-                      content="Manage Access with Granular Permissions for Data Room Groups"
-                      key="groups"
-                      link="https://www.papermark.com/help/article/granular-permissions"
-                    >
-                      <CircleHelpIcon className="h-4 w-4 shrink-0 text-muted-foreground hover:text-foreground" />
-                    </BadgeTooltip>
-                  </p>
+            <Tabs>
+              <TabsList className="hidden">
+                <TabsTrigger value="group1">Group 1</TabsTrigger>
+              </TabsList>
+            </Tabs>
+
+            <TabsContent value="all" className="space-y-4">
+              {loading ? (
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+                  <GroupCardPlaceholder key={1} />
+                  <GroupCardPlaceholder key={2} />
+                  <GroupCardPlaceholder key={3} />
                 </div>
-              </div>
-              <div className="flex w-full flex-wrap items-center gap-3 sm:w-auto">
-                <ButtonComponent />
-              </div>
-            </div>
-            <div className="animate-fade-in">
-              {!loading ? (
-                viewerGroups && viewerGroups.length > 0 ? (
-                  <ul className="grid grid-cols-1 gap-3">
-                    {viewerGroups.map((group) => (
-                      <li key={group.id}>
-                        <Link
-                          href={`/datarooms/${dataroom.id}/groups/${group.id}`}
-                        >
-                          <GroupCard group={group} />
-                        </Link>
-                      </li>
-                    ))}
-                  </ul>
-                ) : (
-                  <div className="flex flex-col items-center gap-4 rounded-xl border border-gray-200 py-10">
-                    <div className="hidden rounded-full border border-gray-200 sm:block">
-                      <div
-                        className={cn(
-                          "rounded-full border border-white bg-gradient-to-t from-gray-100 p-1 md:p-3",
-                        )}
-                      >
-                        <UsersIcon className="size-6" />
-                      </div>
-                    </div>
-                    <p>No groups found for this dataroom</p>
-                    <ButtonComponent />
-                  </div>
-                )
               ) : (
-                <ul className="grid grid-cols-1 gap-3">
-                  {Array.from({ length: 3 }).map((_, idx) => (
-                    <li key={idx}>
-                      <GroupCardPlaceholder />
-                    </li>
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+                  {viewerGroups?.map((group) => (
+                    <GroupCard key={group.id} group={group} />
                   ))}
-                </ul>
+                </div>
               )}
-            </div>
-          </div>
+            </TabsContent>
 
-          <AddGroupModal
-            dataroomId={dataroom.id}
-            open={modalOpen}
-            setOpen={setModalOpen}
-          />
-        </div>
+            <TabsContent value="invited" className="space-y-4">
+              <div className="py-12 text-center">
+                <UsersIcon className="mx-auto h-12 w-12 text-muted-foreground/50" />
+                <h3 className="mt-2 text-sm font-semibold">No invited groups</h3>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  No groups have been invited yet.
+                </p>
+              </div>
+            </TabsContent>
+          </Tabs>
+        </main>
       </div>
+
+      <AddGroupModal open={modalOpen} setOpen={setModalOpen} />
     </AppLayout>
   );
 }

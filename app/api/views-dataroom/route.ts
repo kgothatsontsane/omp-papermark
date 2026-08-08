@@ -16,6 +16,7 @@ import { verifyDataroomSession } from "@/lib/auth/dataroom-auth";
 import { PreviewSession, verifyPreviewSession } from "@/lib/auth/preview-auth";
 import { sendOtpVerificationEmail } from "@/lib/emails/send-email-otp-verification";
 import { getFile } from "@/lib/files/get-file";
+import { isSelfHostedMode } from "@/lib/self-hosted";
 import { newId } from "@/lib/id-helper";
 import prisma from "@/lib/prisma";
 import { ratelimit } from "@/lib/redis";
@@ -785,8 +786,8 @@ export async function POST(request: NextRequest) {
             file: true,
             storageType: true,
             pageNumber: true,
-            embeddedLinks: !link.team?.plan.includes("free"),
-            pageLinks: !link.team?.plan.includes("free"),
+            embeddedLinks: isSelfHostedMode() || !link.team?.plan.includes("free"),
+            pageLinks: isSelfHostedMode() || !link.team?.plan.includes("free"),
             metadata: true,
           },
         });
