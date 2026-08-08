@@ -30,7 +30,8 @@ function isCustomDomain(host: string) {
       hostname !== appBaseHost &&
       !(
         hostname.includes("localhost") ||
-        hostname.includes("papermark.io") ||
+        hostname === "open-mic.co.za" ||
+        hostname.endsWith(".open-mic.co.za") ||
         hostname.includes("dealroom.open-mic.co.za") ||
         hostname.endsWith(".vercel.app")
       ))
@@ -69,7 +70,7 @@ export default async function middleware(req: NextRequest, ev: NextFetchEvent) {
     return DomainMiddleware(req);
   }
 
-  // Handle standard papermark.io paths
+  // Handle standard application paths
   if (
     !path.startsWith("/view/") &&
     !path.startsWith("/verify") &&
