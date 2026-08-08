@@ -1,4 +1,5 @@
 import { getFeatureFlags } from "@/lib/featureFlags";
+import { isSelfHostedMode } from "@/lib/self-hosted";
 
 export interface StorageConfig {
   bucket: string;
@@ -92,6 +93,11 @@ export async function getTeamStorageConfigById(
 ): Promise<StorageConfig> {
   try {
     const features = await getFeatureFlags({ teamId });
+
+    // ponytail: in self-hosted mode, use default (EU) region
+    if (isSelfHostedMode()) {
+      return getStorageConfig();
+    }
 
     // If team has usStorage feature flag enabled, use US region
     const storageRegion = features.usStorage ? "us-east-2" : undefined;
