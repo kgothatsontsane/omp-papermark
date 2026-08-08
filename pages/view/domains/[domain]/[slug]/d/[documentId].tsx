@@ -19,6 +19,8 @@ import LoadingSpinner from "@/components/ui/loading-spinner";
 import CustomMetaTag from "@/components/view/custom-metatag";
 import DataroomDocumentView from "@/components/view/dataroom/dataroom-document-view";
 
+
+import { BRAND_NAME } from "@/lib/branding";
 type DataroomDocumentLinkData = {
   linkType: "DATAROOM_LINK";
   link: LinkWithDataroomDocument;
@@ -105,8 +107,8 @@ export default function DataroomDocumentViewPage({
           enableBranding={meta.enableCustomMetatag ?? false}
           title={
             meta.metaTitle ??
-            `${link?.dataroomDocument?.document?.name} | Powered by Papermark` ??
-            "Document powered by Papermark"
+            `${link?.dataroomDocument?.document?.name} | Powered by ${BRAND_NAME}` ??
+            `Document powered by ${BRAND_NAME}`
           }
           description={meta.metaDescription ?? null}
           imageUrl={meta.metaImage ?? null}
@@ -151,8 +153,8 @@ export default function DataroomDocumentViewPage({
         enableBranding={meta.enableCustomMetatag ?? false}
         title={
           meta.metaTitle ??
-          `${link?.dataroomDocument?.document?.name} | Powered by Papermark` ??
-          "Dataroom powered by Papermark"
+          `${link?.dataroomDocument?.document?.name} | Powered by ${BRAND_NAME}` ??
+          `Dataroom powered by ${BRAND_NAME}`
         }
         description={meta.metaDescription ?? null}
         imageUrl={meta.metaImage ?? null}

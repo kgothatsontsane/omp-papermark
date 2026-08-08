@@ -310,8 +310,8 @@ export default function ViewPage({
             enableBranding={meta.enableCustomMetatag ?? false}
             title={
               meta.metaTitle ??
-              `${link?.document?.name} | Powered by Papermark` ??
-              "Document powered by Papermark"
+              `${link?.document?.name} | Powered by ${BRAND_NAME}` ??
+              `Document powered by ${BRAND_NAME}`
             }
             description={meta.metaDescription ?? null}
             imageUrl={meta.metaImage ?? null}
@@ -355,8 +355,8 @@ export default function ViewPage({
           enableBranding={meta.enableCustomMetatag ?? false}
           title={
             meta.metaTitle ??
-            `${link?.document?.name} | Powered by Papermark` ??
-            "Document powered by Papermark"
+            `${link?.document?.name} | Powered by ${BRAND_NAME}` ??
+            `Document powered by ${BRAND_NAME}`
           }
           description={meta.metaDescription ?? null}
           imageUrl={meta.metaImage ?? null}
@@ -392,8 +392,8 @@ export default function ViewPage({
             enableBranding={meta.enableCustomMetatag ?? false}
             title={
               meta.metaTitle ??
-              `${link?.dataroom?.name} | Powered by Papermark` ??
-              "Dataroom powered by Papermark"
+              `${link?.dataroom?.name} | Powered by ${BRAND_NAME}` ??
+              `Dataroom powered by ${BRAND_NAME}`
             }
             description={meta.metaDescription ?? null}
             imageUrl={meta.metaImage ?? null}
@@ -438,8 +438,8 @@ export default function ViewPage({
           enableBranding={meta.enableCustomMetatag ?? false}
           title={
             meta.metaTitle ??
-            `${link?.dataroom?.name} | Powered by Papermark` ??
-            "Dataroom powered by Papermark"
+            `${link?.dataroom?.name} | Powered by ${BRAND_NAME}` ??
+            `Dataroom powered by ${BRAND_NAME}`
           }
           description={meta.metaDescription ?? null}
           imageUrl={meta.metaImage ?? null}
@@ -463,3 +463,5 @@ export default function ViewPage({
     );
   }
 }
+
+import { BRAND_NAME } from "@/lib/branding";

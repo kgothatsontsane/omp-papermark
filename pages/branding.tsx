@@ -156,7 +156,7 @@ export default function Branding() {
                 Branding
               </h1>
               <p className="text-xs text-muted-foreground sm:text-sm">
-                Customize how your brand appears globally across Papermark
+                Customize how your brand appears globally across {BRAND_NAME}
                 documents your visitors see.
               </p>
             </div>
@@ -608,3 +608,5 @@ export default function Branding() {
     </AppLayout>
   );
 }
+
+import { BRAND_NAME } from "@/lib/branding";
