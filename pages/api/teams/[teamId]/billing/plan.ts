@@ -1,5 +1,6 @@
 import { NextApiRequest, NextApiResponse } from "next";
 
+import { isSelfHostedMode } from "@/lib/self-hosted";
 import getSubscriptionItem, {
   SubscriptionDiscount,
 } from "@/ee/stripe/functions/get-subscription-item";
@@ -50,6 +51,20 @@ export default async function handle(
 
       if (!team) {
         return res.status(404).json({ error: "Team not found" });
+      }
+
+      // ponytail: in self-hosted mode, return the highest plan and isCustomer=true
+      if (isSelfHostedMode()) {
+        return res.status(200).json({
+          plan: "datarooms-plus",
+          startsAt: team.startsAt,
+          endsAt: team.endsAt,
+          isCustomer: true,
+          subscriptionCycle: "monthly",
+          pauseStartsAt: team.pauseStartsAt,
+          cancelledAt: team.cancelledAt,
+          discount: null,
+        });
       }
 
       const isCustomer = !!team.stripeId;

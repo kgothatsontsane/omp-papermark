@@ -1,3 +1,4 @@
+import { isSelfHostedMode } from "@/lib/self-hosted";
 import { BasePlan } from "../swr/use-billing";
 
 type TQueueConfig = {
@@ -16,6 +17,14 @@ const concurrencyConfig: Record<string, number> = {
 
 export const conversionQueue = (plan: string): TQueueConfig => {
   const planName = plan.split("+")[0] as BasePlan;
+
+  // ponytail: in self-hosted mode, use maximum concurrency
+  if (isSelfHostedMode()) {
+    return {
+      name: `conversion-datarooms-plus`,
+      concurrencyLimit: concurrencyConfig["datarooms-plus"],
+    };
+  }
 
   return {
     name: `conversion-${planName}`,

@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { isSelfHostedMode } from "@/lib/self-hosted";
 import prisma from "@/lib/prisma";
 
 import {
@@ -24,6 +25,19 @@ const planLimitsMap: Record<string, TPlanLimits> = {
   business: BUSINESS_PLAN_LIMITS,
   datarooms: DATAROOMS_PLAN_LIMITS,
   "datarooms-plus": DATAROOMS_PLUS_PLAN_LIMITS,
+};
+
+// Self-hosted mode: unlimited everything (safety caps via configSchema)
+const SELF_HOSTED_LIMITS: TPlanLimits = {
+  users: 0,
+  links: null,
+  documents: null,
+  domains: 10000,
+  datarooms: 10000,
+  customDomainOnPro: true,
+  customDomainInDataroom: true,
+  advancedLinkControlsOnPro: true,
+  watermarkOnBusiness: true,
 };
 
 export const configSchema = z.object({
@@ -93,15 +107,20 @@ export async function getLimits({
   const linkCount = team._count.links;
   const userCount = team._count.users + team._count.invitations;
 
-  // parse the limits json with zod and return the limits
-  // {datarooms: 1, users: 1, domains: 1, customDomainOnPro: boolean, customDomainInDataroom: boolean}
-
   try {
     let parsedData = configSchema.parse(team.limits);
 
     const basePlan = getBasePlan(team.plan);
     const isTrial = isTrialPlan(team.plan);
     const defaultLimits = planLimitsMap[basePlan];
+
+    if (isSelfHostedMode()) {
+      return {
+        ...SELF_HOSTED_LIMITS,
+        ...parsedData,
+        usage: { documents: documentCount, links: linkCount, users: userCount },
+      };
+    }
 
     // Adjust limits based on the plan if they're at the default value
     if (isFreePlan(team.plan)) {
@@ -129,6 +148,15 @@ export async function getLimits({
     const basePlan = getBasePlan(team.plan);
     const isTrial = isTrialPlan(team.plan);
     const defaultLimits = planLimitsMap[basePlan] || FREE_PLAN_LIMITS;
+
+    if (isSelfHostedMode()) {
+      return {
+        ...SELF_HOSTED_LIMITS,
+        conversationsInDataroom: true,
+        usage: { documents: documentCount, links: linkCount, users: userCount },
+      };
+    }
+
     return {
       ...defaultLimits,
       conversationsInDataroom: false,
@@ -139,3 +167,9 @@ export async function getLimits({
     };
   }
 }
+
+// Re-export isSelfHostedMode for convenience
+export { isSelfHostedMode };
+
+// ponytail: re-export common plan check helpers using self-hosted awareness
+export { isFreePlan, isTrialPlan, getBasePlan };

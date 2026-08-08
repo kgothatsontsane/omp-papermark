@@ -4,6 +4,7 @@ import { addDays } from "date-fns";
 import { getServerSession } from "next-auth";
 import { z } from "zod";
 
+import { isSelfHostedMode } from "@/lib/self-hosted";
 import prisma from "@/lib/prisma";
 import {
   getTotalDocumentDuration,
@@ -76,7 +77,12 @@ export default async function handler(
     }
 
     // Check if free plan user is trying to access data beyond 30 days
-    if (interval === "custom" && team.plan.includes("free")) {
+    // ponytail: self-hosted mode bypasses all plan-based analytics restrictions
+    if (
+      interval === "custom" &&
+      !isSelfHostedMode() &&
+      team.plan.includes("free")
+    ) {
       const thirtyDaysAgo = new Date();
       thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
       thirtyDaysAgo.setHours(0, 0, 0, 0);

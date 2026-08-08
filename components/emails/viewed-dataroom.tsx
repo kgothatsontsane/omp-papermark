@@ -61,7 +61,7 @@ export default function ViewedDataroom({
             <Section className="my-8 text-center">
               <Button
                 className="rounded bg-black text-center text-xs font-semibold text-white no-underline"
-                href={`https://app.papermark.com/datarooms/${dataroomId}`}
+                href={`https://dealroom.open-mic.co.za/datarooms/${dataroomId}`}
                 style={{ padding: "12px 20px" }}
               >
                 See my dataroom insights
@@ -75,11 +75,11 @@ export default function ViewedDataroom({
               <Text className="text-xs">
                 © {new Date().getFullYear()}{" "}
                 <a
-                  href="https://www.papermark.com"
+                  href="https://dealroom.open-mic.co.za"
                   className="text-gray-400 no-underline hover:text-gray-400"
                   target="_blank"
                 >
-                  papermark.com
+                  dealroom.open-mic.co.za
                 </a>
               </Text>
               <Text className="text-xs">

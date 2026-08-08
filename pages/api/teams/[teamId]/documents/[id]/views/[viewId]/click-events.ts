@@ -3,6 +3,7 @@ import { NextApiRequest, NextApiResponse } from "next";
 import { authOptions } from "@/pages/api/auth/[...nextauth]";
 import { getServerSession } from "next-auth/next";
 
+import { isSelfHostedMode } from "@/lib/self-hosted";
 import prisma from "@/lib/prisma";
 import { getClickEventsByView } from "@/lib/tinybird/pipes";
 import { CustomUser } from "@/lib/types";
@@ -49,7 +50,7 @@ export default async function handler(
       return res.status(401).end("Unauthorized");
     }
 
-    if (team.plan.includes("free")) {
+    if (!isSelfHostedMode() && team.plan.includes("free")) {
       return res.status(403).end("Forbidden");
     }
 

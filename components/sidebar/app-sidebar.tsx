@@ -7,6 +7,7 @@ import * as React from "react";
 import { useEffect, useState } from "react";
 
 import { TeamContextType, initialState, useTeam } from "@/context/team-context";
+import { isSelfHostedMode } from "@/lib/self-hosted";
 import { PlanEnum } from "@/ee/stripe/constants";
 import Cookies from "js-cookie";
 import {
@@ -150,11 +151,16 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
             url: "/settings/webhooks",
             current: router.pathname.includes("settings/webhooks"),
           },
-          {
-            title: "Billing",
-            url: "/settings/billing",
-            current: router.pathname.includes("settings/billing"),
-          },
+          // ponytail: hide Billing in self-hosted mode
+          ...(isSelfHostedMode()
+            ? []
+            : [
+                {
+                  title: "Billing",
+                  url: "/settings/billing",
+                  current: router.pathname.includes("settings/billing"),
+                },
+              ]),
         ],
       },
     ],

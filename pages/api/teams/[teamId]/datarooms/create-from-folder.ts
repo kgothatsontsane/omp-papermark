@@ -1,5 +1,6 @@
 import { NextApiRequest, NextApiResponse } from "next";
 
+import { isSelfHostedMode } from "@/lib/self-hosted";
 import { getLimits } from "@/ee/limits/server";
 import { authOptions } from "@/pages/api/auth/[...nextauth]";
 import { DataroomFolder, Document, Folder } from "@prisma/client";
@@ -156,6 +157,7 @@ export default async function handle(
       const stripedTeamPlan = team.plan.replace("+old", "");
 
       if (
+        !isSelfHostedMode() &&
         !team.plan.includes("drtrial") &&
         ["business", "datarooms", "datarooms-plus"].includes(stripedTeamPlan) &&
         limits &&
@@ -167,13 +169,22 @@ export default async function handle(
         });
       }
 
-      if (team.plan.includes("drtrial") && team._count.datarooms > 0) {
+      // ponytail: in self-hosted mode, skip trial and plan restrictions
+      if (
+        !isSelfHostedMode() &&
+        team.plan.includes("drtrial") &&
+        team._count.datarooms > 0
+      ) {
         return res
           .status(400)
           .json({ message: "Trial data room already exists" });
       }
 
-      if (["free", "pro"].includes(team.plan) && !team.plan.includes("drtrial")) {
+      if (
+        !isSelfHostedMode() &&
+        ["free", "pro"].includes(team.plan) &&
+        !team.plan.includes("drtrial")
+      ) {
         return res
           .status(400)
           .json({ message: "You need a Business plan to create a data room" });

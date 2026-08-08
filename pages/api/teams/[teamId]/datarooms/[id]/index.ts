@@ -1,5 +1,6 @@
 import { NextApiRequest, NextApiResponse } from "next";
 
+import { isSelfHostedMode } from "@/lib/self-hosted";
 import { authOptions } from "@/pages/api/auth/[...nextauth]";
 import { DefaultPermissionStrategy } from "@prisma/client";
 import { getServerSession } from "next-auth/next";
@@ -109,7 +110,8 @@ export default async function handle(
         };
 
       const featureFlags = await getFeatureFlags({ teamId: team.id });
-      const isDataroomsPlus = team.plan.includes("datarooms-plus");
+      const isDataroomsPlus =
+        isSelfHostedMode() || team.plan.includes("datarooms-plus");
       const isTrial = team.plan.includes("drtrial");
 
       if (

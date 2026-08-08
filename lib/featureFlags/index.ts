@@ -1,4 +1,4 @@
-import { get } from "@vercel/edge-config";
+import { isSelfHostedMode } from "@/lib/self-hosted";
 
 export type BetaFeatures =
   | "tokens"
@@ -13,6 +13,21 @@ export type BetaFeatures =
 type BetaFeaturesRecord = Record<BetaFeatures, string[]>;
 
 export const getFeatureFlags = async ({ teamId }: { teamId?: string }) => {
+  if (isSelfHostedMode()) {
+    return Object.fromEntries(
+      Object.keys({
+        tokens: [],
+        incomingWebhooks: [],
+        roomChangeNotifications: [],
+        webhooks: [],
+        conversations: [],
+        dataroomUpload: [],
+        inDocumentLinks: [],
+        usStorage: [],
+      }).map(([key]) => [key, true]),
+    ) as Record<BetaFeatures, boolean>;
+  }
+
   const teamFeatures: Record<BetaFeatures, boolean> = {
     tokens: false,
     incomingWebhooks: false,
@@ -36,6 +51,8 @@ export const getFeatureFlags = async ({ teamId }: { teamId?: string }) => {
   let betaFeatures: BetaFeaturesRecord | undefined = undefined;
 
   try {
+    // ponytail: lazy import of @vercel/edge-config only when needed in non-self-hosted mode
+    const { get } = await import("@vercel/edge-config");
     betaFeatures = await get("betaFeatures");
   } catch (e) {
     console.error(`Error getting beta features: ${e}`);

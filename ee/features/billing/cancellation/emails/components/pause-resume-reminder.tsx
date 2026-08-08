@@ -22,7 +22,7 @@ interface PauseResumeReminderEmailProps {
   userRole?: string;
 }
 
-const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "https://app.papermark.com";
+const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "https://dealroom.open-mic.co.za";
 
 export default function PauseResumeReminderEmail({
   teamName = "Your Team",

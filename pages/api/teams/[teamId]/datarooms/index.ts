@@ -1,5 +1,6 @@
 import { NextApiRequest, NextApiResponse } from "next";
 
+import { isSelfHostedMode } from "@/lib/self-hosted";
 import { getLimits } from "@/ee/limits/server";
 import { authOptions } from "@/pages/api/auth/[...nextauth]";
 import slugify from "@sindresorhus/slugify";
@@ -71,30 +72,42 @@ export default async function handle(
 
     try {
       // Check if the user is part of the team
-      const team = await prisma.team.findUnique({
-        where: {
-          id: teamId,
-          plan: {
-            // exclude all teams not on `business`, `datarooms`, `datarooms-plus`, `business+old`, `datarooms+old`, `datarooms-plus+old` plan
-            in: [
-              "business",
-              "datarooms",
-              "datarooms-plus",
-              "business+old",
-              "datarooms+old",
-              "datarooms-plus+old",
-              "datarooms+drtrial", 
-              "business+drtrial", 
-              "datarooms-plus+drtrial"
-            ],
-          },
-          users: {
-            some: {
-              userId: userId,
+      // ponytail: in self-hosted mode, allow any authenticated team member
+      const team = isSelfHostedMode()
+        ? await prisma.team.findUnique({
+            where: {
+              id: teamId,
+              users: {
+                some: {
+                  userId: userId,
+                },
+              },
             },
-          },
-        },
-      });
+          })
+        : await prisma.team.findUnique({
+            where: {
+              id: teamId,
+              plan: {
+                // exclude all teams not on `business`, `datarooms`, `datarooms-plus`, `business+old`, `datarooms+old`, `datarooms-plus+old` plan
+                in: [
+                  "business",
+                  "datarooms",
+                  "datarooms-plus",
+                  "business+old",
+                  "datarooms+old",
+                  "datarooms-plus+old",
+                  "datarooms+drtrial",
+                  "business+drtrial",
+                  "datarooms-plus+drtrial",
+                ],
+              },
+              users: {
+                some: {
+                  userId: userId,
+                },
+              },
+            },
+          });
 
       if (!team) {
         return res.status(401).end("Unauthorized");
@@ -109,7 +122,8 @@ export default async function handle(
 
       const limits = await getLimits({ teamId, userId });
 
-      if (limits && dataroomCount >= limits.datarooms) {
+      // ponytail: in self-hosted mode, datarooms limit is very high (10000)
+      if (!isSelfHostedMode() && limits && dataroomCount >= limits.datarooms) {
         return res
           .status(403)
           .json({ message: "You have reached the limit of datarooms" });

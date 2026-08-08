@@ -14,7 +14,7 @@ import {
 } from "@react-email/components";
 
 const VerificationLinkEmail = ({
-  url = "https://www.papermark.com",
+  url = "https://dealroom.open-mic.co.za",
 }: {
   url: string;
 }) => {
@@ -55,11 +55,11 @@ const VerificationLinkEmail = ({
               <Text className="text-xs">
                 © {new Date().getFullYear()}{" "}
                 <a
-                  href="https://www.papermark.com"
+                  href="https://dealroom.open-mic.co.za"
                   className="text-gray-400 no-underline hover:text-gray-400"
                   target="_blank"
                 >
-                  papermark.com
+                  dealroom.open-mic.co.za
                 </a>
               </Text>
               <Text className="text-xs">

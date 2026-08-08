@@ -8,10 +8,11 @@ import { useDropzone } from "react-dropzone";
 import { toast } from "sonner";
 
 import {
-  FREE_PLAN_ACCEPTED_FILE_TYPES,
   FULL_PLAN_ACCEPTED_FILE_TYPES,
+  FREE_PLAN_ACCEPTED_FILE_TYPES,
   SUPPORTED_DOCUMENT_MIME_TYPES,
 } from "@/lib/constants";
+import { isSelfHostedMode } from "@/lib/self-hosted";
 import { usePlan } from "@/lib/swr/use-billing";
 import useLimits from "@/lib/swr/use-limits";
 import { bytesToSize } from "@/lib/utils";
@@ -36,22 +37,28 @@ export default function DocumentUpload({
   const { isFree, isTrial } = usePlan();
   const { limits } = useLimits();
 
+  // ponytail: in self-hosted mode, use full file types and no upgrade prompts
+  const effectiveIsFree = isSelfHostedMode() ? false : isFree;
+  const effectiveIsTrial = isSelfHostedMode() ? false : isTrial;
+
   // Get file size limits
   const fileSizeLimits = useMemo(
     () =>
       getFileSizeLimits({
         limits,
-        isFree,
-        isTrial,
+        isFree: effectiveIsFree,
+        isTrial: effectiveIsTrial,
       }),
-    [limits, isFree, isTrial],
+    [limits, effectiveIsFree, effectiveIsTrial],
   );
 
   const { getRootProps, getInputProps } = useDropzone({
     accept:
-      isFree && !isTrial
-        ? FREE_PLAN_ACCEPTED_FILE_TYPES
-        : FULL_PLAN_ACCEPTED_FILE_TYPES,
+      isSelfHostedMode()
+        ? FULL_PLAN_ACCEPTED_FILE_TYPES
+        : isFree && !isTrial
+          ? FREE_PLAN_ACCEPTED_FILE_TYPES
+          : FULL_PLAN_ACCEPTED_FILE_TYPES,
     multiple: false,
     onDropAccepted: (acceptedFiles) => {
       if (acceptedFiles.length === 0) {
@@ -64,7 +71,7 @@ export default function DocumentUpload({
 
       if (file.size > fileSizeLimit) {
         const message = `File size too big for ${fileType} (max. ${fileSizeLimitMB} MB)`;
-        if (isFree && !isTrial) {
+        if (!isSelfHostedMode() && isFree && !isTrial) {
           toast.error(message, {
             description: "Upgrade to a paid plan to increase the limit",
             action: {
@@ -107,7 +114,7 @@ export default function DocumentUpload({
       if (errors[0].code === "file-too-large") {
         const fileSizeLimitMB = getFileSizeLimit(file.type, fileSizeLimits);
         message = `File size too big (max. ${fileSizeLimitMB} MB)`;
-        if (isFree && !isTrial) {
+        if (!isSelfHostedMode() && isFree && !isTrial) {
           toast.error(message, {
             description: "Upgrade to a paid plan to increase the limit",
             action: {
@@ -121,7 +128,7 @@ export default function DocumentUpload({
       } else if (errors[0].code === "file-invalid-type") {
         const isSupported = SUPPORTED_DOCUMENT_MIME_TYPES.includes(file.type);
         message = "File type not supported";
-        if (isFree && !isTrial && isSupported) {
+        if (!isSelfHostedMode() && isFree && !isTrial && isSupported) {
           toast.error(`${message} on free plan`, {
             description: `Upgrade to a paid plan to upload ${file.type} files`,
             action: {

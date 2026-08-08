@@ -2,6 +2,7 @@ import { logger, task } from "@trigger.dev/sdk/v3";
 import { put } from "@vercel/blob";
 import Bottleneck from "bottleneck";
 
+import { isSelfHostedMode } from "@/lib/self-hosted";
 import { sendExportReadyEmail } from "@/lib/emails/send-export-ready-email";
 import prisma from "@/lib/prisma";
 import { jobStore } from "@/lib/redis-job-store";
@@ -82,7 +83,7 @@ export const exportVisitsTask = task({
         throw new Error("Team not found or access denied");
       }
 
-      if (team.plan === "free") {
+      if (!isSelfHostedMode() && team.plan === "free") {
         throw new Error("This feature is not available for your plan");
       }
 

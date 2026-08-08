@@ -13,6 +13,7 @@ import { PreviewSession } from "@/lib/auth/preview-auth";
 import { sendOtpVerificationEmail } from "@/lib/emails/send-email-otp-verification";
 import { getFeatureFlags } from "@/lib/featureFlags";
 import { getFile } from "@/lib/files/get-file";
+import { isSelfHostedMode } from "@/lib/self-hosted";
 import { newId } from "@/lib/id-helper";
 import prisma from "@/lib/prisma";
 import { ratelimit } from "@/lib/redis";
@@ -542,7 +543,9 @@ export async function POST(request: NextRequest) {
           teamId: link.teamId!,
         });
         const inDocumentLinks =
-          !link.team?.plan.includes("free") || featureFlags.inDocumentLinks;
+          isSelfHostedMode() ||
+          !link.team?.plan.includes("free") ||
+          featureFlags.inDocumentLinks;
 
         // get pages from document version
         console.time("get-pages");

@@ -4,6 +4,7 @@ import { authOptions } from "@/pages/api/auth/[...nextauth]";
 import { getServerSession } from "next-auth/next";
 
 import { errorhandler } from "@/lib/errorHandler";
+import { isSelfHostedMode } from "@/lib/self-hosted";
 import prisma from "@/lib/prisma";
 import { CustomUser } from "@/lib/types";
 import { Prisma } from "@prisma/client";
@@ -53,7 +54,7 @@ export default async function handle(
         select: { id: true, plan: true },
       });
 
-      if (!team || team.plan === "free") {
+      if (!team || (!isSelfHostedMode() && team.plan === "free")) {
         return res.status(404).json({ error: "Team not found" });
       }
 

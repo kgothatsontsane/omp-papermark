@@ -1,3 +1,5 @@
+import { isSelfHostedMode } from "@/lib/self-hosted";
+
 type FileSizeLimits = {
   video: number;
   document: number;
@@ -16,6 +18,18 @@ export function getFileSizeLimits({
   isFree: boolean;
   isTrial: boolean;
 }): FileSizeLimits {
+  // Self-hosted mode: high safety caps but much larger than commercial tiers
+  if (isSelfHostedMode()) {
+    return {
+      video: limits?.fileSizeLimits?.video ?? 2000, // 2GB
+      document: limits?.fileSizeLimits?.document ?? 500, // 500MB
+      image: limits?.fileSizeLimits?.image ?? 200, // 200MB
+      excel: limits?.fileSizeLimits?.excel ?? 100, // 100MB
+      maxFiles: limits?.fileSizeLimits?.maxFiles ?? 500,
+      maxPages: limits?.fileSizeLimits?.maxPages ?? 2000,
+    };
+  }
+
   // Default limits based on plan type
   const defaultLimits: FileSizeLimits = {
     video: 500, // 500MB

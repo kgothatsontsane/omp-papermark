@@ -4,6 +4,7 @@ import { authOptions } from "@/pages/api/auth/[...nextauth]";
 import { getServerSession } from "next-auth/next";
 
 import { errorhandler } from "@/lib/errorHandler";
+import { isSelfHostedMode } from "@/lib/self-hosted";
 import prisma from "@/lib/prisma";
 import { CustomUser } from "@/lib/types";
 
@@ -50,7 +51,7 @@ export default async function handle(
         return res.status(401).end("Unauthorized");
       }
 
-      if (team.plan.includes("free")) {
+      if (!isSelfHostedMode() && team.plan.includes("free")) {
         return res.status(403).end("Forbidden");
       }
 

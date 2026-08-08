@@ -15,7 +15,7 @@ const data = {
 };
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://www.papermark.com"),
+  metadataBase: new URL("https://dealroom.open-mic.co.za"),
   title: data.title,
   description: data.description,
   openGraph: {

@@ -1,5 +1,6 @@
 import { NextApiRequest, NextApiResponse } from "next";
 
+import { isSelfHostedMode } from "@/lib/self-hosted";
 import { authOptions } from "@/pages/api/auth/[...nextauth]";
 import { ItemType } from "@prisma/client";
 import { getServerSession } from "next-auth/next";
@@ -49,7 +50,7 @@ export default async function handle(
       return res.status(401).json({ error: "Unauthorized" });
     }
 
-    if (!team.plan.includes("datarooms") && !team.plan.includes("trial")) {
+    if (!isSelfHostedMode() && !team.plan.includes("datarooms") && !team.plan.includes("trial")) {
       return res.status(401).json({
         error: "Please upgrade to a Data Rooms plan to generate an index",
       });

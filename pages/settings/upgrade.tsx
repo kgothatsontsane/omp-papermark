@@ -1,8 +1,9 @@
 import { useRouter } from "next/router";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import React from "react";
 
+import { isSelfHostedMode } from "@/lib/self-hosted";
 import { useTeam } from "@/context/team-context";
 import { getStripe } from "@/ee/stripe/client";
 import { Feature, PlanEnum, getPlanFeatures } from "@/ee/stripe/constants";
@@ -93,6 +94,17 @@ export default function UpgradePage() {
   const teamInfo = useTeam();
   const { plan: teamPlan, trial, isCustomer, isOldAccount } = usePlan();
   const analytics = useAnalytics();
+
+  // ponytail: in self-hosted mode, redirect to documents page
+  useEffect(() => {
+    if (isSelfHostedMode()) {
+      router.replace("/documents");
+    }
+  }, [router]);
+
+  if (isSelfHostedMode()) {
+    return null;
+  }
 
   const plansToShow = [
     PlanEnum.Pro,

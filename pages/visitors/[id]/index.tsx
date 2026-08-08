@@ -4,6 +4,7 @@ import { useRouter } from "next/router";
 
 import { useEffect, useState } from "react";
 
+import { isSelfHostedMode } from "@/lib/self-hosted";
 import { usePlan } from "@/lib/swr/use-billing";
 import useViewer from "@/lib/swr/use-viewer";
 
@@ -55,7 +56,7 @@ export default function VisitorDetailPage() {
   };
 
   useEffect(() => {
-    if (isFree && !isTrial) router.push("/documents");
+    if (!isSelfHostedMode() && isFree && !isTrial) router.push("/documents");
   }, [isTrial, isFree]);
 
   if (error) {

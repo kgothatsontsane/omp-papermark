@@ -1,5 +1,6 @@
 import { NextApiRequest, NextApiResponse } from "next";
 
+import { isSelfHostedMode } from "@/lib/self-hosted";
 import { authOptions } from "@/pages/api/auth/[...nextauth]";
 import slugify from "@sindresorhus/slugify";
 import { getServerSession } from "next-auth/next";
@@ -129,7 +130,10 @@ export default async function handle(
         return res.status(401).end("Unauthorized");
       }
 
-      if (team.plan === "free" || team.plan === "pro") {
+      if (
+        !isSelfHostedMode() &&
+        (team.plan === "free" || team.plan === "pro")
+      ) {
         return res.status(403).json({
           message: "Upgrade your plan to use datarooms.",
         });

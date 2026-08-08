@@ -75,8 +75,8 @@ export default async function handle(
 
       // Check if the content is a Papermark URL
       const isPapermarkUrl =
-        agreement.content.includes("papermark.com/view/") ||
-        agreement.content.includes("www.papermark.com/view/");
+        agreement.content.includes("dealroom.open-mic.co.za/view/") ||
+        agreement.content.includes("dealroom.open-mic.co.za/view/");
 
       let fileContent: string;
       let filename: string;
