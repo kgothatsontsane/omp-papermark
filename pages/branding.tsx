@@ -81,35 +81,46 @@ export default function Branding() {
   const saveBranding = async (e: any) => {
     e.preventDefault();
     setIsLoading(true);
-    let blobUrl: string | null = logo && logo.startsWith("data:") ? null : logo;
-    if (logo && logo.startsWith("data:")) {
-      const blob = convertDataUrlToFile({ dataUrl: logo });
-      blobUrl = await uploadImage(blob);
-      setLogo(blobUrl);
-    }
+    try {
+      let blobUrl: string | null =
+        logo && logo.startsWith("data:") ? null : logo;
+      let logoUploadFailed = false;
+      if (logo && logo.startsWith("data:")) {
+        try {
+          const blob = convertDataUrlToFile({ dataUrl: logo });
+          blobUrl = await uploadImage(blob, "assets", teamInfo.currentTeam?.id);
+          setLogo(blobUrl);
+        } catch (uploadErr) {
+          console.error("Logo upload failed:", uploadErr);
+          logoUploadFailed = true;
+          blobUrl = brand?.logo || null;
+        }
+      }
 
-    const data = {
-      brandColor: brandColor,
-      accentColor: accentColor,
-
-      logo: blobUrl,
-    };
-
-    const res = await fetch(
-      `/api/teams/${teamInfo?.currentTeam?.id}/branding`,
-      {
-        method: brand ? "PUT" : "POST",
-        body: JSON.stringify(data),
-        headers: {
-          "Content-Type": "application/json",
+      const res = await fetch(
+        `/api/teams/${teamInfo?.currentTeam?.id}/branding`,
+        {
+          method: brand ? "PUT" : "POST",
+          body: JSON.stringify({ brandColor, accentColor, logo: blobUrl }),
+          headers: {
+            "Content-Type": "application/json",
+          },
         },
-      },
-    );
+      );
 
-    if (res.ok) {
+      if (!res.ok) throw new Error("Failed to save branding");
       mutate(`/api/teams/${teamInfo?.currentTeam?.id}/branding`);
+      toast.success(
+        logoUploadFailed
+          ? "Branding saved, but the logo could not be uploaded"
+          : "Branding updated successfully",
+      );
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Failed to save branding",
+      );
+    } finally {
       setIsLoading(false);
-      toast.success("Branding updated successfully");
     }
   };
 

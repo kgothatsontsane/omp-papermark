@@ -280,7 +280,7 @@ export const LinkOptions = ({
 
           <CustomFieldsSection
             {...{ data, setData }}
-            isAllowed={isTrial || isBusiness || isDatarooms || isDataroomsPlus}
+            isAllowed
             handleUpgradeStateChange={handleUpgradeStateChange}
             presets={currentPreset}
           />
