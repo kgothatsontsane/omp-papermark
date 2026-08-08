@@ -4,6 +4,8 @@ import { DEFAULT_LINK_TYPE } from ".";
 import LinkItem from "./link-item";
 import { LinkUpgradeOptions } from "./link-options";
 
+
+import { BRAND_NAME } from "@/lib/branding";
 export function ProBannerSection({
   data,
   setData,
@@ -36,7 +38,7 @@ export function ProBannerSection({
   return (
     <div className="pb-5">
       <LinkItem
-        title="Show Visitor Statistics & Papermark Branding"
+        title={`Show Visitor Statistics & ${BRAND_NAME} Branding`}
         enabled={enabled}
         action={handleShowBanner}
         isAllowed={isAllowed}

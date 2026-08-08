@@ -1,3 +1,4 @@
+import { BRAND_NAME } from "@/lib/branding";
 export enum PlanEnum {
   Pro = "Pro",
   Business = "Business",
@@ -72,7 +73,7 @@ export const BASE_FEATURES: Record<PlanEnum, PlanFeatures> = {
       { id: "video", text: "Video sharing and analytics" },
       { id: "visitors", text: "Visitors analytics" },
       { id: "file-types-basic", text: "More file types: ppt, docx, excel" },
-      { id: "branding", text: "Remove Papermark branding" },
+      { id: "branding", text: `Remove ${BRAND_NAME} branding` },
       { id: "custom-branding", text: "Custom branding" },
       { id: "retention", text: "1-year analytics retention" },
       { id: "no-datarooms", text: "No datarooms included", isNotIncluded: true },

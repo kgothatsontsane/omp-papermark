@@ -126,7 +126,7 @@ export default function WebhookSettings() {
             </CardTitle>
             <CardDescription>
               Create incoming webhooks to receive data from external services
-              and automatically create new documents in Papermark.
+              and automatically create new documents in {BRAND_NAME}.
             </CardDescription>
           </CardHeader>
           <Separator className="mb-6" />
@@ -258,3 +258,5 @@ export default function WebhookSettings() {
     </AppLayout>
   );
 }
+
+import { BRAND_NAME } from "@/lib/branding";

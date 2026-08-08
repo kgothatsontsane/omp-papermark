@@ -121,7 +121,7 @@ export default function General() {
         <div className="space-y-6">
           <Form
             title="Team Name"
-            description="This is the name of your team on Papermark."
+            description="This is the name of your team on {BRAND_NAME}."
             inputAttrs={{
               name: "name",
               placeholder: "My Personal Team",
@@ -165,3 +165,4 @@ export default function General() {
     </AppLayout>
   );
 }
+import { BRAND_NAME } from "@/lib/branding";

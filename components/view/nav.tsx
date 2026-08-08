@@ -232,7 +232,7 @@ export default function Nav({
                   target="_blank"
                   className="text-2xl font-bold tracking-tighter text-white"
                 >
-                  Papermark
+                  {BRAND_NAME}
                 </Link>
               )}
             </div>
@@ -448,3 +448,5 @@ export default function Nav({
     </nav>
   );
 }
+
+import { BRAND_NAME } from "@/lib/branding";

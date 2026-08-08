@@ -1,3 +1,4 @@
+import { BRAND_NAME } from "@/lib/branding";
 export const FADE_IN_ANIMATION_SETTINGS = {
   initial: { opacity: 0 },
   animate: { opacity: 1 },
@@ -17,7 +18,7 @@ export const STAGGER_CHILD_VARIANTS = {
 export const PAPERMARK_HEADERS = {
   headers: {
     "x-powered-by":
-      "Papermark.io - Document sharing infrastructure for the modern web",
+      `${BRAND_NAME} - Document sharing infrastructure for the modern web`,
   },
 };
 

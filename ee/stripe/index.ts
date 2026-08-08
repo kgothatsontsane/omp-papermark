@@ -1,3 +1,4 @@
+import { BRAND_NAME } from "@/lib/branding";
 import Stripe from "stripe";
 
 const stripeOld = new Stripe(
@@ -7,7 +8,7 @@ const stripeOld = new Stripe(
   {
     apiVersion: "2024-06-20",
     appInfo: {
-      name: "Papermark.io",
+      name: `${BRAND_NAME}.io`,
       version: "0.1.0",
     },
     typescript: true,
@@ -19,7 +20,7 @@ const stripeNew = new Stripe(
   {
     apiVersion: "2024-06-20",
     appInfo: {
-      name: "Papermark.io",
+      name: `${BRAND_NAME}.io`,
       version: "0.1.0",
     },
     typescript: true,

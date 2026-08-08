@@ -148,7 +148,7 @@ export default function VerifyPage({
               <div className="max-w-xl text-center">
                 <blockquote className="text-balance font-normal leading-8 text-white sm:text-xl sm:leading-9">
                   <p>
-                    &quot;We raised our €30M Fund with Papermark Data Rooms.
+                    &quot;We raised our €30M Fund with {BRAND_NAME} Data Rooms.
                     Love the customization, security and ease of use.&quot;
                   </p>
                 </blockquote>

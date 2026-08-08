@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/tooltip";
 import { TooltipProvider } from "@/components/ui/tooltip";
 
+import { BRAND_NAME } from "@/lib/branding";
 import { Button } from "../../ui/button";
 import { ConversationSidebar } from "../conversations/sidebar";
 
@@ -145,7 +146,7 @@ export default function DataroomNav({
                   target="_blank"
                   className="text-2xl font-bold tracking-tighter text-white"
                 >
-                  Papermark
+                  {BRAND_NAME}
                 </Link>
               )}
             </div>

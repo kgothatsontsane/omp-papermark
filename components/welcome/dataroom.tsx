@@ -31,7 +31,7 @@ export default function Dataroom() {
         className="flex flex-col items-center space-y-10 text-center"
       >
         <p className="text-2xl font-bold tracking-tighter text-foreground">
-          Papermark
+          {BRAND_NAME}
         </p>
         <h1 className="font-display max-w-xl text-3xl font-semibold transition-colors sm:text-4xl">
           Get started with data rooms!
@@ -84,3 +84,5 @@ export default function Dataroom() {
     </motion.div>
   );
 }
+
+import { BRAND_NAME } from "@/lib/branding";

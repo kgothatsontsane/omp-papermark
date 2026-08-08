@@ -38,7 +38,7 @@ export function ChatList({ messages, status }: ChatList) {
             </div>
             <div className="ml-4 flex-1 space-y-2 overflow-hidden px-1">
               <div className="select-none font-semibold">
-                Papermark Assistant
+                {BRAND_NAME} Assistant
               </div>
               <Skeleton className="h-4 w-64" />
               <Skeleton className="h-4 w-48" />
@@ -50,3 +50,5 @@ export function ChatList({ messages, status }: ChatList) {
     </div>
   );
 }
+
+import { BRAND_NAME } from "@/lib/branding";

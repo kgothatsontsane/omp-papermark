@@ -9,10 +9,7 @@ import PlausibleProvider from "next-plausible";
 import { NuqsAdapter } from "nuqs/adapters/next/pages";
 
 import { EXCLUDED_PATHS } from "@/lib/constants";
-import {
-  APP_URL,
-  BRAND_NAME,
-} from "@/lib/branding";
+import { APP_URL, BRAND_NAME } from "@/lib/branding";
 
 import { PostHogCustomProvider } from "@/components/providers/posthog-provider";
 import { ThemeProvider } from "@/components/theme-provider";

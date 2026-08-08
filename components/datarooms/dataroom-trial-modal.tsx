@@ -238,7 +238,7 @@ export function DataroomTrialModal({
               <div className="text-xs text-muted-foreground">
                 After the trial, upgrade to{" "}
                 <UpgradePlanModal clickedPlan={PlanEnum.Business}>
-                  <button className="underline">Papermark Business</button>
+                  <button className="underline">{BRAND_NAME} Business</button>
                 </UpgradePlanModal>{" "}
                 to continue using data rooms.
               </div>
@@ -249,3 +249,5 @@ export function DataroomTrialModal({
     </Dialog>
   );
 }
+
+import { BRAND_NAME } from "@/lib/branding";

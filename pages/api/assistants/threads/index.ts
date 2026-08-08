@@ -48,7 +48,7 @@ export default async function handle(
             messages: [
               {
                 role: "user",
-                content: "Initializing chat with Papermark Assistant",
+                content: "Initializing chat with {BRAND_NAME} Assistant",
                 file_ids: [documentVersion?.fileId || ""],
                 metadata: { intitialMessage: true },
               },
@@ -85,3 +85,5 @@ export default async function handle(
     return res.status(405).end(`Method ${req.method} Not Allowed`);
   }
 }
+
+import { BRAND_NAME } from "@/lib/branding";

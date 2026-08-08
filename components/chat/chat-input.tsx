@@ -49,7 +49,7 @@ export function ChatInput({
                 disabled={status !== "awaiting_message"}
                 className="min-h-[60px] w-full resize-none border-none bg-transparent px-4 py-[1.3rem] focus:ring-0 sm:text-sm"
                 value={input}
-                placeholder="Message Papermark Assistant..."
+                placeholder="Message {BRAND_NAME} Assistant..."
                 onChange={handleInputChange}
                 spellCheck={false}
               />
@@ -85,3 +85,5 @@ function IconArrowElbow({ className, ...props }: React.ComponentProps<"svg">) {
     </svg>
   );
 }
+
+import { BRAND_NAME } from "@/lib/branding";

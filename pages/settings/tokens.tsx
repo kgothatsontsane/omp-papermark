@@ -17,6 +17,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { BadgeTooltip } from "@/components/ui/tooltip";
 
+
+import { BRAND_NAME } from "@/lib/branding";
 interface Token {
   id: string;
   name: string;
@@ -128,7 +130,7 @@ export default function TokenSettings() {
                 </BadgeTooltip>
               </div>
               <p className="text-sm text-gray-500">
-                Create API tokens to integrate Papermark with your applications.
+                Create API tokens to integrate {BRAND_NAME} with your applications.
                 Keep your tokens secure and never share them publicly.
               </p>
             </div>

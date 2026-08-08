@@ -70,7 +70,7 @@ export function CancellationBaseModal({
               onClick={() => onOpenChange(false)}
               className="flex items-center gap-2"
             >
-              Stay on Papermark
+              Stay on {BRAND_NAME}
             </Button>
           )}
           {onDecline && (
@@ -84,3 +84,5 @@ export function CancellationBaseModal({
     </Modal>
   );
 }
+
+import { BRAND_NAME } from "@/lib/branding";

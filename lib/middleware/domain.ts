@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { BLOCKED_PATHNAMES } from "@/lib/constants";
 
+
+import { BRAND_NAME } from "@/lib/branding";
 export default async function DomainMiddleware(req: NextRequest) {
   const path = req.nextUrl.pathname;
   const host = req.headers.get("host");
@@ -47,7 +49,7 @@ export default async function DomainMiddleware(req: NextRequest) {
     headers: {
       "X-Robots-Tag": "noindex",
       "X-Powered-By":
-        "Papermark.io - Document sharing infrastructure for the modern web",
+        `${BRAND_NAME} - Document sharing infrastructure for the modern web`,
     },
   });
 }

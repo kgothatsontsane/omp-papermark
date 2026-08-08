@@ -406,7 +406,7 @@ export default function OGSection({
                 id="title"
                 maxLength={120}
                 className="focus:ring-inset"
-                placeholder={`Papermark - open-source document sharing infrastructure.`}
+                placeholder={`${BRAND_NAME} - open-source document sharing infrastructure.`}
                 value={metaTitle || ""}
                 onChange={(e) => {
                   setData({ ...data, metaTitle: e.target.value });
@@ -437,7 +437,7 @@ export default function OGSection({
                 rows={3}
                 maxLength={240}
                 className="focus:ring-inset"
-                placeholder={`Papermark is an open-source document sharing infrastructure for modern teams.`}
+                placeholder={`${BRAND_NAME} is an open-source document sharing infrastructure for modern teams.`}
                 value={metaDescription || ""}
                 onChange={(e) => {
                   setData({
@@ -454,3 +454,5 @@ export default function OGSection({
     </div>
   );
 }
+
+import { BRAND_NAME } from "@/lib/branding";

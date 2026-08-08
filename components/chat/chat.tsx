@@ -58,11 +58,11 @@ export function Chat({
       let content: string = "";
       if (isPublic) {
         content =
-          "You have reached your request limit for the day. Sign up for a free account to continue using Papermark Assistant.";
+          "You have reached your request limit for the day. Sign up for a free account to continue using {BRAND_NAME} Assistant.";
       }
       if (userId && plan !== "pro") {
         content =
-          "You have reached your request limit for the day. Upgrade to a paid account to continue using Papermark Assistant.";
+          "You have reached your request limit for the day. Upgrade to a paid account to continue using {BRAND_NAME} Assistant.";
       }
 
       const message: Message = {
@@ -126,3 +126,5 @@ export function Chat({
     </>
   );
 }
+
+import { BRAND_NAME } from "@/lib/branding";

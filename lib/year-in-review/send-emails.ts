@@ -3,6 +3,7 @@ import { nanoid } from "nanoid";
 
 import YearInReviewEmail from "@/components/emails/year-in-review-papermark";
 
+import { BRAND_NAME } from "@/lib/branding";
 import prisma from "@/lib/prisma";
 import { resend } from "@/lib/resend";
 import { log } from "@/lib/utils";
@@ -145,9 +146,9 @@ export async function processEmailQueue() {
 
                   return {
                     email: {
-                      from: "Papermark <system@open-mic.co.za>",
+                      from: `${BRAND_NAME} <system@open-mic.co.za>`,
                       to: userTeam.user.email || "delivered@resend.dev",
-                      subject: "2024 in Review: Your Year with Papermark",
+                      subject: "2024 in Review: Your Year with {BRAND_NAME}",
                       react,
                       text: plainText,
                       headers: {

@@ -64,7 +64,7 @@ export function EmptyScreen({
               <p className="text-center text-2xl">
                 Chat with{" "}
                 <span className="text-2xl font-bold tracking-tighter ">
-                  Papermark
+                  {BRAND_NAME}
                 </span>
                 &apos;s pitchdeck
               </p>
@@ -98,3 +98,5 @@ export function EmptyScreen({
     </>
   );
 }
+
+import { BRAND_NAME } from "@/lib/branding";

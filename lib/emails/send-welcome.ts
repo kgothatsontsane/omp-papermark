@@ -10,7 +10,7 @@ export const sendWelcomeEmail = async (params: CreateUserEmailProps) => {
   try {
     await sendEmail({
       to: email as string,
-      subject: "Welcome to Papermark!",
+      subject: "Welcome to {BRAND_NAME}!",
       react: emailTemplate,
       test: process.env.NODE_ENV === "development",
     });
@@ -18,3 +18,5 @@ export const sendWelcomeEmail = async (params: CreateUserEmailProps) => {
     console.error(e);
   }
 };
+
+import { BRAND_NAME } from "@/lib/branding";

@@ -220,7 +220,7 @@ export default function DocumentHeader({
         }),
         {
           loading: "Activating Assistant...",
-          success: "Papermark Assistant successfully activated.",
+          success: "{BRAND_NAME} Assistant successfully activated.",
           error: "Activation failed. Please try again.",
         },
       );
@@ -246,7 +246,7 @@ export default function DocumentHeader({
 
     toast.promise(fetchPromise, {
       loading: `${active ? "Activating" : "Deactivating"} Assistant...`,
-      success: `Papermark Assistant successfully ${active ? "activated" : "deactivated"}.`,
+      success: `{BRAND_NAME} Assistant successfully ${active ? "activated" : "deactivated"}.`,
       error: `${active ? "Activation" : "Deactivation"} failed. Please try again.`,
     });
   };
@@ -977,3 +977,5 @@ export default function DocumentHeader({
     </header>
   );
 }
+
+import { BRAND_NAME } from "@/lib/branding";

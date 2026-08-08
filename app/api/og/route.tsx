@@ -2,6 +2,8 @@
 import { ImageResponse } from "next/og";
 import { NextRequest } from "next/server";
 
+
+import { BRAND_NAME } from "@/lib/branding";
 export const runtime = "edge";
 
 /**
@@ -10,7 +12,7 @@ export const runtime = "edge";
  */
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
-  const title = searchParams.get("title") || "Papermark Document";
+  const title = searchParams.get("title") || "{BRAND_NAME} Document";
   const Inter = await fetch(
     new URL("@/public/_static/Inter-Bold.ttf", import.meta.url),
   ).then((res) => res.arrayBuffer());
@@ -18,7 +20,7 @@ export async function GET(request: NextRequest) {
   return new ImageResponse(
     (
       <div tw="flex flex-col items-center justify-between w-full h-full bg-white text-black p-12">
-        <div tw="text-[32px] flex items-center tracking-tighter">Papermark</div>
+        <div tw="text-[32px] flex items-center tracking-tighter">{BRAND_NAME}</div>
         <div tw="text-[42px] text-center">{title}</div>
         <div tw="text-[32px] flex items-center">
           Open-Source Document Sharing

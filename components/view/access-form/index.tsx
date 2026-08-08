@@ -12,6 +12,8 @@ import EmailSection from "./email-section";
 import NameSection from "./name-section";
 import PasswordSection from "./password-section";
 
+
+import { BRAND_NAME } from "@/lib/branding";
 export const DEFAULT_ACCESS_FORM_DATA = {
   email: null,
   password: null,
@@ -199,7 +201,7 @@ export default function AccessForm({
               rel="noopener noreferrer"
               className="font-semibold"
             >
-              Papermark
+              {BRAND_NAME}
             </a>
           </p>
         </div>

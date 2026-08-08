@@ -13,7 +13,7 @@ export const PoweredBy = ({ linkId }: { linkId: string }) => {
             style={{ paddingInlineStart: "12px", paddingInlineEnd: "12px" }}
           >
             Share docs via{" "}
-            <span className="font-semibold tracking-tighter">Papermark</span>
+            <span className="font-semibold tracking-tighter">{BRAND_NAME}</span>
           </a>
         </div>
       </div>
@@ -21,3 +21,5 @@ export const PoweredBy = ({ linkId }: { linkId: string }) => {
     document.body,
   );
 };
+
+import { BRAND_NAME } from "@/lib/branding";
