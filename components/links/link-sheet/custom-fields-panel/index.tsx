@@ -1,7 +1,7 @@
 import { CustomField, CustomFieldType } from "@prisma/client";
 import { Plus } from "lucide-react";
 import { toast } from "sonner";
-import { useCallback, useMemo } from "react";
+import { useCallback } from "react";
 
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -13,8 +13,6 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
-
-import { usePlan } from "@/lib/swr/use-billing";
 
 import CustomFieldComponent from "./custom-field";
 
@@ -39,19 +37,11 @@ export default function CustomFieldsPanel({
   isConfigOpen: boolean;
   setIsConfigOpen: (open: boolean) => void;
 }) {
-  const { isDatarooms, isDataroomsPlus, isBusiness } = usePlan();
-
-  const fieldLimit = useMemo(() => {
-    if (isDatarooms || isDataroomsPlus) return 3;
-    if (isBusiness) return 1;
-    return 0;
-  }, [isDatarooms, isDataroomsPlus, isBusiness]);
+  const fieldLimit = 100; // remove plan restriction for self-hosted
 
   const addField = useCallback(() => {
     if (fields.length >= fieldLimit) {
-      toast.error(
-        `You can only add up to ${fieldLimit} custom field${fieldLimit === 1 ? "" : "s"} on the ${isDatarooms ? "Data Rooms" : "Business"} plan`,
-      );
+      toast.error(`You can only add up to ${fieldLimit} custom fields`);
       return;
     }
 
@@ -65,7 +55,7 @@ export default function CustomFieldsPanel({
       orderIndex: fields.length,
     };
     onChange([...fields, newField]);
-  }, [fields, fieldLimit, isDatarooms, onChange]);
+  }, [fields, onChange]);
 
   const updateField = useCallback((index: number, updatedField: CustomFieldData) => {
     const newFields = [...fields];
@@ -111,32 +101,23 @@ export default function CustomFieldsPanel({
           <SheetTitle>Configure Custom Fields</SheetTitle>
           <SheetDescription>
             Configure the custom fields that will be shown to viewers.
-            {fieldLimit > 0 && (
-              <span className="mt-1 block text-sm text-muted-foreground">
-                You can add up to {fieldLimit} custom field
-                {fieldLimit === 1 ? "" : "s"} on the{" "}
-                {isDatarooms ? "Data Rooms" : "Business"} plan.
-              </span>
-            )}
           </SheetDescription>
         </SheetHeader>
 
-        <div className="flex items-center justify-between">
-          <div className="text-sm text-muted-foreground">
-            {fields.length} of {fieldLimit} custom field
-            {fields.length === 1 ? "" : "s"}
+          <div className="flex items-center justify-between">
+            <div className="text-sm text-muted-foreground">
+              {fields.length} custom field{fields.length === 1 ? "" : "s"}
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={addField}
+              className="flex items-center gap-2"
+            >
+              <Plus className="h-4 w-4" />
+              Add Field
+            </Button>
           </div>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={addField}
-            className="flex items-center gap-2"
-            disabled={fields.length >= fieldLimit}
-          >
-            <Plus className="h-4 w-4" />
-            Add Field
-          </Button>
-        </div>
 
         <Separator />
 

@@ -54,20 +54,28 @@ export default async function handler(
 
     const { client, config } = await getTeamS3ClientAndConfig(teamId);
 
-    if (config.distributionHost) {
-      const distributionUrl = new URL(
-        key,
-        `https://${config.distributionHost}`,
-      );
+    if (
+      config.distributionHost &&
+      config.distributionKeyId &&
+      config.distributionKeyContents
+    ) {
+      try {
+        const distributionUrl = new URL(
+          key,
+          `https://${config.distributionHost}`,
+        );
 
-      const url = getCloudfrontSignedUrl({
-        url: distributionUrl.toString(),
-        keyPairId: `${config.distributionKeyId}`,
-        privateKey: `${config.distributionKeyContents}`,
-        dateLessThan: new Date(Date.now() + ONE_HOUR).toISOString(),
-      });
+        const url = getCloudfrontSignedUrl({
+          url: distributionUrl.toString(),
+          keyPairId: config.distributionKeyId,
+          privateKey: config.distributionKeyContents,
+          dateLessThan: new Date(Date.now() + ONE_HOUR).toISOString(),
+        });
 
-      return res.status(200).json({ url });
+        return res.status(200).json({ url });
+      } catch (error) {
+        console.warn("CloudFront signing failed; falling back to S3", error);
+      }
     }
 
     const getObjectCommand = new GetObjectCommand({
