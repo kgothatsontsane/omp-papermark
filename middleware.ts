@@ -2,6 +2,7 @@ import { NextFetchEvent, NextRequest, NextResponse } from "next/server";
 
 import AppMiddleware from "@/lib/middleware/app";
 import DomainMiddleware from "@/lib/middleware/domain";
+import { BRAND_DOMAIN } from "@/lib/branding";
 
 import { BLOCKED_PATHNAMES } from "./lib/constants";
 import IncomingWebhookMiddleware, {
@@ -30,8 +31,8 @@ function isCustomDomain(host: string) {
       hostname !== appBaseHost &&
       !(
         hostname.includes("localhost") ||
-        hostname === "open-mic.co.za" ||
-        hostname.endsWith(".open-mic.co.za") ||
+        hostname === BRAND_DOMAIN ||
+        hostname.endsWith(`.${BRAND_DOMAIN}`) ||
         hostname.includes("dealroom.open-mic.co.za") ||
         hostname.endsWith(".vercel.app")
       ))

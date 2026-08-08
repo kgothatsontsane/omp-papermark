@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { receiver } from "@/lib/cron";
+import { BRAND_DOMAIN } from "@/lib/branding";
 import {
   getConfigResponse,
   getDomainResponse,
@@ -39,7 +40,7 @@ export async function POST(req: Request) {
         slug: {
           // exclude domains that belong to us
           not: {
-              contains: "open-mic.co.za",
+              contains: BRAND_DOMAIN,
           },
         },
       },

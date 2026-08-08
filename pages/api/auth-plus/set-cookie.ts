@@ -2,6 +2,8 @@ import { NextApiRequest, NextApiResponse } from "next";
 
 import { getToken } from "next-auth/jwt";
 
+import { BRAND_DOMAIN } from "@/lib/branding";
+
 const VERCEL_DEPLOYMENT = !!process.env.VERCEL_URL;
 
 export default async function handler(
@@ -17,7 +19,7 @@ export default async function handler(
   // Set the cookie for the other domain
   res.setHeader(
     "Set-Cookie",
-    `${VERCEL_DEPLOYMENT ? "__Secure-" : ""}next-auth.session-token=${req.cookies[`${VERCEL_DEPLOYMENT ? "__Secure-" : ""}next-auth.session-token`]}; HttpOnly; Path=/; SameSite=Lax; ${VERCEL_DEPLOYMENT ? "Secure; " : ""}Domain=.open-mic.co.za; Max-Age=${30 * 24 * 60 * 60}`,
+    `${VERCEL_DEPLOYMENT ? "__Secure-" : ""}next-auth.session-token=${req.cookies[`${VERCEL_DEPLOYMENT ? "__Secure-" : ""}next-auth.session-token`]}; HttpOnly; Path=/; SameSite=Lax; ${VERCEL_DEPLOYMENT ? "Secure; " : ""}Domain=.${BRAND_DOMAIN}; Max-Age=${30 * 24 * 60 * 60}`,
   );
 
   res.status(200).end();

@@ -3,6 +3,7 @@ import { JSXElementConstructor, ReactElement } from "react";
 import { render } from "@react-email/components";
 import { Resend } from "resend";
 
+import { BRAND_NAME } from "@/lib/branding";
 import { log, nanoid } from "@/lib/utils";
 
 export const resend = process.env.RESEND_API_KEY
@@ -46,16 +47,16 @@ export const sendEmail = async ({
   const fromAddress =
     from ??
     (marketing
-      ? "Marc from Papermark <marc@open-mic.co.za>"
+      ? `${BRAND_NAME} <marc@open-mic.co.za>`
       : system
-        ? "Papermark <system@open-mic.co.za>"
+        ? `${BRAND_NAME} <system@open-mic.co.za>`
         : verify
-          ? process.env.RESEND_FROM_EMAIL ||
-            "Papermark <noreply@open-mic.co.za>"
+            ? process.env.RESEND_FROM_EMAIL ||
+            `${BRAND_NAME} <noreply@open-mic.co.za>`
           : !!scheduledAt
-            ? "Marc Seitz <marc@open-mic.co.za>"
+            ? `${BRAND_NAME} <marc@open-mic.co.za>`
             : process.env.RESEND_FROM_EMAIL ||
-              "Marc from Papermark <marc@open-mic.co.za>");
+              `${BRAND_NAME} <marc@open-mic.co.za>`);
 
   try {
     const { data, error } = await resend.emails.send({

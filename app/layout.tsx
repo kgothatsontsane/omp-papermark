@@ -3,26 +3,26 @@ import { Inter } from "next/font/google";
 
 import PlausibleProvider from "next-plausible";
 
+import { APP_URL, BRAND_NAME } from "@/lib/branding";
 import "@/styles/globals.css";
 
 const inter = Inter({ subsets: ["latin"] });
 
 const data = {
-  description:
-    "Papermark is an open-source document sharing infrastructure. Free alternative to Docsend with custom domain. Manage secure document sharing with real-time analytics.",
-  title: "Papermark | The Open Source DocSend Alternative",
+  description: `${BRAND_NAME} secure document sharing with real-time analytics.`,
+  title: `${BRAND_NAME} | Secure Document Sharing`,
   url: "/",
 };
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://dealroom.open-mic.co.za"),
+  metadataBase: new URL(APP_URL),
   title: data.title,
   description: data.description,
   openGraph: {
     title: data.title,
     description: data.description,
     url: data.url,
-    siteName: "Papermark",
+    siteName: BRAND_NAME,
     images: [
       {
         url: "/_static/meta-image.png",
@@ -37,7 +37,6 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: data.title,
     description: data.description,
-    creator: "@papermarkio",
     images: ["/_static/meta-image.png"],
   },
 };
