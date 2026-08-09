@@ -111,19 +111,20 @@ export default async function handle(
         (view) => !excludedViews.map((view) => view.id).includes(view.id),
       );
 
-      let duration = { data: [] };
+      let durationData: { viewId: string; sum_duration: number }[] = [];
       try {
-        duration = await getTotalDataroomDuration({
+        const duration = await getTotalDataroomDuration({
           dataroomId: dataroomId,
           excludedLinkIds: [],
           excludedViewIds: excludedViews.map((view) => view.id),
           since: 0,
         });
+        durationData = duration.data || [];
       } catch (durationError) {
         console.error("Tinybird duration error:", durationError);
       }
 
-      const total_duration = (duration.data || []).reduce(
+      const total_duration = durationData.reduce(
         (totalDuration, data) => totalDuration + data.sum_duration,
         0,
       );
@@ -131,7 +132,7 @@ export default async function handle(
       const stats = {
         dataroomViews: dataroomViews,
         documentViews: documentViews,
-        duration: duration.data,
+        duration: durationData,
         total_duration,
       };
 
