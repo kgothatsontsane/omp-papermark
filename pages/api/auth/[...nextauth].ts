@@ -168,9 +168,9 @@ export const authOptions: NextAuthOptions = {
     },
     session: async ({ session, token }) => {
       (session.user as CustomUser) = {
-        id: token.sub,
         // @ts-ignore
         ...(token || session).user,
+        id: token.sub,
       };
       return session;
     },
