@@ -51,7 +51,10 @@ export default async function handle(
       }
     } catch (error) {
       console.error("Team check error:", error);
-      return res.status(401).end("Unauthorized");
+      return res.status(500).json({
+        message: "Internal Server Error",
+        error: "Failed to verify team membership",
+      });
     }
 
     try {
