@@ -33,9 +33,9 @@ export default async function handle(
 
     const userId = (session.user as CustomUser).id;
 
+    // Check if the user is part of the team
     try {
-      // Check if the user is part of the team
-      const team = await prisma.team.findUnique({
+      const teamCheck = await prisma.team.findUnique({
         where: {
           id: teamId,
           users: {
@@ -46,10 +46,15 @@ export default async function handle(
         },
       });
 
-      if (!team) {
+      if (!teamCheck) {
         return res.status(401).end("Unauthorized");
       }
+    } catch (error) {
+      console.error("Team check error:", error);
+      return res.status(401).end("Unauthorized");
+    }
 
+    try {
       const dataroom = await prisma.dataroom.findUnique({
         where: {
           id: dataroomId,
