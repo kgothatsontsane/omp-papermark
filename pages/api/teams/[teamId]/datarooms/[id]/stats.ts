@@ -16,7 +16,13 @@ export default async function handle(
 ) {
   if (req.method === "GET") {
     // GET /api/teams/:teamId/documents/:id/stats
-    const session = await getServerSession(req, res, authOptions);
+    let session;
+    try {
+      session = await getServerSession(req, res, authOptions);
+    } catch (sessionError) {
+      console.error("Session error:", sessionError);
+      return res.status(401).end("Unauthorized");
+    }
     if (!session) {
       return res.status(401).end("Unauthorized");
     }
