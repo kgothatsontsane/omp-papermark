@@ -111,14 +111,19 @@ export default async function handle(
         (view) => !excludedViews.map((view) => view.id).includes(view.id),
       );
 
-      const duration = await getTotalDataroomDuration({
-        dataroomId: dataroomId,
-        excludedLinkIds: [],
-        excludedViewIds: excludedViews.map((view) => view.id),
-        since: 0,
-      });
+      let duration = { data: [] };
+      try {
+        duration = await getTotalDataroomDuration({
+          dataroomId: dataroomId,
+          excludedLinkIds: [],
+          excludedViewIds: excludedViews.map((view) => view.id),
+          since: 0,
+        });
+      } catch (durationError) {
+        console.error("Tinybird duration error:", durationError);
+      }
 
-      const total_duration = duration.data.reduce(
+      const total_duration = (duration.data || []).reduce(
         (totalDuration, data) => totalDuration + data.sum_duration,
         0,
       );

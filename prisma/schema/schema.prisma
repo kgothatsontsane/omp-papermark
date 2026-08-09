@@ -4,7 +4,6 @@ datasource db {
   directUrl         = env("POSTGRES_PRISMA_URL_NON_POOLING") // uses a direct connection
   shadowDatabaseUrl = env("POSTGRES_PRISMA_SHADOW_URL") // used for migrations
 }
-
 generator client {
   provider        = "prisma-client-js"
   previewFeatures = ["relationJoins", "prismaSchemaFolder"]
