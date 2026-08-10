@@ -14,7 +14,13 @@ export default async function handle(
 ) {
   if (req.method === "GET") {
     // GET /api/teams/:teamId/documents/:id/views/:viewId/stats
-    const session = await getServerSession(req, res, authOptions);
+    let session;
+    try {
+      session = await getServerSession(req, res, authOptions);
+    } catch (sessionError) {
+      console.error("Session error:", sessionError);
+      return res.status(401).end("Unauthorized");
+    }
     if (!session) {
       return res.status(401).end("Unauthorized");
     }
@@ -45,16 +51,22 @@ export default async function handle(
         },
       });
 
-      const duration = await getViewPageDuration({
-        documentId: docId,
-        viewId: viewId,
-        since: 0,
-      });
-
-      const total_duration = duration.data.reduce(
-        (totalDuration, data) => totalDuration + data.sum_duration,
-        0,
-      );
+      let duration;
+      let total_duration = 0;
+      try {
+        duration = await getViewPageDuration({
+          documentId: docId,
+          viewId: viewId,
+          since: 0,
+        });
+        total_duration = (duration.data || []).reduce(
+          (totalDuration, data) => totalDuration + data.sum_duration,
+          0,
+        );
+      } catch (durationError) {
+        console.error("Tinybird duration error:", durationError);
+        duration = { data: [], elapsed: 0, statistics: {} };
+      }
 
       const stats = { duration, total_duration };
 

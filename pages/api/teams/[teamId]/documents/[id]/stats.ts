@@ -19,7 +19,13 @@ export default async function handle(
 ) {
   if (req.method === "GET") {
     // GET /api/teams/:teamId/documents/:id/stats
-    const session = await getServerSession(req, res, authOptions);
+    let session;
+    try {
+      session = await getServerSession(req, res, authOptions);
+    } catch (sessionError) {
+      console.error("Session error:", sessionError);
+      return res.status(401).end("Unauthorized");
+    }
     if (!session) {
       return res.status(401).end("Unauthorized");
     }
@@ -108,26 +114,42 @@ export default async function handle(
         _count: { type: true },
       });
 
-      const duration = await getTotalAvgPageDuration({
-        documentId: docId,
-        excludedLinkIds: "",
-        excludedViewIds: allExcludedViews.map((view) => view.id).join(","),
-        since: 0,
-      });
+      let duration;
+      let totalDocumentDuration;
+      try {
+        duration = await getTotalAvgPageDuration({
+          documentId: docId,
+          excludedLinkIds: "",
+          excludedViewIds: allExcludedViews.map((view) => view.id).join(","),
+          since: 0,
+        });
+      } catch (durationError) {
+        console.error("Tinybird duration error:", durationError);
+        duration = { data: [], elapsed: 0, statistics: {} };
+      }
 
-      const totalDocumentDuration = await getTotalDocumentDuration({
-        documentId: docId,
-        excludedLinkIds: "",
-        excludedViewIds: allExcludedViews.map((view) => view.id).join(","),
-        since: 0,
-      });
+      try {
+        totalDocumentDuration = await getTotalDocumentDuration({
+          documentId: docId,
+          excludedLinkIds: "",
+          excludedViewIds: allExcludedViews.map((view) => view.id).join(","),
+          since: 0,
+        });
+      } catch (durationError) {
+        console.error("Tinyburst total duration error:", durationError);
+        totalDocumentDuration = { data: [] };
+      }
+
+      const total_duration =
+        filteredViews.length > 0 && totalDocumentDuration.data[0]
+          ? (totalDocumentDuration.data[0].sum_duration * 1.0) /
+            filteredViews.length
+          : 0;
 
       const stats = {
         views: filteredViews,
         duration,
-        total_duration:
-          (totalDocumentDuration.data[0].sum_duration * 1.0) /
-          filteredViews.length,
+        total_duration,
         groupedReactions,
         totalViews: filteredViews.length,
       };

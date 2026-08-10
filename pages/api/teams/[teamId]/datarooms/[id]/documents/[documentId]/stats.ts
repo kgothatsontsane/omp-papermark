@@ -18,7 +18,13 @@ export default async function handle(
 ) {
   if (req.method === "GET") {
     // GET /api/teams/:teamId/datarooms/:id/documents/:documentId/stats
-    const session = await getServerSession(req, res, authOptions);
+    let session;
+    try {
+      session = await getServerSession(req, res, authOptions);
+    } catch (sessionError) {
+      console.error("Session error:", sessionError);
+      return res.status(401).end("Unauthorized");
+    }
     if (!session) {
       return res.status(401).end("Unauthorized");
     }
@@ -134,12 +140,18 @@ export default async function handle(
           id: view.id,
         }));
 
-      const duration = await getTotalAvgPageDuration({
-        documentId: documentId,
-        excludedLinkIds: "",
-        excludedViewIds: allExcludedViews.map((view) => view.id).join(","),
-        since: 0,
-      });
+      let duration;
+      try {
+        duration = await getTotalAvgPageDuration({
+          documentId: documentId,
+          excludedLinkIds: "",
+          excludedViewIds: allExcludedViews.map((view) => view.id).join(","),
+          since: 0,
+        });
+      } catch (durationError) {
+        console.error("Tinybird duration error:", durationError);
+        duration = { data: [], elapsed: 0, statistics: {} };
+      }
 
       const stats = {
         views: filteredViews,
