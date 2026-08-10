@@ -103,7 +103,19 @@ export default async function handle(
         });
       });
 
-      const durations = await Promise.all(durationsPromises);
+      const durationsSettled = await Promise.allSettled(durationsPromises);
+
+      // Sum up durations for each view, treating failures as 0 duration
+      const durations = durationsSettled.map((result, index) => {
+        if (result.status === "fulfilled") {
+          return {
+            data: result.value.data || [],
+          };
+        } else {
+          console.error(`View duration error for view ${limitedViews[index].id}:`, result.reason);
+          return { data: [] };
+        }
+      });
 
       // Sum up durations for each view
       const summedDurations = durations.map((duration) => {
