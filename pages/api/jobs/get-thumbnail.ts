@@ -16,10 +16,16 @@ export default async function handle(
     return;
   }
 
-  const session = await getServerSession(req, res, authOptions);
-  if (!session) {
-    return res.status(401).end("Unauthorized");
-  }
+       let session;
+    try {
+      session = await getServerSession(req, res, authOptions);
+    } catch (sessionError) {
+      console.error("Session error:", sessionError);
+      return res.status(401).end("Unauthorized");
+    }
+    if (!session) {
+      return res.status(401).end("Unauthorized");
+    }
 
   const { documentId, pageNumber, versionNumber } = req.query as {
     documentId: string;
@@ -28,15 +34,16 @@ export default async function handle(
   };
 
   try {
+    const parsedVersion = Number(versionNumber);
     const imageUrl = await getFileForDocumentPage(
       Number(pageNumber),
       documentId,
-      versionNumber === "undefined" ? undefined : Number(versionNumber),
+      !versionNumber || versionNumber === "undefined" || Number.isNaN(parsedVersion) ? undefined : parsedVersion,
     );
 
     return res.status(200).json({ imageUrl });
   } catch (error) {
-    res.status(500).json({ message: (error as Error).message });
+    res.status(404).json({ message: (error as Error).message });
     return;
   }
 }
