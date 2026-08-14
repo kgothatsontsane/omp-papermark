@@ -1,18 +1,22 @@
-VERSION 4
+VERSION 2
 
 NODE endpoint
 SQL >
     %
     SELECT
-        pageNumber,
-        SUM(duration) AS sum_duration
+        country,
+        city,
+        browser,
+        os,
+        device
     FROM
         page_views__v3
     WHERE
         documentId = {{ String(documentId, required=True) }}
         AND viewId = {{ String(viewId, required=True) }}
         AND time >= {{ Int64(since, required=True) }}
-    GROUP BY
-        pageNumber
     ORDER BY
-        pageNumber ASC
+        viewId, time ASC
+    LIMIT 1
+
+TYPE ENDPOINT

@@ -3,6 +3,7 @@ import { NextRequest, userAgent } from "next/server";
 import { geolocation, ipAddress } from "@vercel/functions";
 
 import { recordLinkViewTB } from "@/lib/tinybird";
+import { log } from "@/lib/utils";
 import { isBot } from "@/lib/utils/user-agent";
 
 import sendNotification from "../api/notification-helper";
@@ -100,9 +101,21 @@ export async function recordLinkView({
     city: geo.city || "Unknown",
   };
 
+  // record link view in Tinybird — degraded path: never let analytics
+  // outage block email notification or webhook delivery
+  const recordTinybird = async () => {
+    try {
+      await recordLinkViewTB(clickData);
+    } catch (error) {
+      log({
+        message: `Graceful degradation: Tinybird ingest failed for link ${linkId} (view ${viewId}). \n\n ${error}`,
+        type: "error",
+      });
+    }
+  };
+
   const [, ,] = await Promise.all([
-    // record link view in Tinybird
-    recordLinkViewTB(clickData),
+    recordTinybird(),
 
     // send email notification
     enableNotification ? sendNotification({ viewId, locationData }) : null,
