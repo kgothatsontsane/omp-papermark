@@ -269,6 +269,42 @@ export default async function handle(
         userId,
       });
 
+      // Reject duplicate document name + type in the same location (folder).
+      const folderPathNameNormalized = folderPathName
+        ? "/" + folderPathName
+        : null;
+      const existingFolder = folderPathNameNormalized
+        ? await prisma.folder.findUnique({
+            where: {
+              teamId_path: {
+                teamId,
+                path: folderPathNameNormalized,
+              },
+            },
+            select: { id: true },
+          })
+        : null;
+
+      const existingDocument = await prisma.document.findFirst({
+        where: {
+          teamId,
+          name,
+          type: fileType,
+          ...(existingFolder
+            ? { folderId: existingFolder.id }
+            : { folderId: null }),
+        },
+        select: { id: true, name: true },
+      });
+
+      if (existingDocument) {
+        return res.status(409).json({
+          code: "DUPLICATE_DOCUMENT",
+          message: `A file named "${name}" already exists in this location.`,
+          existingDocumentId: existingDocument.id,
+        });
+      }
+
       const document = await processDocument({
         documentData: {
           name,

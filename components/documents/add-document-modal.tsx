@@ -14,6 +14,7 @@ import { z } from "zod";
 import { useAnalytics } from "@/lib/analytics";
 import {
   DocumentData,
+  DocumentUploadError,
   createDocument,
   createNewDocumentVersion,
 } from "@/lib/documents/create-document";
@@ -39,9 +40,11 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
+  DialogHeader,
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
@@ -82,6 +85,14 @@ export function AddDocumentModal({
       fileName: string;
     }[]
   >([]);
+  const [duplicateFile, setDuplicateFile] = useState<{
+    name: string;
+    existingDocumentId: string;
+    documentData: DocumentData;
+    numPages: number | undefined;
+  } | null>(null);
+  const [renamedFileName, setRenamedFileName] = useState("");
+  const [isRenaming, setIsRenaming] = useState(false);
   const teamInfo = useTeam();
   const { canAddDocuments } = useLimits();
   const { plan, isFree, isTrial } = usePlan();
@@ -217,6 +228,10 @@ export function AddDocumentModal({
       return;
     }
 
+    let pendingDocumentData: DocumentData | null = null;
+    let pendingNumPages: number | undefined;
+    let showDuplicateDialog = false;
+
     try {
       setUploading(true);
 
@@ -249,7 +264,8 @@ export function AddDocumentModal({
         teamId,
       });
 
-      const documentData: DocumentData = {
+      pendingNumPages = numPages;
+      pendingDocumentData = {
         name: currentFile.name,
         key: data!,
         storageType: type!,
@@ -262,7 +278,7 @@ export function AddDocumentModal({
       if (!newVersion) {
         // create a document in the database
         response = await createDocument({
-          documentData,
+          documentData: pendingDocumentData,
           teamId,
           numPages,
           folderPathName: currentFolderPath?.join("/"),
@@ -271,7 +287,7 @@ export function AddDocumentModal({
         // create a new version for existing document in the database
         const documentId = router.query.id as string;
         response = await createNewDocumentVersion({
-          documentData,
+          documentData: pendingDocumentData,
           documentId,
           numPages,
           teamId,
@@ -362,14 +378,181 @@ export function AddDocumentModal({
       setUploading(false);
       console.error("Upload failed:", error);
 
+      if (
+        error instanceof DocumentUploadError &&
+        error.code === "DUPLICATE_DOCUMENT" &&
+        pendingDocumentData
+      ) {
+        showDuplicateDialog = true;
+        setDuplicateFile({
+          name: pendingDocumentData.name,
+          existingDocumentId: error.existingDocumentId!,
+          documentData: pendingDocumentData,
+          numPages: pendingNumPages,
+        });
+        setRenamedFileName(pendingDocumentData.name);
+        setIsRenaming(false);
+        return;
+      }
+
       const errorMessage =
         error instanceof Error ? error.message : "Unknown error";
       toast.error(`An error occurred while uploading the file: ${errorMessage}`);
     } finally {
+      if (!showDuplicateDialog) {
+        setUploading(false);
+        setIsOpen(false);
+        setAddDocumentModalOpen && setAddDocumentModalOpen(false);
+      }
+    }
+  };
+
+  const handleRenameAndUpload = async () => {
+    if (!duplicateFile) return;
+
+    const newName = renamedFileName.trim();
+    if (!newName) {
+      toast.error("Please enter a file name.");
+      return;
+    }
+
+    setUploading(true);
+    try {
+      const documentData: DocumentData = {
+        ...duplicateFile.documentData,
+        name: newName,
+      };
+      const response = await createDocument({
+        documentData,
+        teamId,
+        numPages: duplicateFile.numPages,
+        folderPathName: currentFolderPath?.join("/"),
+      });
+      const document = await response.json();
+
+      if (isDataroom && dataroomId) {
+        const dataroomResponse = await addDocumentToDataroom({
+          documentId: document.id,
+          folderPathName: currentFolderPath?.join("/"),
+        });
+
+        if (dataroomResponse?.ok) {
+          const dataroomDocument =
+            (await dataroomResponse.json()) as DataroomDocument & {
+              dataroom: {
+                _count: { viewerGroups: number; permissionGroups: number };
+              };
+            };
+
+          await applyUnifiedPermissionsToDocument(
+            document,
+            dataroomDocument,
+            currentFolderPath,
+          );
+        }
+
+        analytics.capture("Document Added", {
+          documentId: document.id,
+          name: document.name,
+          numPages: document.numPages,
+          path: router.asPath,
+          type: document.type,
+          teamId: teamId,
+          dataroomId: dataroomId,
+          $set: {
+            teamId: teamId,
+            teamPlan: plan,
+          },
+        });
+
+        setDuplicateFile(null);
+        setUploading(false);
+        setIsOpen(false);
+        setAddDocumentModalOpen && setAddDocumentModalOpen(false);
+        return;
+      }
+
+      mutate(`/api/teams/${teamId}/documents`);
+      toast.success("Document uploaded. Redirecting to document page...");
+
+      analytics.capture("Document Added", {
+        documentId: document.id,
+        name: document.name,
+        numPages: document.numPages,
+        path: router.asPath,
+        type: document.type,
+        teamId: teamId,
+        $set: {
+          teamId: teamId,
+          teamPlan: plan,
+        },
+      });
+
+      setDuplicateFile(null);
       setUploading(false);
       setIsOpen(false);
       setAddDocumentModalOpen && setAddDocumentModalOpen(false);
+      router.push("/documents/" + document.id);
+    } catch (error) {
+      console.error("Upload failed:", error);
+
+      if (
+        error instanceof DocumentUploadError &&
+        error.code === "DUPLICATE_DOCUMENT" &&
+        error.existingDocumentId
+      ) {
+        setDuplicateFile({
+          name: newName,
+          existingDocumentId: error.existingDocumentId,
+          documentData: { ...duplicateFile.documentData, name: newName },
+          numPages: duplicateFile.numPages,
+        });
+        setRenamedFileName(newName);
+        setUploading(false);
+        toast.error(error.message);
+        return;
+      }
+
+      const errorMessage =
+        error instanceof Error ? error.message : "Unknown error";
+      toast.error(`An error occurred while uploading the file: ${errorMessage}`);
+      setUploading(false);
     }
+  };
+
+  const handleOverwriteDocument = async () => {
+    if (!duplicateFile) return;
+
+    setUploading(true);
+    try {
+      const response = await createNewDocumentVersion({
+        documentData: duplicateFile.documentData,
+        documentId: duplicateFile.existingDocumentId,
+        numPages: duplicateFile.numPages,
+        teamId,
+      });
+
+      if (response) {
+        toast.success("Existing document overwritten with a new version.");
+        setDuplicateFile(null);
+        setUploading(false);
+        setIsOpen(false);
+        setAddDocumentModalOpen && setAddDocumentModalOpen(false);
+        router.reload();
+      }
+    } catch (error) {
+      console.error("Failed to overwrite document:", error);
+      const errorMessage =
+        error instanceof Error ? error.message : "Unknown error";
+      toast.error(`Failed to overwrite the document: ${errorMessage}`);
+      setUploading(false);
+    }
+  };
+
+  const closeDuplicateDialog = () => {
+    setDuplicateFile(null);
+    setIsRenaming(false);
+    setRenamedFileName("");
   };
 
   const createNotionFileName = () => {
@@ -705,6 +888,82 @@ export function AddDocumentModal({
           </Tabs>
         </DialogContent>
       </Dialog>
+
+      {duplicateFile && (
+        <Dialog open={!!duplicateFile} onOpenChange={closeDuplicateDialog}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>A file with this name already exists</DialogTitle>
+              <DialogDescription>
+                A file named{" "}
+                <span className="font-medium text-foreground">
+                  {duplicateFile.name}
+                </span>{" "}
+                already exists in this location. You can rename this file or
+                overwrite the existing document with a new version.
+              </DialogDescription>
+            </DialogHeader>
+
+            {isRenaming ? (
+              <div className="space-y-3 py-2">
+                <div className="space-y-1">
+                  <Label htmlFor="rename-file">New file name</Label>
+                  <Input
+                    id="rename-file"
+                    value={renamedFileName}
+                    onChange={(e) => setRenamedFileName(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        handleRenameAndUpload();
+                      }
+                    }}
+                    autoFocus
+                  />
+                </div>
+                <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+                  <Button
+                    variant="outline"
+                    onClick={() => setIsRenaming(false)}
+                    disabled={uploading}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    onClick={handleRenameAndUpload}
+                    disabled={uploading || !renamedFileName.trim()}
+                    loading={uploading}
+                  >
+                    Rename &amp; Upload
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+                <Button variant="outline" onClick={closeDuplicateDialog}>
+                  Cancel
+                </Button>
+                <Button
+                  variant="secondary"
+                  onClick={() => {
+                    setIsRenaming(true);
+                    setRenamedFileName(duplicateFile.name);
+                  }}
+                >
+                  Rename
+                </Button>
+                <Button
+                  onClick={handleOverwriteDocument}
+                  disabled={uploading}
+                  loading={uploading}
+                >
+                  Overwrite Existing
+                </Button>
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
+      )}
 
       {showGroupPermissions && dataroomId && (
         <SetUnifiedPermissionsModal

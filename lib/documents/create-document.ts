@@ -12,6 +12,24 @@ export type DocumentData = {
   enableExcelAdvancedMode?: boolean;
 };
 
+export class DocumentUploadError extends Error {
+  status: number;
+  code?: string;
+  existingDocumentId?: string;
+
+  constructor(
+    message: string,
+    status: number,
+    opts?: { code?: string; existingDocumentId?: string },
+  ) {
+    super(message);
+    this.name = "DocumentUploadError";
+    this.status = status;
+    this.code = opts?.code;
+    this.existingDocumentId = opts?.existingDocumentId;
+  }
+}
+
 export const createDocument = async ({
   documentData,
   teamId,
@@ -51,8 +69,19 @@ export const createDocument = async ({
   );
 
   if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error);
+    const body = (await response.json().catch(() => null)) as {
+      code?: string;
+      message?: string;
+      existingDocumentId?: string;
+    } | null;
+    const message =
+      body?.message ||
+      body?.code ||
+      `Failed to create document (HTTP ${response.status})`;
+    throw new DocumentUploadError(message, response.status, {
+      code: body?.code,
+      existingDocumentId: body?.existingDocumentId,
+    });
   }
 
   return response;
