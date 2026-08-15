@@ -8,30 +8,51 @@ Last updated: 2026-08-15
 
 ## Current git state (2026-08-15)
 
-- Branches: `main` (production) / `staging` / `develop` — in sync at `3f2dfc5f`.
-- Production (main) live at `3f2dfc5f`, domain aliased.
+- Branches: `main` (production) / `staging` / `develop`.
+- HEAD on all branches ~`19fde644` (docs commit). Production (main) live, domain aliased.
 - Upload fixes landed: duplicate-name rename/overwrite dialog (678c1519),
   graceful degradation for background conversion triggers (9b54b1cf), same for
   agreement uploads (3f2dfc5f).
 
-## Upload failure ROOT CAUSE (2026-08-15) — FIXED
+## Upload failure ROOT CAUSE (2026-08-15) — FIXED + R2/worker verified E2E
 
 - Symptom: pdf/doc/docx uploads failed with `[object Object]`; jpg/png/xlsx worked.
-- Two-part fix:
+- Multi-part fix chain:
   1. `createDocument.ts` threw `new Error(error)` (stringified object → `[object Object]`).
      Now throws `DocumentUploadError` with real server message + code.
   2. Trigger.dev worker env was missing the DB URL vars — every conversion run
      failed at Prisma init (`POSTGRES_PRISMA_URL` must start with postgresql://).
-     `send-dataroom-change-notification` runs FAILED with this error. Set all
-     worker env vars (POSTGRES_PRISMA_URL, POSTGRES_PRISMA_URL_NON_POOLING, upload
-     creds, NEXTAUTH_URL, etc.) via the trigger.dev envvar API **using the PROD key**
-     (tr_prod_Xf8t9b...TRIGGER_PROD_KEY_REDACTED — the dev key writes to dev env only). Redeployed
-     worker (version 20260815.9); verified a conversion run reaches status COMPLETED.
+     Set all worker env vars via the trigger.dev envvar API **using the PROD key**
+     (tr_prod_Xf8t9b...TRIGGER_PROD_KEY_REDACTED — dev key writes to dev env only).
   3. Conversions now never block the document upload (try/catch + log degradation).
+  4. **R2 creds rolled** (user). NEW keys: access key `16ea01...R2_ACCESS_KEY_REDACTED`,
+     secret `171975d3...R2_SECRET_REDACTED`.
+     Synced to local `.env`, Vercel (prod+preview), and worker env.
+  5. **R2 ENDPOINT MUST include `/papermark`** (`https://3e00f6c5648dfecbbc0b0d427ea245a0.r2.cloudflarestorage.com/papermark`).
+     Stored keys carry a `papermark/` prefix (baked in by the original endpoint). Stripping
+     the path from the endpoint breaks presigned GET (404) — virtual-hosted URL becomes
+     `<bucket>.<host>/<key>` and misses the prefix. Keep `/papermark` in endpoint everywhere.
+  6. **INTERNAL_API_KEY was missing on the worker** → `getFile()` fell to the client branch
+     (relative `/api/file/s3/get-presigned-get-url-proxy`) → "Failed to parse URL".
+     Rolled a new key (was unrecoverable from Vercel), set on Vercel (prod+preview),
+     worker, and local `.env`. Worker's `getFile` now uses the server branch with a full URL.
+  7. Worker env vars had LITERAL QUOTES baked in (e.g. `"77e118..."`) from earlier setup —
+     stripped quotes for all `NEXT_PRIVATE_UPLOAD_*`/`NEXT_PUBLIC_UPLOAD_TRANSPORT`.
 - Prod trigger.dev keys: prod = tr_prod_Xf8t9b...TRIGGER_PROD_KEY_REDACTED, dev = tr_dev_uSUQvXlH6DaaRtkcPfFY
   (both user-provided). Worker env set via
   `POST https://api.trigger.dev/api/v1/projects/proj_palqkhramjxoleaduwuu/envvars/prod`
   with `Authorization: Bearer $PROD_KEY`.
+- **Verified E2E**: re-triggered `convert-pdf-to-image-route` for a stuck PDF
+  (`Producer_Agreement_Master_KG.pdf`, version `cmsu051to0002lc04vnga4ehj`) →
+  run COMPLETED at 100% "Processing complete", `hasPages:true`, 5 `documentPage` rows,
+  `isVertical:true`. Presigned GET via `/api/file/s3/get-presigned-get-url` → HTTP 200.
+- Task id note: `convertFilesToPdfTask` registers as `convert-files-to-pdf` (NOT `convert-files`).
+  Triggering with the wrong id leaves the run PENDING_VERSION forever.
+- STILL OPEN: DOC/DOCX→PDF needs a Gotenberg/LibreOffice service
+  (`NEXT_PRIVATE_CONVERSION_BASE_URL` + `NEXT_PRIVATE_INTERNAL_AUTH_TOKEN`), which is
+  configured NOWHERE (not .env, not Vercel, not worker). PDF uploads work; docs/slides
+  conversion will fail until a Gotenberg instance is provisioned and those vars set.
+  `REVALIDATE_TOKEN` also missing everywhere (non-blocking revalidate step).
 
 - Changes in `7a905c71`: F7 (self-host-aware view limits), F9 (whitelabel demo assets:
   local `dataroom-demo.mp4` + `favicon.jpeg`, author-CDN refs removed), MCP-verification
