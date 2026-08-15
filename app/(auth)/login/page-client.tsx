@@ -273,8 +273,8 @@ export default function Login() {
               </div>
               <LogoCloud />
               <img
-                src="https://assets.papermark.io/upload/file_7JEGY7zM9ZTfmxu8pe7vWj-Screenshot-2025-05-09-at-18.09.13.png"
-                alt="Trusted teams illustration"
+                src="/_static/open-mic/omp_banner_w.jpg"
+                alt="Open Mic Productions"
                 className="mt-4 max-w-full h-auto object-contain"
                 style={{maxHeight: '120px'}}
               />

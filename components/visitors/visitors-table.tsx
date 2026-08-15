@@ -77,8 +77,7 @@ export default function VisitorsTable({
     currentPage,
     pageSize,
   );
-  const { plan, isTrial } = usePlan();
-  const isFreePlan = plan === "free";
+  const { isFree: isFreePlan, isTrial } = usePlan();
 
   const [isLoading, setIsLoading] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);

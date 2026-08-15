@@ -21,7 +21,7 @@ Ledger of findings. Updated every turn. Status: `OPEN | FIXED | BLOCKED | SKIP`.
 | F6 | **`SELF_HOSTED_MODE` not set** | FIXED | **ROOT CAUSE of "much doesn't work."** Local `.env`: `SELF_HOSTED_MODE=true` added. Vercel (production + preview): `NEXT_PUBLIC_SELF_HOSTED_MODE` upserted to `"true"` (encrypted) via `POST /v10/projects/{id}/env?upsert=true`; stale empty `sensitive` preview entry deleted. **Needs redeploy on Vercel to take effect (Next inlines NEXT_PUBLIC_* at build).** |
 | F7 | `pages/api/links/[id]/visits.ts:94` raw `plan === "free"` gate ignores self-hosted | OPEN | Even with F6 fixed, this server gate slices views to 20 when DB plan is "free". Needs `!isSelfHostedMode() &&` guard. |
 | F8 | `components/visitors/visitors-table.tsx:81` `plan === "free"` re-derivation | NOTE | Self-resolves once F6 set (usePlan returns "datarooms-plus"). Consider switching to `isFree` from usePlan for robustness. |
-| F9 | Demo assets on author's CDN (login screenshot, dataroom video, next.config hostnames) | NOTE | Whitelabel cosmetic; not broken functionality. Replace with own assets for full whitelabel. |
+| F9 | Demo assets on author's CDN (login screenshot, dataroom video, next.config hostnames) | FIXED | Replaced with local brand assets: generated `public/_static/open-mic/dataroom-demo.mp4` (15s, 1280x720, acquirer-focused cards: NDA, watermarks, permissions, audit trail, data residency) + login image → local `omp_banner_w.jpg`. Verified: PIL text-bbox check (all text within canvas) + ffprobe (valid H.264). Removed unused author-CDN hostnames from next.config remote patterns (0 references remain). |
 
 ## Open blocked inputs (need owner)
 
@@ -69,6 +69,8 @@ Rules for this ledger:
 | L5 | `tsc` passes but Vercel build fails | Vercel `npm run vercel-build` runs full Next build | Typecheck ≠ bundle. Always run `npm run vercel-build` locally before pushing to auto-deploy. |
 | L6 | Auto-discovery (probe P6) flags overrides without ledger rows | Every `overrides` entry must have a debt row | The `react-notion-x` override predated the ledger. |
 | L7 | Loop design must cost-guard itself | Verification debt / comprehension rot / cognitive surrender / token blowout | Four guards added to LOOP.md; cost-per-accepted-change metric; human merge gate. |
+| L8 | Model is image-blind (cannot read extracted frames/images) | Visual verification must NOT rely on "look at the screenshot" | Use deterministic checks (PIL text-bbox, OCR, ffprobe) OR watch-skill MCP `ask_video`/`get_moment` (text-first). Record the exact method in the finding. |
+| L9 | Generic marketing ≠ acquirer concerns | "Share securely" doesn't speak to diligence teams | For client-facing copy, address the deal-side anxieties directly: NDA gating, watermarks, per-viewer permissions, audit trail, data residency. |
 
 ## Run log
 
@@ -76,3 +78,4 @@ Rules for this ledger:
 - Turn 2 (2026-08-15): F6 FIXED — set `NEXT_PUBLIC_SELF_HOSTED_MODE=true` on Vercel (prod+preview), `SELF_HOSTED_MODE=true` in local `.env`. Needs redeploy. Confirmed DB team plan is `"free"` (not enterprise) — self-hosted switch overrides it. Added Playwright MCP (verify-by-acting) + token-min protocol to loop.
 - Turn 3 (2026-08-15): F2 properly done — `@trigger.dev/*` → 4.5.11, code ported (queue string, prisma mode), `ai@2.2.37` pinned via overrides + tracked in dependency debt ledger D1. Branches: `main`/`staging`/`develop` created + pushed. Vercel matrix documented. Vercel env var `NEXT_PUBLIC_SELF_HOSTED_MODE=true` set (prod+preview).
 - Turn 4 (2026-08-15): Fix build error from v4 SDK client import (L4/L5) → `runMetadata` from core; all three envs READY at `bfa423de`. Loop hardened: four cost guards, debt ledger rules, discovery-skill.md, discovery.sh + `loop-discovery.yml` cron (auto-discovery + scheduling). L1–L7 lessons captured. Auto-discovery re-ran: confirms F7 (P3) + F9 (P2) OPEN, D2 ledger row added.
+- Turn 5 (2026-08-15): F7 FIXED (visits.ts raw gate + visitors-table isFree), F9 FIXED (local brand video + login image, next.config cleanup). MCP verification made MANDATORY in LOOP.md; verified video with PIL text-bbox + ffprobe (model image-blind, L8). L8/L9 lessons added. F6 deploy confirmed all envs live.

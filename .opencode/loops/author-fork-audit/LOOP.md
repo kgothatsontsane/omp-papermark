@@ -108,6 +108,17 @@ repo and in deployed config. Verification is deterministic per finding:
 - L1 deterministic: `npx tsc --noEmit` passes.
 - L3 delayed/field: `tb --cloud deploy --check` and Trigger.dev deploy succeed.
 - Never trust "I searched and saw nothing" without the actual command output.
+- **MCP verification is MANDATORY for anything visual or runtime (MANDATORY).** The
+  evaluator must SEE the artifact, not infer it. Concretely:
+  - Visual/UI artifact (video, page, screenshot, card): use the `watch-skill` MCP
+    (`watch_video`/`loop_video_gen` + `ask_video`) to actually watch it and check the
+    content — never assert from ffprobe/metadata alone.
+  - Browser behavior: use the `playwright` MCP to open the page, click, screenshot.
+  - Trigger.dev runs/deploys: use the `trigger-dev` MCP.
+  - The maker does NOT self-approve the visual check — a fresh pass over the MCP
+    output decides. If the MCP shows a defect, the turn goes back to the maker.
+- Proving the verifier: the first time a new visual check is used, confirm it can
+  catch a known-bad frame before trusting it to pass good ones.
 
 ## Terminal states
 
@@ -170,8 +181,17 @@ Read-only MCP servers keep external state out of the context window until needed
 - `trigger-dev` (local, `trigger.dev mcp --readonly`) — query Trigger.dev runs,
   tasks, environments without CLI output dumping. Registered in
   `.opencode/opencode.json`. Write tools (deploy/trigger/cancel) are hidden.
-- Loop discipline: call the MCP to answer a specific run/deploy question, then
-  persist only the answer line in `state.md`. Do not paste raw MCP dumps here.
+- `playwright` (local, official `@playwright/mcp`, headless) — browser verification:
+  open the page, click, screenshot, inspect DOM. Registered in `.opencode/opencode.json`.
+- `watch-skill` (local MCP) — VIDEO/visual verification: `watch_video` to index a
+  video, `ask_video` for text-first answers, `get_moment` for zoomed re-OCR.
+  This is the evaluator's "see it, don't infer it" tool for anything visual.
+- neko (self-hosted Docker virtual browser) — evaluated and NOT adopted: requires a
+  running Docker container + its own profile; Playwright MCP covers browser
+  verification with no infra. Revisit only if Playwright proves insufficient
+  (e.g. anti-bot sites that need a real browser fingerprint).
+- Loop discipline: call the MCP to answer a specific question, then persist only
+  the answer line in `state.md`. Do not paste raw MCP dumps here.
 - Adding more read-MCPs (e.g. Upstash Redis REST, Postgres via `psql -c`) is
   welcome when a finding needs it — but always read-only and registered in
   `.opencode/opencode.json`, never ad-hoc credentials in this file.
