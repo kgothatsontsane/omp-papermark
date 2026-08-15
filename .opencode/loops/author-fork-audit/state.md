@@ -11,6 +11,8 @@ Current state: BLOCKED on owner action (see Blocked inputs). Root cause chain:
 (1) no Trigger.dev worker was running → runs stayed QUEUED → infinite spinner;
 (2) after upgrading to a deployable setup, the export POST now 500s in PROD because
 Vercel's `TRIGGER_SECRET_KEY` is empty → "An error occurred while starting the export".
+Progress: **worker now DEPLOYED** (Trigger.dev prod, version 20260815.1, native build
+server, project proj_palqkhramjxoleaduwuu). Only G1 (prod secret key on Vercel) remains.
 
 ## Detours (context switches — justified + return condition)
 
@@ -26,7 +28,7 @@ Vercel's `TRIGGER_SECRET_KEY` is empty → "An error occurred while starting the
 
 | Rank | Grenade | Blast radius | Status |
 |------|---------|--------------|--------|
-| G1 | Vercel `TRIGGER_SECRET_KEY` empty | Export/background jobs 500 in prod (ALREADY detonating) | BLOCKED on owner (needs tr_prod_ key) |
+| G1 | Vercel `TRIGGER_SECRET_KEY` empty | Export/background jobs 500 in prod (ALREADY detonating) | BLOCKED on owner (needs tr_prod_ key). Worker now deployed & ready. |
 | G2 | `ai@2.2.37` pin (D1) | If flagged vulnerable or a dep upgrade forces the port, Assistant chat breaks | tracked in debt ledger |
 | G3 | webhook plan gates without self-host guard (send-webhook-event, link-created, document-created) | Webhooks silently not delivered in self-hosted mode | FIXED — all three guarded with `!isSelfHostedMode()`. Auto-discovery P3 probe now context-aware (no false positives). |
 
@@ -106,3 +108,4 @@ Rules for this ledger:
 - Turn 4 (2026-08-15): Fix build error from v4 SDK client import (L4/L5) → `runMetadata` from core; all three envs READY at `bfa423de`. Loop hardened: four cost guards, debt ledger rules, discovery-skill.md, discovery.sh + `loop-discovery.yml` cron (auto-discovery + scheduling). L1–L7 lessons captured. Auto-discovery re-ran: confirms F7 (P3) + F9 (P2) OPEN, D2 ledger row added.
 - Turn 5 (2026-08-15): F7 FIXED (visits.ts raw gate + visitors-table isFree), F9 FIXED (local brand video + login image, next.config cleanup). MCP verification made MANDATORY in LOOP.md; verified video with PIL text-bbox + ffprobe (model image-blind, L8). L8/L9 lessons added. F6 deploy confirmed all envs live.
 - Turn 6 (2026-08-15): Back to PRIMARY INTENT (Export Visits) — found prod export POST fails: Vercel `TRIGGER_SECRET_KEY` EMPTY (F3 → BLOCKED on owner; needs `tr_prod_` key, dashboard-only). Added Focus & intent discipline (generic) + Priority tracker + Grenades to loop. G3 (webhook plan gates) fixed. Auto-discovery probes P2/P3 made context-aware; discovery now returns found=0.
+- Turn 7 (2026-08-15): **Trigger.dev worker DEPLOYED to prod** (version 20260815.1, native build server, install=`npm install`, prebuild=`npx prisma generate`, config=`trigger.config.ts`). Test page: https://cloud.trigger.dev/projects/v3/proj_palqkhramjxoleaduwuu/test?environment=prod. Primary intent still blocked only on G1 (tr_prod_ key on Vercel).
