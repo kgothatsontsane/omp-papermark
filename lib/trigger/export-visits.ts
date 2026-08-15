@@ -1,7 +1,8 @@
 import { logger, task } from "@trigger.dev/sdk/v3";
-import { put } from "@vercel/blob";
+import { PutObjectCommand } from "@aws-sdk/client-s3";
 import Bottleneck from "bottleneck";
 
+import { getTeamS3ClientAndConfig } from "@/lib/files/aws-client";
 import { isSelfHostedMode } from "@/lib/self-hosted";
 import { sendExportReadyEmail } from "@/lib/emails/send-export-ready-email";
 import prisma from "@/lib/prisma";
@@ -108,24 +109,28 @@ export const exportVisitsTask = task({
       // Create timestamp for filename
       const currentTime = new Date().toISOString().split("T")[0];
 
-      // Upload CSV to Vercel Blob
+      // Upload CSV to S3 (self-hosted storage; no Vercel Blob dependency)
       const filename = `visits-${resourceName.replace(/[^a-zA-Z0-9]/g, "_")}-${currentTime}.csv`;
-      const blob = await put(filename, csvData, {
-        access: "public",
-        addRandomSuffix: true,
-        contentType: "text/csv",
-      });
+      const key = `${teamId}/exports/${exportId}-${filename}`;
+      const { client, config } = await getTeamS3ClientAndConfig(teamId);
+      await client.send(
+        new PutObjectCommand({
+          Bucket: config.bucket,
+          Key: key,
+          Body: csvData,
+          ContentType: "text/csv",
+        }),
+      );
 
-      logger.info("CSV uploaded to Vercel Blob", {
-        filename,
-        url: blob.downloadUrl,
+      logger.info("CSV uploaded to S3", {
+        key,
         size: csvData.length,
       });
 
-      // Store the blob URL in Redis
+      // Store the S3 key in Redis (prefix marks it as S3 for the download endpoint)
       const updatedJob = await jobStore.updateJob(exportId, {
         status: "COMPLETED",
-        result: blob.downloadUrl,
+        result: `s3:${key}`,
         resourceName,
         completedAt: new Date().toISOString(),
       });
@@ -155,7 +160,7 @@ export const exportVisitsTask = task({
         type,
         resourceId,
         csvSize: csvData.length,
-        blobUrl: blob.downloadUrl,
+        s3Key: key,
       });
 
       return {
@@ -163,7 +168,7 @@ export const exportVisitsTask = task({
         exportId,
         resourceName,
         csvSize: csvData.length,
-        blobUrl: blob.downloadUrl,
+        s3Key: key,
       };
     } catch (error) {
       logger.error("Export visits task failed", {

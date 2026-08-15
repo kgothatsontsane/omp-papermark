@@ -1,5 +1,4 @@
 import { DeleteObjectsCommand, ListObjectsV2Command } from "@aws-sdk/client-s3";
-import { del } from "@vercel/blob";
 
 import { getTeamS3ClientAndConfig } from "./aws-client";
 
@@ -9,16 +8,8 @@ export type DeleteFilesOptions = {
 };
 
 export const deleteFiles = async ({ teamId, data }: DeleteFilesOptions) => {
-  // run both delete functions in parallel
-  await Promise.allSettled([
-    deleteAllFilesFromS3Server(teamId),
-    data && deleteFileFromVercelServer(data),
-  ]);
-};
-
-const deleteFileFromVercelServer = async (urls: string[]) => {
-  const deleteUrlsPromises = urls.map((url) => del(url));
-  await Promise.allSettled(deleteUrlsPromises);
+  // S3 only; no Vercel Blob dependency
+  await deleteAllFilesFromS3Server(teamId);
 };
 
 const deleteAllFilesFromS3Server = async (teamId: string) => {

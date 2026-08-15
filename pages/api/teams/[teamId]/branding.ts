@@ -1,6 +1,6 @@
 import { NextApiRequest, NextApiResponse } from "next";
 
-import { del } from "@vercel/blob";
+import { deleteBrandingFile } from "@/lib/files/aws-client";
 import { getServerSession } from "next-auth";
 
 import { errorhandler } from "@/lib/errorHandler";
@@ -119,8 +119,8 @@ export default async function handle(
     });
 
     if (brand && brand.logo) {
-      // delete the logo from vercel blob
-      await del(brand.logo);
+      // delete the logo from S3
+      await deleteBrandingFile(brand.logo);
     }
 
     // delete the branding from database

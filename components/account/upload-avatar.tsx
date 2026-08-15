@@ -5,6 +5,8 @@ import { ReactNode, useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import { toast } from "sonner";
 
+import { useTeam } from "@/context/team-context";
+
 import { convertDataUrlToFile, uploadImage } from "@/lib/utils";
 
 import { Button } from "@/components/ui/button";
@@ -33,6 +35,7 @@ const UploadAvatar = ({
 }: UploadAvatarProps) => {
   const [uploading, setUploading] = useState(false);
   const { data: session, update } = useSession();
+  const { currentTeamId } = useTeam();
   const [image, setImage] = useState<string | null>(null);
 
   useEffect(() => {
@@ -50,7 +53,7 @@ const UploadAvatar = ({
           return;
         }
         const blob = convertDataUrlToFile({ dataUrl: image });
-        const blobUrl = await uploadImage(blob);
+        const blobUrl = await uploadImage(blob, "assets", currentTeamId ?? undefined);
         fetch("/api/account", {
           method: "PATCH",
           headers: {

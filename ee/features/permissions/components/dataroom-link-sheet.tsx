@@ -256,8 +256,8 @@ export function DataroomLinkSheet({
     if (linkData.metaImage && linkData.metaImage.startsWith("data:")) {
       // Convert the data URL to a blob
       const blob = convertDataUrlToFile({ dataUrl: linkData.metaImage });
-      // Upload the blob to vercel storage
-      blobUrl = await uploadImage(blob);
+      // Upload the blob to S3
+      blobUrl = await uploadImage(blob, "assets", teamId ?? undefined);
     }
 
     // Upload meta favicon if it's a data URL
@@ -269,7 +269,7 @@ export function DataroomLinkSheet({
       const blobFavicon = convertDataUrlToFile({
         dataUrl: linkData.metaFavicon,
       });
-      blobUrlFavicon = await uploadImage(blobFavicon);
+      blobUrlFavicon = await uploadImage(blobFavicon, "assets", teamId ?? undefined);
     }
 
     const isUpdating = !!currentLink?.id;

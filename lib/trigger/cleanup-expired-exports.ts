@@ -1,6 +1,7 @@
 import { logger, schedules } from "@trigger.dev/sdk/v3";
-import { del } from "@vercel/blob";
+import { DeleteObjectCommand } from "@aws-sdk/client-s3";
 
+import { getTeamS3ClientAndConfig } from "@/lib/files/aws-client";
 import { jobStore } from "@/lib/redis-job-store";
 
 export const cleanupExpiredExports = schedules.task({
@@ -8,43 +9,58 @@ export const cleanupExpiredExports = schedules.task({
   // Run daily at 2 AM UTC
   cron: "0 2 * * *",
   run: async (payload) => {
-    logger.info("Starting cleanup of expired export blobs", {
+    logger.info("Starting cleanup of expired export files", {
       timestamp: payload.timestamp,
     });
 
     try {
-      // Get all blob URLs that are due for cleanup
-      const blobsToCleanup = await jobStore.getBlobsForCleanup();
+      // Get all storage references that are due for cleanup
+      const refsToCleanup = await jobStore.getBlobsForCleanup();
 
-      if (blobsToCleanup.length === 0) {
-        logger.info("No blobs due for cleanup");
+      if (refsToCleanup.length === 0) {
+        logger.info("No files due for cleanup");
         return { deletedCount: 0 };
       }
 
-      logger.info(`Found ${blobsToCleanup.length} blobs to delete`);
+      logger.info(`Found ${refsToCleanup.length} files to delete`);
 
-      // Delete blobs from Vercel Blob
+      // Delete files from S3 or Vercel Blob
       const deletionResults = await Promise.allSettled(
-        blobsToCleanup.map(async (blob) => {
+        refsToCleanup.map(async (ref) => {
           try {
-            await del(blob.blobUrl);
+            if (!ref.blobUrl.startsWith("s3:")) {
+              logger.warn("Skipping non-S3 cleanup ref (legacy)", {
+                ref: ref.blobUrl,
+              });
+              await jobStore.removeBlobFromCleanupQueue(
+                ref.blobUrl,
+                ref.jobId,
+              );
+              return { ref, success: true };
+            }
+            const key = ref.blobUrl.slice(3);
+            const teamId = key.split("/")[0];
+            const { client, config } = await getTeamS3ClientAndConfig(teamId);
+            await client.send(
+              new DeleteObjectCommand({ Bucket: config.bucket, Key: key }),
+            );
 
             // Remove from cleanup queue after successful deletion
-            await jobStore.removeBlobFromCleanupQueue(blob.blobUrl, blob.jobId);
+            await jobStore.removeBlobFromCleanupQueue(ref.blobUrl, ref.jobId);
 
-            logger.info("Successfully deleted blob", {
-              blobUrl: blob.blobUrl,
-              jobId: blob.jobId,
+            logger.info("Successfully deleted file", {
+              ref: ref.blobUrl,
+              jobId: ref.jobId,
             });
 
-            return { blob, success: true };
+            return { ref, success: true };
           } catch (error) {
-            logger.error("Failed to delete blob", {
-              blobUrl: blob.blobUrl,
-              jobId: blob.jobId,
+            logger.error("Failed to delete file", {
+              ref: ref.blobUrl,
+              jobId: ref.jobId,
               error: error instanceof Error ? error.message : String(error),
             });
-            return { blob, success: false, error };
+            return { ref, success: false, error };
           }
         }),
       );
@@ -56,7 +72,7 @@ export const cleanupExpiredExports = schedules.task({
       const failureCount = deletionResults.length - successCount;
 
       logger.info("Cleanup completed", {
-        totalBlobs: blobsToCleanup.length,
+        totalRefs: refsToCleanup.length,
         successCount,
         failureCount,
       });
@@ -64,7 +80,7 @@ export const cleanupExpiredExports = schedules.task({
       return {
         deletedCount: successCount,
         failureCount,
-        totalProcessed: blobsToCleanup.length,
+        totalProcessed: refsToCleanup.length,
       };
     } catch (error) {
       logger.error("Cleanup task failed", {

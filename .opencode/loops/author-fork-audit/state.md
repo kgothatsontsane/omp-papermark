@@ -28,13 +28,14 @@ Recommended: (A).
 | DTR-3 branches + Vercel envs | GOTCHA discovered: prod runs on Vercel; needed main/staging/develop + env sync | DONE (all three envs deploy) | yes |
 | DTR-4 whitelabel demo assets (F9) | GRENADE: prod still served author's CDN assets; part of self-host goal | FIXED (local video + image) | yes |
 | DTR-5 loop hardening (costs, MCP verify, auto-discovery, focus discipline) | PROTECTIVE: loop was drifting (this section is the fix) | DONE | yes |
+| DTR-6 full `@vercel/blob` → S3 port | GRENADE G4: export CSV upload needs BLOB token that doesn't exist; app runs S3 transport | DONE — export (PutObjectCommand, `s3:` result, presigned download), cleanup S3-only, put/put-server/get/copy/delete/delete-team S3-only, uploadImage S3-only (avatar + link-sheet pass teamId), branding deletes via `deleteBrandingFile`, webhooks meta via `uploadBrandingFile`, removed `browser-upload`+`image-upload` dead handlers + `@vercel/blob` dep. tsc clean. | yes |
 
 ## Grenades (potential explosions — defuse after primary intent or while blocked)
 
 | Rank | Grenade | Blast radius | Status |
 |------|---------|--------------|--------|
 | G1 | Vercel `TRIGGER_SECRET_KEY` empty | Export/background jobs 500 in prod (ALREADY detonating) | FIXED — user added tr_prod_ key on Vercel; deploy `9191ad1f` READY with it. |
-| G4 | `BLOB_READ_WRITE_TOKEN` missing on Vercel | Export CSV upload (`@vercel/blob` put) fails → export never COMPLETEs | BLOCKED on owner: create Vercel Blob store (Storage → Create → Blob) → set token on Vercel, OR I port export to S3. |
+| G4 | `BLOB_READ_WRITE_TOKEN` missing on Vercel | Export CSV upload (`@vercel/blob` put) fails → export never COMPLETEs | FIXED — ported export to S3: CSV uploads via `getTeamS3ClientAndConfig`+`PutObjectCommand`, `result` stored as `s3:{key}`, download endpoint generates presigned URL via `getFile`. Full `@vercel/blob` removal done (see DTR-6). |
 | G2 | `ai@2.2.37` pin (D1) | If flagged vulnerable or a dep upgrade forces the port, Assistant chat breaks | tracked in debt ledger |
 | G3 | webhook plan gates without self-host guard (send-webhook-event, link-created, document-created) | Webhooks silently not delivered in self-hosted mode | FIXED — all three guarded with `!isSelfHostedMode()`. Auto-discovery P3 probe now context-aware (no false positives). |
 
@@ -120,3 +121,4 @@ Rules for this ledger:
 - Turn 5 (2026-08-15): F7 FIXED (visits.ts raw gate + visitors-table isFree), F9 FIXED (local brand video + login image, next.config cleanup). MCP verification made MANDATORY in LOOP.md; verified video with PIL text-bbox + ffprobe (model image-blind, L8). L8/L9 lessons added. F6 deploy confirmed all envs live.
 - Turn 6 (2026-08-15): Back to PRIMARY INTENT (Export Visits) — found prod export POST fails: Vercel `TRIGGER_SECRET_KEY` EMPTY (F3 → BLOCKED on owner; needs `tr_prod_` key, dashboard-only). Added Focus & intent discipline (generic) + Priority tracker + Grenades to loop. G3 (webhook plan gates) fixed. Auto-discovery probes P2/P3 made context-aware; discovery now returns found=0.
 - Turn 7 (2026-08-15): **Trigger.dev worker DEPLOYED to prod** (version 20260815.1, native build server, install=`npm install`, prebuild=`npx prisma generate`, config=`trigger.config.ts`). Test page: https://cloud.trigger.dev/projects/v3/proj_palqkhramjxoleaduwuu/test?environment=prod. Primary intent still blocked only on G1 (tr_prod_ key on Vercel).
+- Turn 8 (2026-08-15): **G1 FIXED** (user added tr_prod_ key on Vercel; deploy READY). **G4 FIXED** — full `@vercel/blob` → S3 port (DTR-6). Export now: S3 upload + `s3:` result + presigned download. Primary intent export path fully ported; ready for end-to-end test once deployed.

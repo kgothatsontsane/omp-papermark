@@ -122,8 +122,11 @@ export class RedisJobStore {
     const jobKey = this.getJobKey(jobId);
     await redis.setex(jobKey, JOB_TTL, JSON.stringify(updatedJob));
 
-    // If this update includes a blob URL, schedule it for cleanup
-    if (updates.result?.startsWith("https://")) {
+    // If this update includes a storage reference (S3 key or URL), schedule cleanup
+    if (
+      updates.result?.startsWith("https://") ||
+      updates.result?.startsWith("s3:")
+    ) {
       await this.scheduleBlobForCleanup(updates.result, jobId);
     }
 

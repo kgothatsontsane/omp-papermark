@@ -1,7 +1,6 @@
 import { NextRouter } from "next/router";
 
 import slugify from "@sindresorhus/slugify";
-import { upload } from "@vercel/blob/client";
 import { Message } from "ai";
 import bcrypt from "bcryptjs";
 import * as chrono from "chrono-node";
@@ -523,55 +522,50 @@ export const uploadImage = async (
   uploadType: "profile" | "assets" = "assets",
   teamId?: string,
 ) => {
-  if (teamId) {
-    const presignedResponse = await fetch(
-      "/api/file/s3/get-presigned-post-url",
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          fileName: file.name,
-          contentType: file.type,
-          teamId,
-          docId: `branding-${nanoid()}`,
-        }),
-      },
-    );
-
-    if (!presignedResponse.ok) {
-      throw new Error("Failed to prepare image upload");
-    }
-
-    const { url, key, fileName } = (await presignedResponse.json()) as {
-      url: string;
-      key: string;
-      fileName: string;
-    };
-    const uploadResponse = await fetch(url, {
-      method: "PUT",
-      headers: {
-        "Content-Type": file.type,
-        "Content-Disposition": `attachment; filename="${fileName}"`,
-      },
-      body: file,
-    });
-
-    if (!uploadResponse.ok) {
-      throw new Error("Failed to upload image");
-    }
-
-    return `/api/file/s3/branding/${key
-      .split("/")
-      .map(encodeURIComponent)
-      .join("/")}`;
+  if (!teamId) {
+    throw new Error("teamId is required for image upload");
   }
 
-  const newBlob = await upload(file.name, file, {
-    access: "public",
-    handleUploadUrl: `/api/file/image-upload?type=${uploadType}`,
+  const presignedResponse = await fetch(
+    "/api/file/s3/get-presigned-post-url",
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        fileName: file.name,
+        contentType: file.type,
+        teamId,
+        docId: `branding-${nanoid()}`,
+      }),
+    },
+  );
+
+  if (!presignedResponse.ok) {
+    throw new Error("Failed to prepare image upload");
+  }
+
+  const { url, key, fileName } = (await presignedResponse.json()) as {
+    url: string;
+    key: string;
+    fileName: string;
+  };
+  const uploadResponse = await fetch(url, {
+    method: "PUT",
+    headers: {
+      "Content-Type": file.type,
+      "Content-Disposition": `attachment; filename="${fileName}"`,
+    },
+    body: file,
   });
 
-  return newBlob.url;
+  if (!uploadResponse.ok) {
+    throw new Error("Failed to upload image");
+  }
+
+  return `/api/file/s3/branding/${key
+    .split("/")
+    .map(encodeURIComponent)
+    .join("/")}`;
 };
 
 /**

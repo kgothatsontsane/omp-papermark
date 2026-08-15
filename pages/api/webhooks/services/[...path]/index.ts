@@ -1,7 +1,6 @@
 import { NextApiRequest, NextApiResponse } from "next";
 
 import { LinkPreset } from "@prisma/client";
-import { put } from "@vercel/blob";
 import { waitUntil } from "@vercel/functions";
 import { z } from "zod";
 
@@ -9,6 +8,7 @@ import { hashToken } from "@/lib/api/auth/token";
 import { createDocument } from "@/lib/documents/create-document";
 import { putFileServer } from "@/lib/files/put-file-server";
 import { extractTeamId, isValidWebhookId } from "@/lib/incoming-webhooks";
+import { uploadBrandingFile } from "@/lib/files/aws-client";
 import prisma from "@/lib/prisma";
 import { ratelimit } from "@/lib/redis";
 import {
@@ -379,11 +379,13 @@ async function handleDocumentCreate(
           const { buffer, mimeType, filename } = convertDataUrlToBuffer(
             preset.metaImage,
           );
-          const blob = await put(filename, buffer, {
-            access: "public",
-            addRandomSuffix: true,
+          metaImage = await uploadBrandingFile({
+            teamId,
+            docId: "webhook-meta",
+            filename,
+            contentType: mimeType,
+            body: buffer,
           });
-          metaImage = blob.url;
         }
 
         // Process favicon if present
@@ -391,11 +393,13 @@ async function handleDocumentCreate(
           const { buffer, mimeType, filename } = convertDataUrlToBuffer(
             preset.metaFavicon,
           );
-          const blob = await put(filename, buffer, {
-            access: "public",
-            addRandomSuffix: true,
+          metaFavicon = await uploadBrandingFile({
+            teamId,
+            docId: "webhook-meta",
+            filename,
+            contentType: mimeType,
+            body: buffer,
           });
-          metaFavicon = blob.url;
         }
       }
     }
@@ -593,11 +597,13 @@ async function handleLinkCreate(
         const { buffer, mimeType, filename } = convertDataUrlToBuffer(
           preset.metaImage,
         );
-        const blob = await put(filename, buffer, {
-          access: "public",
-          addRandomSuffix: true,
+        metaImage = await uploadBrandingFile({
+          teamId,
+          docId: "webhook-meta",
+          filename,
+          contentType: mimeType,
+          body: buffer,
         });
-        metaImage = blob.url;
       }
 
       // Process favicon if present
@@ -605,11 +611,13 @@ async function handleLinkCreate(
         const { buffer, mimeType, filename } = convertDataUrlToBuffer(
           preset.metaFavicon,
         );
-        const blob = await put(filename, buffer, {
-          access: "public",
-          addRandomSuffix: true,
+        metaFavicon = await uploadBrandingFile({
+          teamId,
+          docId: "webhook-meta",
+          filename,
+          contentType: mimeType,
+          body: buffer,
         });
-        metaFavicon = blob.url;
       }
     }
   }
@@ -760,11 +768,13 @@ async function handleDataroomCreate(
         const { buffer, mimeType, filename } = convertDataUrlToBuffer(
           preset.metaImage,
         );
-        const blob = await put(filename, buffer, {
-          access: "public",
-          addRandomSuffix: true,
+        metaImage = await uploadBrandingFile({
+          teamId,
+          docId: "webhook-meta",
+          filename,
+          contentType: mimeType,
+          body: buffer,
         });
-        metaImage = blob.url;
       }
 
       // Process favicon if present
@@ -772,11 +782,13 @@ async function handleDataroomCreate(
         const { buffer, mimeType, filename } = convertDataUrlToBuffer(
           preset.metaFavicon,
         );
-        const blob = await put(filename, buffer, {
-          access: "public",
-          addRandomSuffix: true,
+        metaFavicon = await uploadBrandingFile({
+          teamId,
+          docId: "webhook-meta",
+          filename,
+          contentType: mimeType,
+          body: buffer,
         });
-        metaFavicon = blob.url;
       }
     }
   }

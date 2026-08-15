@@ -1,7 +1,7 @@
 import { NextApiRequest, NextApiResponse } from "next";
 
 import { authOptions } from "@/pages/api/auth/[...nextauth]";
-import { del } from "@vercel/blob";
+import { deleteBrandingFile } from "@/lib/files/aws-client";
 import { getServerSession } from "next-auth";
 
 import { errorhandler } from "@/lib/errorHandler";
@@ -125,12 +125,12 @@ export default async function handle(
     });
 
     if (brand && brand.logo) {
-      // delete the logo from vercel blob
-      await del(brand.logo);
+      // delete the logo from S3
+      await deleteBrandingFile(brand.logo);
     }
     if (brand && brand.banner) {
-      // delete the logo from vercel blob
-      await del(brand.banner);
+      // delete the banner from S3
+      await deleteBrandingFile(brand.banner);
     }
 
     // delete the branding from database

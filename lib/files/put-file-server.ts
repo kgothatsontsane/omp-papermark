@@ -1,7 +1,6 @@
 import { PutObjectCommand } from "@aws-sdk/client-s3";
 import { DocumentStorageType } from "@prisma/client";
 import slugify from "@sindresorhus/slugify";
-import { put } from "@vercel/blob";
 import path from "node:path";
 import { match } from "ts-pattern";
 
@@ -34,7 +33,6 @@ export const putFileServer = async ({
     .with("s3", async () =>
       putFileInS3Server({ file, teamId, docId, restricted }),
     )
-    .with("vercel", async () => putFileInVercelServer(file))
     .otherwise(() => {
       return {
         type: null,
@@ -44,20 +42,6 @@ export const putFileServer = async ({
     });
 
   return { type, data };
-};
-
-const putFileInVercelServer = async (file: File) => {
-  const contents = file.buffer;
-
-  const blob = await put(file.name, contents, {
-    access: "public",
-    addRandomSuffix: true,
-  });
-
-  return {
-    type: DocumentStorageType.VERCEL_BLOB,
-    data: blob.url,
-  };
 };
 
 const putFileInS3Server = async ({

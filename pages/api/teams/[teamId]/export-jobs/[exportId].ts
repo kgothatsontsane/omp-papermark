@@ -5,8 +5,10 @@ import { getServerSession } from "next-auth/next";
 
 import { runs } from "@trigger.dev/sdk/v3";
 
+import { getFile } from "@/lib/files/get-file";
 import { jobStore } from "@/lib/redis-job-store";
 import { CustomUser } from "@/lib/types";
+import { DocumentStorageType } from "@prisma/client";
 
 export default async function handler(
   req: NextApiRequest,
@@ -43,7 +45,16 @@ export default async function handler(
         exportJob.status === "COMPLETED" &&
         exportJob.result
       ) {
-        // Redirect directly to the blob URL
+        // result is either a presigned-ready S3 key (prefix "s3:") or a direct URL
+        if (exportJob.result.startsWith("s3:")) {
+          const key = exportJob.result.slice(3);
+          const url = await getFile({
+            type: DocumentStorageType.S3_PATH,
+            data: key,
+            isDownload: true,
+          });
+          return res.redirect(302, url);
+        }
         return res.redirect(302, exportJob.result);
       }
 

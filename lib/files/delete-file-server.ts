@@ -1,6 +1,5 @@
 import { DeleteObjectsCommand, ListObjectsV2Command } from "@aws-sdk/client-s3";
 import { DocumentStorageType } from "@prisma/client";
-import { del } from "@vercel/blob";
 import { match } from "ts-pattern";
 
 import { getTeamS3ClientAndConfig } from "./aws-client";
@@ -16,16 +15,9 @@ export const deleteFile = async ({ type, data, teamId }: DeleteFileOptions) => {
     .with(DocumentStorageType.S3_PATH, async () =>
       deleteAllFilesFromS3Server(data, teamId),
     )
-    .with(DocumentStorageType.VERCEL_BLOB, async () =>
-      deleteFileFromVercelServer(data),
-    )
     .otherwise(() => {
       return;
     });
-};
-
-const deleteFileFromVercelServer = async (url: string) => {
-  await del(url);
 };
 
 const deleteAllFilesFromS3Server = async (data: string, teamId: string) => {

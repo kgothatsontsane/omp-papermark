@@ -1,5 +1,4 @@
 import { DocumentStorageType } from "@prisma/client";
-import { upload } from "@vercel/blob/client";
 import { match } from "ts-pattern";
 
 import { newId } from "@/lib/id-helper";
@@ -46,7 +45,6 @@ export const putFile = async ({
     NEXT_PUBLIC_UPLOAD_TRANSPORT,
   )
     .with("s3", async () => putFileInS3({ file, teamId, docId }))
-    .with("vercel", async () => putFileInVercel(file))
     .otherwise(() => {
       return {
         type: null,
@@ -57,27 +55,6 @@ export const putFile = async ({
     });
 
   return { type, data, numPages, fileSize };
-};
-
-const putFileInVercel = async (file: File) => {
-  const newBlob = await upload(file.name, file, {
-    access: "public",
-    handleUploadUrl: "/api/file/browser-upload",
-  });
-
-  let numPages: number = 1;
-  // get page count for pdf files
-  if (file.type === "application/pdf") {
-    const body = await file.arrayBuffer();
-    numPages = await getPagesCount(body);
-  }
-
-  return {
-    type: DocumentStorageType.VERCEL_BLOB,
-    data: newBlob.url,
-    numPages: numPages,
-    fileSize: file.size,
-  };
 };
 
 // Multipart upload threshold: 10MB
