@@ -8,10 +8,31 @@ Last updated: 2026-08-15
 
 ## Current git state (2026-08-15)
 
-- Branches: `main` (production) / `staging` / `develop` — all pushed, in sync at
-  commit `7a905c71` ("fix: whitelabel demo assets and self-host-aware view limits").
-- Workflow: feature on `develop` → merge to `staging` → merge to `main` → push → Vercel deploys.
-- Deploys for `7a905c71` in progress (all three envs). Prior `1a55a4fd` live on production.
+- Branches: `main` (production) / `staging` / `develop` — in sync at `3f2dfc5f`.
+- Production (main) live at `3f2dfc5f`, domain aliased.
+- Upload fixes landed: duplicate-name rename/overwrite dialog (678c1519),
+  graceful degradation for background conversion triggers (9b54b1cf), same for
+  agreement uploads (3f2dfc5f).
+
+## Upload failure ROOT CAUSE (2026-08-15) — FIXED
+
+- Symptom: pdf/doc/docx uploads failed with `[object Object]`; jpg/png/xlsx worked.
+- Two-part fix:
+  1. `createDocument.ts` threw `new Error(error)` (stringified object → `[object Object]`).
+     Now throws `DocumentUploadError` with real server message + code.
+  2. Trigger.dev worker env was missing the DB URL vars — every conversion run
+     failed at Prisma init (`POSTGRES_PRISMA_URL` must start with postgresql://).
+     `send-dataroom-change-notification` runs FAILED with this error. Set all
+     worker env vars (POSTGRES_PRISMA_URL, POSTGRES_PRISMA_URL_NON_POOLING, upload
+     creds, NEXTAUTH_URL, etc.) via the trigger.dev envvar API **using the PROD key**
+     (tr_prod_Xf8t9b...TRIGGER_PROD_KEY_REDACTED — the dev key writes to dev env only). Redeployed
+     worker (version 20260815.9); verified a conversion run reaches status COMPLETED.
+  3. Conversions now never block the document upload (try/catch + log degradation).
+- Prod trigger.dev keys: prod = tr_prod_Xf8t9b...TRIGGER_PROD_KEY_REDACTED, dev = tr_dev_uSUQvXlH6DaaRtkcPfFY
+  (both user-provided). Worker env set via
+  `POST https://api.trigger.dev/api/v1/projects/proj_palqkhramjxoleaduwuu/envvars/prod`
+  with `Authorization: Bearer $PROD_KEY`.
+
 - Changes in `7a905c71`: F7 (self-host-aware view limits), F9 (whitelabel demo assets:
   local `dataroom-demo.mp4` + `favicon.jpeg`, author-CDN refs removed), MCP-verification
   made mandatory in loop.
