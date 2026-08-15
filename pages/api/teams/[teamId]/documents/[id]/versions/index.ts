@@ -103,68 +103,89 @@ export default async function handle(
       });
 
       if (type === "docs" || type === "slides") {
-        await convertFilesToPdfTask.trigger(
-          {
-            documentVersionId: version.id,
-            teamId,
-            documentId,
-          },
-          {
-            idempotencyKey: `${teamId}-${version.id}-docs`,
-            tags: [
-              `team_${teamId}`,
-              `document_${documentId}`,
-              `version:${version.id}`,
-            ],
-            queue: conversionQueue(team.plan),
-            concurrencyKey: teamId,
-          },
-        );
+        try {
+          await convertFilesToPdfTask.trigger(
+            {
+              documentVersionId: version.id,
+              teamId,
+              documentId,
+            },
+            {
+              idempotencyKey: `${teamId}-${version.id}-docs`,
+              tags: [
+                `team_${teamId}`,
+                `document_${documentId}`,
+                `version:${version.id}`,
+              ],
+              queue: conversionQueue(team.plan),
+              concurrencyKey: teamId,
+            },
+          );
+        } catch (error) {
+          log({
+            message: `Graceful degradation: failed to trigger docs/slides conversion for version ${version.id}: ${error}`,
+            type: "error",
+          });
+        }
       }
 
       if (type === "video" && contentType !== "video/mp4") {
-        await processVideo.trigger(
-          {
-            videoUrl: url,
-            teamId,
-            docId: url.split("/")[1], // Extract doc_xxxx from teamId/doc_xxxx/filename
-            documentVersionId: version.id,
-            fileSize: fileSize || 0,
-          },
-          {
-            idempotencyKey: `${teamId}-${version.id}`,
-            tags: [
-              `team_${teamId}`,
-              `document_${documentId}`,
-              `version:${version.id}`,
-            ],
-            queue: conversionQueue(team.plan),
-            concurrencyKey: teamId,
-          },
-        );
+        try {
+          await processVideo.trigger(
+            {
+              videoUrl: url,
+              teamId,
+              docId: url.split("/")[1], // Extract doc_xxxx from teamId/doc_xxxx/filename
+              documentVersionId: version.id,
+              fileSize: fileSize || 0,
+            },
+            {
+              idempotencyKey: `${teamId}-${version.id}`,
+              tags: [
+                `team_${teamId}`,
+                `document_${documentId}`,
+                `version:${version.id}`,
+              ],
+              queue: conversionQueue(team.plan),
+              concurrencyKey: teamId,
+            },
+          );
+        } catch (error) {
+          log({
+            message: `Graceful degradation: failed to trigger video optimization for version ${version.id}: ${error}`,
+            type: "error",
+          });
+        }
       }
 
       // trigger document uploaded event to trigger convert-pdf-to-image job
       if (type === "pdf") {
-        await convertPdfToImageRoute.trigger(
-          {
-            documentId: documentId,
-            documentVersionId: version.id,
-            teamId,
-            // docId: version.file.split("/")[1], // Extract doc_xxxx from teamId/doc_xxxx/filename
-            versionNumber: version.versionNumber,
-          },
-          {
-            idempotencyKey: `${teamId}-${version.id}`,
-            tags: [
-              `team_${teamId}`,
-              `document_${documentId}`,
-              `version:${version.id}`,
-            ],
-            queue: conversionQueue(team.plan),
-            concurrencyKey: teamId,
-          },
-        );
+        try {
+          await convertPdfToImageRoute.trigger(
+            {
+              documentId: documentId,
+              documentVersionId: version.id,
+              teamId,
+              // docId: version.file.split("/")[1], // Extract doc_xxxx from teamId/doc_xxxx/filename
+              versionNumber: version.versionNumber,
+            },
+            {
+              idempotencyKey: `${teamId}-${version.id}`,
+              tags: [
+                `team_${teamId}`,
+                `document_${documentId}`,
+                `version:${version.id}`,
+              ],
+              queue: conversionQueue(team.plan),
+              concurrencyKey: teamId,
+            },
+          );
+        } catch (error) {
+          log({
+            message: `Graceful degradation: failed to trigger PDF-to-image conversion for version ${version.id}: ${error}`,
+            type: "error",
+          });
+        }
       }
 
       if (type === "sheet" && document?.advancedExcelEnabled) {

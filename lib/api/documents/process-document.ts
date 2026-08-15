@@ -9,7 +9,7 @@ import { convertCadToPdfTask } from "@/lib/trigger/convert-files";
 import { convertFilesToPdfTask } from "@/lib/trigger/convert-files";
 import { processVideo } from "@/lib/trigger/optimize-video-files";
 import { convertPdfToImageRoute } from "@/lib/trigger/pdf-to-image-route";
-import { getExtension } from "@/lib/utils";
+import { getExtension, log } from "@/lib/utils";
 import { conversionQueue } from "@/lib/utils/trigger-utils";
 import { sendDocumentCreatedWebhook } from "@/lib/webhook/triggers/document-created";
 import { sendLinkCreatedWebhook } from "@/lib/webhook/triggers/link-created";
@@ -131,86 +131,114 @@ export const processDocument = async ({
 
   // Trigger appropriate conversion tasks based on document type
   if (type === "docs" || type === "slides") {
-    await convertFilesToPdfTask.trigger(
-      {
-        documentId: document.id,
-        documentVersionId: document.versions[0].id,
-        teamId,
-      },
-      {
-        idempotencyKey: `${teamId}-${document.versions[0].id}-docs`,
-        tags: [
-          `team_${teamId}`,
-          `document_${document.id}`,
-          `version:${document.versions[0].id}`,
-        ],
-        queue: conversionQueue(teamPlan),
-        concurrencyKey: teamId,
-      },
-    );
+    try {
+      await convertFilesToPdfTask.trigger(
+        {
+          documentId: document.id,
+          documentVersionId: document.versions[0].id,
+          teamId,
+        },
+        {
+          idempotencyKey: `${teamId}-${document.versions[0].id}-docs`,
+          tags: [
+            `team_${teamId}`,
+            `document_${document.id}`,
+            `version:${document.versions[0].id}`,
+          ],
+          queue: conversionQueue(teamPlan),
+          concurrencyKey: teamId,
+        },
+      );
+    } catch (error) {
+      log({
+        message: `Graceful degradation: failed to trigger docs/slides conversion for document ${document.id} (${document.versions[0].id}): ${error}`,
+        type: "error",
+      });
+    }
   }
 
   if (type === "cad") {
-    await convertCadToPdfTask.trigger(
-      {
-        documentId: document.id,
-        documentVersionId: document.versions[0].id,
-        teamId,
-      },
-      {
-        idempotencyKey: `${teamId}-${document.versions[0].id}-cad`,
-        tags: [
-          `team_${teamId}`,
-          `document_${document.id}`,
-          `version:${document.versions[0].id}`,
-        ],
-        queue: conversionQueue(teamPlan),
-        concurrencyKey: teamId,
-      },
-    );
+    try {
+      await convertCadToPdfTask.trigger(
+        {
+          documentId: document.id,
+          documentVersionId: document.versions[0].id,
+          teamId,
+        },
+        {
+          idempotencyKey: `${teamId}-${document.versions[0].id}-cad`,
+          tags: [
+            `team_${teamId}`,
+            `document_${document.id}`,
+            `version:${document.versions[0].id}`,
+          ],
+          queue: conversionQueue(teamPlan),
+          concurrencyKey: teamId,
+        },
+      );
+    } catch (error) {
+      log({
+        message: `Graceful degradation: failed to trigger CAD conversion for document ${document.id} (${document.versions[0].id}): ${error}`,
+        type: "error",
+      });
+    }
   }
 
   if (type === "video" && contentType !== "video/mp4") {
-    await processVideo.trigger(
-      {
-        videoUrl: key,
-        teamId,
-        docId: key.split("/")[1], // Extract doc_xxxx from teamId/doc_xxxx/filename
-        documentVersionId: document.versions[0].id,
-        fileSize: fileSize || 0,
-      },
-      {
-        idempotencyKey: `${teamId}-${document.versions[0].id}`,
-        tags: [
-          `team_${teamId}`,
-          `document_${document.id}`,
-          `version:${document.versions[0].id}`,
-        ],
-        queue: conversionQueue(teamPlan),
-        concurrencyKey: teamId,
-      },
-    );
+    try {
+      await processVideo.trigger(
+        {
+          videoUrl: key,
+          teamId,
+          docId: key.split("/")[1], // Extract doc_xxxx from teamId/doc_xxxx/filename
+          documentVersionId: document.versions[0].id,
+          fileSize: fileSize || 0,
+        },
+        {
+          idempotencyKey: `${teamId}-${document.versions[0].id}`,
+          tags: [
+            `team_${teamId}`,
+            `document_${document.id}`,
+            `version:${document.versions[0].id}`,
+          ],
+          queue: conversionQueue(teamPlan),
+          concurrencyKey: teamId,
+        },
+      );
+    } catch (error) {
+      log({
+        message: `Graceful degradation: failed to trigger video optimization for document ${document.id} (${document.versions[0].id}): ${error}`,
+        type: "error",
+      });
+    }
   }
 
   // skip triggering convert-pdf-to-image job for "notion" / "excel" documents
   if (type === "pdf") {
-    await convertPdfToImageRoute.trigger(
-      {
-        documentId: document.id,
-        documentVersionId: document.versions[0].id,
-        teamId,
-      },
-      {
-        idempotencyKey: `${teamId}-${document.versions[0].id}`,
-        tags: [
-          `team_${teamId}`,
-          `document_${document.id}`,
-          `version:${document.versions[0].id}`,
-        ],
-        queue: conversionQueue(teamPlan),
-        concurrencyKey: teamId,
-      },
-    );
+    try {
+      await convertPdfToImageRoute.trigger(
+        {
+          documentId: document.id,
+          documentVersionId: document.versions[0].id,
+          teamId,
+        },
+        {
+          idempotencyKey: `${teamId}-${document.versions[0].id}`,
+          tags: [
+            `team_${teamId}`,
+            `document_${document.id}`,
+            `version:${document.versions[0].id}`,
+          ],
+          queue: conversionQueue(teamPlan),
+          concurrencyKey: teamId,
+        },
+      );
+    } catch (error) {
+      log({
+        message: `Graceful degradation: failed to trigger PDF-to-image conversion for document ${document.id} (${document.versions[0].id}): ${error}`,
+        type: "error",
+      });
+    }
   }
 
   if (type === "sheet" && enableExcelAdvancedMode) {
