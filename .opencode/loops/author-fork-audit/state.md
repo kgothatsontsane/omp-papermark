@@ -54,14 +54,10 @@ Recommended: (A).
 | F8 | `components/visitors/visitors-table.tsx:81` `plan === "free"` re-derivation | FIXED | Now uses `isFree` from usePlan (self-hosted aware). |
 | F9 | Demo assets on author's CDN (login screenshot, dataroom video, next.config hostnames) | FIXED | Replaced with local brand assets: generated `public/_static/open-mic/dataroom-demo.mp4` (15s, 1280x720, acquirer-focused cards: NDA, watermarks, permissions, audit trail, data residency) + login image → local `omp_banner_w.jpg`. Verified: PIL text-bbox check (all text within canvas) + ffprobe (valid H.264). Removed unused author-CDN hostnames from next.config remote patterns (0 references remain). |
 | F10 | Login + verify pages not white-labeled (third-party logos, testimonial, "Share documents. Not attachments.") | FIXED | Fully white-labeled: "Open Mic Productions Deal Room" heading, proprietary deal-room copy (NDA-gated, watermarks, audit trail), removed LogoCloud (DoorDash/Coinweb/BCG etc.), removed Backtrace testimonial + "Trusted by teams at", deleted dead `logo-cloud.tsx`. Verify page matches. **Verified live via Playwright**: Deal Room heading ✓, no Backtrace ✓, no third-party logos ✓. |
+| F11 | Worker env missing `UPSTASH_REDIS_REST_URL/TOKEN` → `cleanup-expired-exports` failed ("Failed to parse URL from") | FIXED | The app's main `redis` client (`lib/redis.ts`) shares the SAME Upstash instance as the locker (`positive-dassie-162980.upstash.io`) — confirmed via scan: `export_job:*` + `user_jobs:*` keys live there. Set `UPSTASH_REDIS_REST_URL` + `UPSTASH_REDIS_REST_TOKEN` on trigger.dev prod env = locker values, redeployed worker → version **20260815.11**. Verified: manual trigger of `cleanup-expired-exports` → run `run_06g088b60ju1k1gel6qh4g4801` **COMPLETED** (output `{"deletedCount":0}`), previously FAILED after 3 retries. |
 
 ## Open blocked inputs (need owner)
 
-- **Vercel Blob store + `BLOB_READ_WRITE_TOKEN`** (blocks export COMPLETION — the
-  export task uploads the CSV via `@vercel/blob`). Steps: Vercel dashboard →
-  Storage → Create → **Blob store** → copy `BLOB_READ_WRITE_TOKEN` → add to project
-  env vars (production) → redeploy. (Alternative: I port the export CSV upload to S3
-  to match the app's `s3` transport — say the word and I'll do it instead.)
 - **Fresh R2 API token (blocks ALL file uploads, incl. export CSV storage)**: The R2
   credentials in `.env` return `Unauthorized` from a direct AWS SDK test (all endpoint
   combos). Generate a new token: Cloudflare dashboard → R2 → **Manage R2 API Tokens** →
