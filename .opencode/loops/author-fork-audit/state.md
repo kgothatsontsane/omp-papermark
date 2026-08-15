@@ -29,6 +29,7 @@ Recommended: (A).
 | DTR-4 whitelabel demo assets (F9) | GRENADE: prod still served author's CDN assets; part of self-host goal | FIXED (local video + image) | yes |
 | DTR-5 loop hardening (costs, MCP verify, auto-discovery, focus discipline) | PROTECTIVE: loop was drifting (this section is the fix) | DONE | yes |
 | DTR-6 full `@vercel/blob` → S3 port | GRENADE G4: export CSV upload needs BLOB token that doesn't exist; app runs S3 transport | DONE — export (PutObjectCommand, `s3:` result, presigned download), cleanup S3-only, put/put-server/get/copy/delete/delete-team S3-only, uploadImage S3-only (avatar + link-sheet pass teamId), branding deletes via `deleteBrandingFile`, webhooks meta via `uploadBrandingFile`, removed `browser-upload`+`image-upload` dead handlers + `@vercel/blob` dep. tsc clean. | yes |
+| DTR-7 login/verify white-label | USER REQUEST: remove other-company logos, proprietary copy, deal-room positioning | DONE — login + verify pages fully white-labeled (no LogoCloud/testimonials/third-party refs), "Open Mic Productions Deal Room" brand panel, removed dead `logo-cloud.tsx`. tsc clean. | yes |
 
 ## Grenades (potential explosions — defuse after primary intent or while blocked)
 
@@ -36,6 +37,7 @@ Recommended: (A).
 |------|---------|--------------|--------|
 | G1 | Vercel `TRIGGER_SECRET_KEY` empty | Export/background jobs 500 in prod (ALREADY detonating) | FIXED — user added tr_prod_ key on Vercel; deploy `9191ad1f` READY with it. |
 | G4 | `BLOB_READ_WRITE_TOKEN` missing on Vercel | Export CSV upload (`@vercel/blob` put) fails → export never COMPLETEs | FIXED — ported export to S3: CSV uploads via `getTeamS3ClientAndConfig`+`PutObjectCommand`, `result` stored as `s3:{key}`, download endpoint generates presigned URL via `getFile`. Full `@vercel/blob` removal done (see DTR-6). |
+| G5 | R2 uploads fail ("Error uploading file") | All file uploads broken in prod | PARTIALLY FIXED in code: `MultiRegionS3Store` omitted `endpoint` → tus uploads hit AWS not R2; now passes R2 endpoint. **BLOCKED on owner**: R2 API credentials in `.env` return `Unauthorized` from a direct SDK test against every endpoint/region/path-style combo — token likely invalid/expired. Owner must generate a fresh R2 API token (Cloudflare dashboard → R2 → Manage R2 API Tokens) and set on Vercel + local. |
 | G2 | `ai@2.2.37` pin (D1) | If flagged vulnerable or a dep upgrade forces the port, Assistant chat breaks | tracked in debt ledger |
 | G3 | webhook plan gates without self-host guard (send-webhook-event, link-created, document-created) | Webhooks silently not delivered in self-hosted mode | FIXED — all three guarded with `!isSelfHostedMode()`. Auto-discovery P3 probe now context-aware (no false positives). |
 
@@ -59,11 +61,12 @@ Recommended: (A).
   Storage → Create → **Blob store** → copy `BLOB_READ_WRITE_TOKEN` → add to project
   env vars (production) → redeploy. (Alternative: I port the export CSV upload to S3
   to match the app's `s3` transport — say the word and I'll do it instead.)
-- **Trigger.dev prod secret key**: In Trigger.dev dashboard → your project
-  `OMP-Papermark` (proj_palqkhramjxoleaduwuu) → **API keys** page → create/copy the
-  **prod** secret key (starts `tr_prod_`). Then set it as `TRIGGER_SECRET_KEY` in
-  **Vercel** env vars (production) and redeploy. This unblocks Export Visits in prod.
-  (Local dev uses the existing `tr_dev_` key + `npm run trigger:v3:dev` worker.)
+- **Fresh R2 API token (blocks ALL file uploads, incl. export CSV storage)**: The R2
+  credentials in `.env` return `Unauthorized` from a direct AWS SDK test (all endpoint
+  combos). Generate a new token: Cloudflare dashboard → R2 → **Manage R2 API Tokens** →
+  create token with **Object Read & Write** on bucket `papermark`. Update
+  `NEXT_PRIVATE_UPLOAD_ACCESS_KEY_ID` + `NEXT_PRIVATE_UPLOAD_SECRET_ACCESS_KEY` in
+  local `.env` AND Vercel (production), then redeploy.
 - **REDEPLOY on Vercel** to apply F6: env var set, but `NEXT_PUBLIC_*` vars are
   inlined at build time. Trigger a production redeploy (git push or dashboard
   "Redeploy") so the new value takes effect.
