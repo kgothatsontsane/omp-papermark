@@ -20,9 +20,12 @@ export const config = {
   },
 };
 
-const locker = new RedisLocker({
-  redisClient: lockerRedisClient,
-});
+// ponytail: in-memory lock in local dev (no Upstash round-trips); Redis only
+// in production (serverless coordination).
+const locker =
+  process.env.NODE_ENV === "production" && process.env.UPSTASH_REDIS_REST_LOCKER_URL
+    ? new RedisLocker({ redisClient: lockerRedisClient })
+    : undefined;
 
 const tusServer = new Server({
   // `path` needs to match the route declared by the next file router
@@ -160,18 +163,27 @@ const tusServer = new Server({
       // Get team-specific S3 client and config
       const { client, config } = await getTeamS3ClientAndConfig(teamId);
 
-      // Copy the object onto itself, replacing the metadata
-      const params = {
-        Bucket: config.bucket,
-        CopySource: `${config.bucket}/${objectKey}`,
-        Key: objectKey,
-        ContentType: contentType,
-        ContentDisposition: contentDisposition,
-        MetadataDirective: "REPLACE" as const,
-      };
+      // Copy the object onto itself, replacing the metadata.
+      // The CopySource must match the physical key. Some setups bake the
+      // bucket path into the key (e.g. R2 endpoint .../bucket), so the
+      // physical key becomes `<bucket>/<logical-key>`; try both forms.
+      const copyCommand = (copySource: string) =>
+        new CopyObjectCommand({
+          Bucket: config.bucket,
+          CopySource: copySource,
+          Key: objectKey,
+          ContentType: contentType,
+          ContentDisposition: contentDisposition,
+          MetadataDirective: "REPLACE" as const,
+        });
 
-      const copyCommand = new CopyObjectCommand(params);
-      await client.send(copyCommand);
+      try {
+        await client.send(copyCommand(`${config.bucket}/${objectKey}`));
+      } catch (error) {
+        await client.send(
+          copyCommand(`${config.bucket}/${config.bucket}/${objectKey}`),
+        );
+      }
 
       return res;
     } catch (error) {
