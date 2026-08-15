@@ -83,5 +83,18 @@ if ! grep -qE '^TRIGGER_SECRET_KEY=.+' .env 2>/dev/null; then
   emit "P7: TRIGGER_SECRET_KEY is missing or empty in .env"
 fi
 
+# P8 RULE #1 — secrets in tracked files (gitleaks + pattern scan, excl .env/node_modules)
+if command -v gitleaks >/dev/null 2>&1; then
+  if gitleaks detect --source . --no-banner 2>/dev/null | grep -q "Leaks found"; then
+    emit "P8: gitleaks found a secret in a tracked file — rotate + purge history"
+  fi
+fi
+if rg -n 'tr_(dev|prod|stg|pat)_[A-Za-z0-9]{8,}|sk_live_[A-Za-z0-9]{16,}|AKIA[0-9A-Z]{16}|r2_secret|cfat_[A-Za-z0-9]{20,}' --glob '!node_modules/**' --glob '!.env' --glob '!.git/**' --glob '!package-lock.json' . 2>/dev/null | grep -q .; then
+  emit "P8: hardcoded credential pattern found in tracked files (see rg)"
+fi
+if rg -n '=[A-Za-z0-9_-]{28,}' .opencode/ 2>/dev/null | grep -vE 'placeholder|REDACTED|<|example|sha-|github_sha' | grep -q .; then
+  emit "P8: long value (possible credential) in .opencode/ state files — verify placeholder"
+fi
+
 echo "found=$findings"
 exit 0

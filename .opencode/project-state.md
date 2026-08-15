@@ -6,6 +6,25 @@ from git log + AGENTS.md.
 
 Last updated: 2026-08-15
 
+## Machine tooling: Watch Skill (personal, not app) — 2026-08-15
+
+- watch-skill installed at `~/Library/Python/3.13/bin/watch-skill` (py3.13;
+  `ocr` extra unavailable — onnxruntime has no py3.13 build, tesseract fallback
+  used). MCP config in `~/.config/opencode/opencode.json` points at that binary.
+- Patches (in site-packages): VAD retry in `transcribe/local.py`, tesseract
+  fallback in `perceive/ocr.py`, timeouts (yt-dlp/ffmpeg/frame), offline-first
+  embeddings in `index/embeddings.py`, new `synced.py` timeline + `synced`
+  CLI command + `--synced`/`--detail beast` watch flags.
+- Vision: FREE via OpenRouter `:free` (nemotron-3-nano-omni-30b-a3b-reasoning:free)
+  using the opencode key; GPU-backed, $0. Config in `~/.watch-skill/.env`
+  (see SKILL.md). Descriptions are CONTEXT-AWARE (each frame described with
+  its transcript moment + OCR) → human-like, consistent person/setting across
+  frames. moondream/Ollama removed (was ~45s/frame on x86 CPU).
+- Descriptions are cache-first (persist to index `scenes.description`), capped
+  by `--max-describe` (default 6), so re-runs are ~0s.
+- This machine's internet is ~50KB/s baseline (Cloudflare/Ubuntu mirrors
+  measured) — downloads are slow; nothing fixes the pipe.
+
 ## Current git state (2026-08-15)
 
 - Branches: `main` (production) / `staging` / `develop`.
@@ -23,10 +42,10 @@ Last updated: 2026-08-15
   2. Trigger.dev worker env was missing the DB URL vars — every conversion run
      failed at Prisma init (`POSTGRES_PRISMA_URL` must start with postgresql://).
      Set all worker env vars via the trigger.dev envvar API **using the PROD key**
-     (tr_prod_Xf8t9b...TRIGGER_PROD_KEY_REDACTED — dev key writes to dev env only).
+     (<TRIGGER_PROD_KEY_REDACTED> — dev key writes to dev env only).
   3. Conversions now never block the document upload (try/catch + log degradation).
-  4. **R2 creds rolled** (user). NEW keys: access key `16ea01...R2_ACCESS_KEY_REDACTED`,
-     secret `171975d3...R2_SECRET_REDACTED`.
+  4. **R2 creds rolled** (user). NEW keys: access key `<R2_ACCESS_KEY_REDACTED>`,
+     secret `<R2_SECRET_REDACTED>`.
      Synced to local `.env`, Vercel (prod+preview), and worker env.
   5. **R2 ENDPOINT MUST include `/papermark`** (`https://3e00f6c5648dfecbbc0b0d427ea245a0.r2.cloudflarestorage.com/papermark`).
      Stored keys carry a `papermark/` prefix (baked in by the original endpoint). Stripping
@@ -38,7 +57,7 @@ Last updated: 2026-08-15
      worker, and local `.env`. Worker's `getFile` now uses the server branch with a full URL.
   7. Worker env vars had LITERAL QUOTES baked in (e.g. `"77e118..."`) from earlier setup —
      stripped quotes for all `NEXT_PRIVATE_UPLOAD_*`/`NEXT_PUBLIC_UPLOAD_TRANSPORT`.
-- Prod trigger.dev keys: prod = tr_prod_Xf8t9b...TRIGGER_PROD_KEY_REDACTED, dev = tr_dev_uSUQvXlH6DaaRtkcPfFY
+- Prod trigger.dev keys: prod = <TRIGGER_PROD_KEY_REDACTED>, dev = <TRIGGER_DEV_KEY_REDACTED>
   (both user-provided). Worker env set via
   `POST https://api.trigger.dev/api/v1/projects/proj_palqkhramjxoleaduwuu/envvars/prod`
   with `Authorization: Bearer $PROD_KEY`.

@@ -46,6 +46,13 @@ in this forked app. Write findings to state.md, one row per finding.
   (task.trigger() fails if empty), `TINYBIRD_TOKEN`, `RESEND_API_KEY`,
   `BLOB_READ_WRITE_TOKEN`. Trigger.dev keys are per-env (`tr_prod_` = dashboard-only).
 
+### P8 Secrets in tracked files (RULE #1)
+- Run `gitleaks detect --source . --no-banner` — ANY hit is a BLOCKING finding.
+- `rg -n "tr_(dev|prod|stg|pat)_[A-Za-z0-9]{8,}|sk_live_|AKIA[0-9A-Z]{16}" --glob '!node_modules/**' --glob '!.env' --glob '!.git/**' .`
+- Check state files specifically: `rg -n "(TRIGGER|R2|API|SECRET|KEY).{0,40}=[A-Za-z0-9_-]{16,}" .opencode/`
+- A credential in ANY tracked file is a FINDING with severity CRITICAL — the agent
+  must rotate the key and purge history (filter-repo), never just redact.
+
 ### Retired probes
 - (none yet)
 
