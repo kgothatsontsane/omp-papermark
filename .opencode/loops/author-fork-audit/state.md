@@ -12,7 +12,12 @@ Current state: BLOCKED on owner action (see Blocked inputs). Root cause chain:
 (2) after upgrading to a deployable setup, the export POST now 500s in PROD because
 Vercel's `TRIGGER_SECRET_KEY` is empty → "An error occurred while starting the export".
 Progress: **worker now DEPLOYED** (Trigger.dev prod, version 20260815.1, native build
-server, project proj_palqkhramjxoleaduwuu). Only G1 (prod secret key on Vercel) remains.
+server, project proj_palqkhramjxoleaduwuu). **`TRIGGER_SECRET_KEY` set on Vercel** (user).
+Remaining gap: export CSV upload uses `@vercel/blob`'s `put()` → needs
+`BLOB_READ_WRITE_TOKEN`, which is missing on Vercel and locally. Two fixes:
+(A) create a Vercel Blob store → set token (dashboard-only, least code), or
+(B) port export CSV upload to S3 (matches app transport; more code).
+Recommended: (A).
 
 ## Detours (context switches — justified + return condition)
 
@@ -28,7 +33,8 @@ server, project proj_palqkhramjxoleaduwuu). Only G1 (prod secret key on Vercel) 
 
 | Rank | Grenade | Blast radius | Status |
 |------|---------|--------------|--------|
-| G1 | Vercel `TRIGGER_SECRET_KEY` empty | Export/background jobs 500 in prod (ALREADY detonating) | BLOCKED on owner (needs tr_prod_ key). Worker now deployed & ready. |
+| G1 | Vercel `TRIGGER_SECRET_KEY` empty | Export/background jobs 500 in prod (ALREADY detonating) | FIXED — user added tr_prod_ key on Vercel; deploy `9191ad1f` READY with it. |
+| G4 | `BLOB_READ_WRITE_TOKEN` missing on Vercel | Export CSV upload (`@vercel/blob` put) fails → export never COMPLETEs | BLOCKED on owner: create Vercel Blob store (Storage → Create → Blob) → set token on Vercel, OR I port export to S3. |
 | G2 | `ai@2.2.37` pin (D1) | If flagged vulnerable or a dep upgrade forces the port, Assistant chat breaks | tracked in debt ledger |
 | G3 | webhook plan gates without self-host guard (send-webhook-event, link-created, document-created) | Webhooks silently not delivered in self-hosted mode | FIXED — all three guarded with `!isSelfHostedMode()`. Auto-discovery P3 probe now context-aware (no false positives). |
 
@@ -47,6 +53,11 @@ server, project proj_palqkhramjxoleaduwuu). Only G1 (prod secret key on Vercel) 
 
 ## Open blocked inputs (need owner)
 
+- **Vercel Blob store + `BLOB_READ_WRITE_TOKEN`** (blocks export COMPLETION — the
+  export task uploads the CSV via `@vercel/blob`). Steps: Vercel dashboard →
+  Storage → Create → **Blob store** → copy `BLOB_READ_WRITE_TOKEN` → add to project
+  env vars (production) → redeploy. (Alternative: I port the export CSV upload to S3
+  to match the app's `s3` transport — say the word and I'll do it instead.)
 - **Trigger.dev prod secret key**: In Trigger.dev dashboard → your project
   `OMP-Papermark` (proj_palqkhramjxoleaduwuu) → **API keys** page → create/copy the
   **prod** secret key (starts `tr_prod_`). Then set it as `TRIGGER_SECRET_KEY` in
