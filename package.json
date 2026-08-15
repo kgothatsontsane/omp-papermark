@@ -64,8 +64,8 @@
     "@tanstack/react-table": "^8.21.3",
     "@teamhanko/passkeys-next-auth-provider": "^0.3.1",
     "@tremor/react": "^3.18.7",
-    "@trigger.dev/react-hooks": "^3.3.17",
-    "@trigger.dev/sdk": "^3.3.17",
+    "@trigger.dev/react-hooks": "4.5.11",
+    "@trigger.dev/sdk": "4.5.11",
     "@tus/s3-store": "^1.9.1",
     "@tus/server": "^1.10.2",
     "@tus/utils": "^0.5.1",
@@ -145,7 +145,7 @@
   },
   "devDependencies": {
     "@tailwindcss/forms": "^0.5.10",
-    "@trigger.dev/build": "^3.3.17",
+    "@trigger.dev/build": "4.5.11",
     "@trivago/prettier-plugin-sort-imports": "^5.2.2",
     "@types/bcryptjs": "^2.4.6",
     "@types/cookie": "^0.6.0",
@@ -167,6 +167,9 @@
   "overrides": {
     "react-notion-x": {
       "react-pdf": "8.0.2"
+    },
+    "@trigger.dev/sdk": {
+      "ai": "2.2.37"
     }
   }
 }

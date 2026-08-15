@@ -1,0 +1,30 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "mcp": {
+    "trigger-dev": {
+      "type": "local",
+      "enabled": true,
+      "command": [
+        "npx",
+        "--yes",
+        "trigger.dev@latest",
+        "mcp",
+        "--readonly"
+      ],
+      "environment": {
+        "TRIGGER_API_URL": "https://api.trigger.dev"
+      }
+    },
+    "playwright": {
+      "type": "local",
+      "enabled": true,
+      "command": [
+        "npx",
+        "--yes",
+        "@playwright/mcp@latest",
+        "--headless",
+        "--caps=core,network"
+      ]
+    }
+  }
+}
