@@ -6,6 +6,13 @@ from git log + AGENTS.md.
 
 Last updated: 2026-08-15
 
+## Current git state (2026-08-15)
+
+- Branches: `main` (production) / `staging` / `develop` — all pushed, in sync at
+  commit `bfa423de` ("fix: import trigger runMetadata from core to avoid client bundle Node builtins").
+- Workflow: feature on `develop` → merge to `staging` → merge to `main` → push → Vercel deploys.
+- All three environments READY at `bfa423de`. Production live.
+
 ## Deployment: VERCEL (production) — CRITICAL FACT
 
 - The app is deployed on **Vercel** (production). Domain: https://dealroom.open-mic.co.za
@@ -23,9 +30,17 @@ Last updated: 2026-08-15
 
 | Branch | Vercel env | URL pattern | Status |
 |--------|-----------|-------------|--------|
-| `main` | production | https://dealroom.open-mic.co.za | LIVE (auto-deploys on push) |
-| `staging` | preview (auto) | omp-papermark-*-open-mic-productions.vercel.app | auto-created on first push |
-| `develop` | preview (auto) | omp-papermark-*-open-mic-productions.vercel.app | auto-created on first push |
+| `main` | production | https://dealroom.open-mic.co.za | **LIVE** (auto-deploys on push) |
+| `staging` | preview (auto) | https://omp-papermark-7wayqaw9w-open-mic-productions.vercel.app | LIVE @ bfa423de |
+| `develop` | preview (auto) | https://omp-papermark-4gvx03voh-open-mic-productions.vercel.app | LIVE @ bfa423de |
+
+- Latest production deploy (2026-08-15): commit `bfa423de`, URL
+  https://omp-papermark-8j2bl5bp8-open-mic-productions.vercel.app, READY. App serves
+  "Login | Open Mic Productions" (whitelabeled).
+- Note: the first push (`d0c3f5c9`) had a build error (`module_compilation_error` —
+  trigger.dev v4 SDK's `skills.js` imports Node builtins into the client bundle).
+  Fixed in `bfa423de` by importing `runMetadata` from `@trigger.dev/core/v3` in
+  `lib/utils/generate-trigger-status.ts` instead of `@trigger.dev/sdk/v3`.
 
 - Vercel git link: github `kgothatsontsane/omp-papermark`, `productionBranch: main`,
   sourceless, auto-exposes system envs. Push to `main` → production deploy automatically.
