@@ -9,9 +9,12 @@ Last updated: 2026-08-15
 ## Current git state (2026-08-15)
 
 - Branches: `main` (production) / `staging` / `develop` — all pushed, in sync at
-  commit `bfa423de` ("fix: import trigger runMetadata from core to avoid client bundle Node builtins").
+  commit `7a905c71` ("fix: whitelabel demo assets and self-host-aware view limits").
 - Workflow: feature on `develop` → merge to `staging` → merge to `main` → push → Vercel deploys.
-- All three environments READY at `bfa423de`. Production live.
+- Deploys for `7a905c71` in progress (all three envs). Prior `1a55a4fd` live on production.
+- Changes in `7a905c71`: F7 (self-host-aware view limits), F9 (whitelabel demo assets:
+  local `dataroom-demo.mp4` + `favicon.jpeg`, author-CDN refs removed), MCP-verification
+  made mandatory in loop.
 
 ## Deployment: VERCEL (production) — CRITICAL FACT
 
