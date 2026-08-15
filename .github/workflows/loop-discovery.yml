@@ -1,0 +1,40 @@
+name: loop-discovery
+
+on:
+  schedule:
+    - cron: "0 6 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  discover:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Run author-fork discovery (read-only)
+        id: discover
+        run: |
+          bash .opencode/loops/author-fork-audit/discovery.sh
+
+      - name: Open issue only if new findings
+        if: steps.discover.outputs.found == 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const body = fs.readFileSync(
+              '.opencode/loops/author-fork-audit/last-findings.txt',
+              'utf8',
+            );
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: `[loop-discovery] New self-host fork findings ${new Date().toISOString().slice(0, 10)}`,
+              body,
+            });

@@ -15,9 +15,68 @@ split: a separate skeptical check must be able to say "no".
 
 ## Trigger
 
-Manual: explicit user request. Goal is ambitious and open-ended — repeatable,
-so this document is the durable spec. (Scheduling: a future cron could re-run
-discovery only; not yet wired.)
+- **Manual**: explicit user request (primary today).
+- **Auto-discovery (scheduled)**: GitHub Actions cron `loop-discovery.yml` runs daily
+  at 06:00. It invokes the `author-fork-discovery` skill (see `discovery-skill.md`)
+  read-only, writes findings to `state.md`/`state-archive.md`, and opens a GitHub
+  issue ONLY when something new is found. It never commits code and never mutates
+  external accounts. Local re-run: `.opencode/loops/author-fork-audit/discovery.sh`.
+- The goal is open-ended and repeatable, so this document is the durable spec.
+
+## Learning from interactions (MANDATORY)
+
+The loop improves itself by learning what to look for:
+
+1. Every time a novel class of finding appears (new author ref, new upstream account,
+   new dead dependency, new plan gate), ADD the probe pattern to `discovery-skill.md`
+   so future auto-discovery runs check it without being told.
+2. Log the lesson in `state.md` → "Lessons learned" section: what was the symptom,
+   what probe caught it, where it hid. One line each.
+3. When a dependency is pinned via `overrides` or a blocker is deferred, it MUST get
+   a row in the Dependency debt ledger (below) with a revisit trigger — never a bare
+   override. "Pinning via overrides is like hiding it away; if there is no will or
+   reason to look in its hiding place, it will be forgotten." The ledger IS the will.
+4. A probe that finds nothing 3 runs in a row may be archived (moved to the "retired
+   probes" list) to keep discovery lean — but keep its pattern in git history.
+
+## The four costs of loop engineering (guards — MANDATORY)
+
+The paper names four silent costs. This loop installs one guard per cost:
+
+1. **Verification debt** — unverified output accumulates and blows up later.
+   GUARD: the evaluator split (below) + "prove the verifier" — every new probe must
+   first be shown to catch a REAL match (red) before it's trusted to gate (green).
+   Cost metric: **cost per accepted change** — track approximate tokens spent vs
+   findings FIXED; if it rises across turns, stop and re-scope.
+2. **Comprehension rot/debt** — code ships faster than the owner's mental map.
+   GUARD: after each turn, write a one-paragraph "what changed and why" in
+   `state.md` run log (not just statuses). The owner reads it. A change you cannot
+   explain is a map needing an update.
+3. **Cognitive surrender** — the loop runs so smoothly the owner stops judging.
+   GUARD: every turn ends with a human checkpoint: the owner reviews the diff
+   before merge to `main`. The loop can execute, but it cannot decide. Never
+   auto-merge to `main`; never auto-mutate external accounts.
+4. **Token blowout** — idle bugs burn budget all night.
+   GUARD: hard caps set BEFORE running unattended: max 10 findings per discovery
+   run, max 5 full file reads per turn, max 3 tool-output dumps per turn, and the
+   scheduler's issue-opener only fires on new findings. A loop without caps has
+   delegated its spending authority to its own bugs.
+
+These four guards are the standing answers to: verification debt → evaluator +
+proven verifier; comprehension debt → explain-in-plain-text per turn; cognitive
+surrender → human merge gate; token blowout → caps + cost-per-accepted-change.
+
+## Dependency debt ledger (MANDATORY)
+
+Held in `state.md` → "Dependency debt ledger". Rules:
+
+- Any `overrides` entry in package.json MUST have a matching row here with a
+  revisit trigger (what condition makes it safe/urgent to do the real upgrade).
+- Run `npm audit` on every session touching deps; a new HIGH/CRITICAL in a pinned
+  package moves that row to "REVISIT NOW".
+- When the blocker clears, do the port and DELETE the row + the override.
+- Ledger rows are visible in every session because AGENTS.md protocol reads
+  project-state and the loop state.
 
 ## Goal (verifiable)
 
@@ -40,8 +99,8 @@ repo and in deployed config. Verification is deterministic per finding:
    where deployable. A finding is FIXED only when the check says no match.
 4. PERSISTENCE — update `.opencode/project-state.md` (deployments, HEAD,
    decisions) and `.opencode/knowledgebase.md` LAST_INDEXED after each fix.
-5. SCHEDULING — the loop's memory is this file + state files; unfinished
-   findings persist across turns/sessions.
+5. SCHEDULING — auto-discovery (cron) wakes the loop daily; unfinished findings
+   persist in state files across turns/sessions and carry into the next run.
 
 ## Verification (the check that can say "no")
 

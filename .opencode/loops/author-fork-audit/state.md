@@ -50,6 +50,7 @@ for "upgrade blockers we had to defer" — everything here is surfaced in
 | # | Package | Pinned to | Blocker | Revisit trigger |
 |---|---------|-----------|---------|-----------------|
 | D1 | `ai` | 2.2.37 | App's Assistant chat (pages/[docId]/chat.tsx, view/[linkId]/chat.tsx) uses AI SDK v2 APIs (`experimental_AssistantResponse`, `useAssistant`) that were removed in v3+. `@trigger.dev/sdk@4.5.11` wants optional peer `ai@^5||^6||^7`. No OpenAI creds exist locally or on Vercel — feature is inert. | When implementing/activating the Assistant chat, OR when `ai@2.2.37` is flagged vulnerable, OR before upgrading anything that pulls `ai`. Port plan: either drop `ai` and stream via `openai` SDK directly (no vendor lock-in concern is moot since feature is OpenAI-only anyway) OR rewrite on AI SDK v7 Responses API. |
+| D2 | `react-notion-x` | (its sub-dep `react-pdf` → 8.0.2) | `react-notion-x` declares a peer on `react-pdf` that conflicts with the app's version; the override pins `react-pdf@8.0.2` to satisfy it. Not an upgrade blocker — a dependency-resolution pin, present before this session. | When `react-notion-x` or `react-pdf` are next upgraded; verify the override can be removed. |
 
 Rules for this ledger:
 - Any `overrides` entry in package.json MUST have a matching row here.
@@ -57,8 +58,21 @@ Rules for this ledger:
   package → move its row to the top with `REVISIT NOW`.
 - When a blocker clears, do the port and delete the row + the override.
 
+## Lessons learned (from interactions — feeds discovery probes)
+
+| Lesson | Symptom | Probe that caught it | Where it hid |
+|--------|---------|---------------------|--------------|
+| L1 | Export visits spins forever | run QUEUED in Trigger.dev, no worker | It's a background task — API enqueues, worker must run (`npm run trigger:v3:dev` or deploy). |
+| L2 | "Much of the app doesn't work" in self-host | `SELF_HOSTED_MODE` unset | The bypass layer exists but env flag never set (local + Vercel). |
+| L3 | `npm install` fails after upgrading trigger.dev | ERESOLVE on `ai` peer (optional but strict npm) | Old app pin `ai@2.2.37` vs SDK's optional peer `^5-7`. Solved with overrides + debt ledger (D1), not a revert. |
+| L4 | Vercel build fails after trigger.dev v4 bump | `module_compilation_error` | SDK v4 `skills.js` imports `node:` builtins; imported into client bundle via `generate-trigger-status.ts`. Fix: import `runMetadata` from `@trigger.dev/core/v3`. |
+| L5 | `tsc` passes but Vercel build fails | Vercel `npm run vercel-build` runs full Next build | Typecheck ≠ bundle. Always run `npm run vercel-build` locally before pushing to auto-deploy. |
+| L6 | Auto-discovery (probe P6) flags overrides without ledger rows | Every `overrides` entry must have a debt row | The `react-notion-x` override predated the ledger. |
+| L7 | Loop design must cost-guard itself | Verification debt / comprehension rot / cognitive surrender / token blowout | Four guards added to LOOP.md; cost-per-accepted-change metric; human merge gate. |
+
 ## Run log
 
 - Turn 1 (2026-08-15): DISCOVERY — F1 fixed, F2 fixed, F3 open, F5 diagnosed, F6 ROOT CAUSE found, F7 raw gate found, F8/F9 noted.
 - Turn 2 (2026-08-15): F6 FIXED — set `NEXT_PUBLIC_SELF_HOSTED_MODE=true` on Vercel (prod+preview), `SELF_HOSTED_MODE=true` in local `.env`. Needs redeploy. Confirmed DB team plan is `"free"` (not enterprise) — self-hosted switch overrides it. Added Playwright MCP (verify-by-acting) + token-min protocol to loop.
 - Turn 3 (2026-08-15): F2 properly done — `@trigger.dev/*` → 4.5.11, code ported (queue string, prisma mode), `ai@2.2.37` pinned via overrides + tracked in dependency debt ledger D1. Branches: `main`/`staging`/`develop` created + pushed. Vercel matrix documented. Vercel env var `NEXT_PUBLIC_SELF_HOSTED_MODE=true` set (prod+preview).
+- Turn 4 (2026-08-15): Fix build error from v4 SDK client import (L4/L5) → `runMetadata` from core; all three envs READY at `bfa423de`. Loop hardened: four cost guards, debt ledger rules, discovery-skill.md, discovery.sh + `loop-discovery.yml` cron (auto-discovery + scheduling). L1–L7 lessons captured. Auto-discovery re-ran: confirms F7 (P3) + F9 (P2) OPEN, D2 ledger row added.
