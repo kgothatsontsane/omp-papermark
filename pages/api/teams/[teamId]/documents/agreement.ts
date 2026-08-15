@@ -116,44 +116,58 @@ export default async function handle(
       });
 
       if (type === "docs") {
-        await convertFilesToPdfTask.trigger(
-          {
-            documentId: document.id,
-            documentVersionId: document.versions[0].id,
-            teamId,
-          },
-          {
-            idempotencyKey: `${teamId}-${document.versions[0].id}-docs`,
-            tags: [
-              `team_${teamId}`,
-              `document_${document.id}`,
-              `version:${document.versions[0].id}`,
-            ],
-            queue: conversionQueue(team.plan),
-            concurrencyKey: teamId,
-          },
-        );
+        try {
+          await convertFilesToPdfTask.trigger(
+            {
+              documentId: document.id,
+              documentVersionId: document.versions[0].id,
+              teamId,
+            },
+            {
+              idempotencyKey: `${teamId}-${document.versions[0].id}-docs`,
+              tags: [
+                `team_${teamId}`,
+                `document_${document.id}`,
+                `version:${document.versions[0].id}`,
+              ],
+              queue: conversionQueue(team.plan),
+              concurrencyKey: teamId,
+            },
+          );
+        } catch (error) {
+          log({
+            message: `Graceful degradation: failed to trigger docs/slides conversion for agreement document ${document.id} (${document.versions[0].id}): ${error}`,
+            type: "error",
+          });
+        }
       }
 
       if (type === "pdf") {
-        await convertPdfToImageRoute.trigger(
-          {
-            documentId: document.id,
-            documentVersionId: document.versions[0].id,
-            teamId,
-            // docId: fileUrl.split("/")[1],
-          },
-          {
-            idempotencyKey: `${teamId}-${document.versions[0].id}`,
-            tags: [
-              `team_${teamId}`,
-              `document_${document.id}`,
-              `version:${document.versions[0].id}`,
-            ],
-            queue: conversionQueue(team.plan),
-            concurrencyKey: teamId,
-          },
-        );
+        try {
+          await convertPdfToImageRoute.trigger(
+            {
+              documentId: document.id,
+              documentVersionId: document.versions[0].id,
+              teamId,
+              // docId: fileUrl.split("/")[1],
+            },
+            {
+              idempotencyKey: `${teamId}-${document.versions[0].id}`,
+              tags: [
+                `team_${teamId}`,
+                `document_${document.id}`,
+                `version:${document.versions[0].id}`,
+              ],
+              queue: conversionQueue(team.plan),
+              concurrencyKey: teamId,
+            },
+          );
+        } catch (error) {
+          log({
+            message: `Graceful degradation: failed to trigger PDF-to-image conversion for agreement document ${document.id} (${document.versions[0].id}): ${error}`,
+            type: "error",
+          });
+        }
       }
 
       return res.status(201).json(serializeFileSize(document));
