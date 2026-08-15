@@ -53,6 +53,7 @@ Recommended: (A).
 | F7 | `pages/api/links/[id]/visits.ts:94` raw `plan === "free"` gate ignores self-hosted | FIXED | Added `!isSelfHostedMode() &&` guard; also switched `visitors-table.tsx` to usePlan `isFree` (F8). tsc clean. |
 | F8 | `components/visitors/visitors-table.tsx:81` `plan === "free"` re-derivation | FIXED | Now uses `isFree` from usePlan (self-hosted aware). |
 | F9 | Demo assets on author's CDN (login screenshot, dataroom video, next.config hostnames) | FIXED | Replaced with local brand assets: generated `public/_static/open-mic/dataroom-demo.mp4` (15s, 1280x720, acquirer-focused cards: NDA, watermarks, permissions, audit trail, data residency) + login image → local `omp_banner_w.jpg`. Verified: PIL text-bbox check (all text within canvas) + ffprobe (valid H.264). Removed unused author-CDN hostnames from next.config remote patterns (0 references remain). |
+| F10 | Login + verify pages not white-labeled (third-party logos, testimonial, "Share documents. Not attachments.") | FIXED | Fully white-labeled: "Open Mic Productions Deal Room" heading, proprietary deal-room copy (NDA-gated, watermarks, audit trail), removed LogoCloud (DoorDash/Coinweb/BCG etc.), removed Backtrace testimonial + "Trusted by teams at", deleted dead `logo-cloud.tsx`. Verify page matches. **Verified live via Playwright**: Deal Room heading ✓, no Backtrace ✓, no third-party logos ✓. |
 
 ## Open blocked inputs (need owner)
 
@@ -114,6 +115,8 @@ Rules for this ledger:
 | L8 | Model is image-blind (cannot read extracted frames/images) | Visual verification must NOT rely on "look at the screenshot" | Use deterministic checks (PIL text-bbox, OCR, ffprobe) OR watch-skill MCP `ask_video`/`get_moment` (text-first). Record the exact method in the finding. |
 | L9 | Generic marketing ≠ acquirer concerns | "Share securely" doesn't speak to diligence teams | For client-facing copy, address the deal-side anxieties directly: NDA gating, watermarks, per-viewer permissions, audit trail, data residency. |
 | L10 | Prod export fails while local works | "An error occurred while starting the export" in prod only | Vercel's `TRIGGER_SECRET_KEY` was empty. Prod env keys (`tr_prod_`) are dashboard-only (API keys page); CLI/API can't mint them. Probe P1b/P7 should flag empty TRIGGER keys on Vercel. |
+| L11 | Deploy READY ≠ domain serving it | New white-label build served OLD login page even after READY | Vercel production alias wasn't re-pointed. Fix: `POST /v2/deployments/{uid}/aliases` with `{"alias":"dealroom.open-mic.co.za"}` to assign the domain to the deployment. Git push triggers builds, but the production alias follows the git branch only if configured; manual re-alias may be needed. |
+| L12 | Uploads error in prod | "Error uploading file" on document upload | Two causes: (1) `MultiRegionS3Store` omitted R2 `endpoint` (fixed), (2) R2 API credentials in `.env` return Unauthorized on direct SDK test — token invalid/expired, needs fresh R2 token (G5, blocked on owner). |
 
 ## Run log
 
