@@ -15,6 +15,8 @@ const data = {
   url: "/verify",
 };
 
+const EQ_BARS = [26, 40, 22, 58, 34, 68, 30, 46, 24, 54, 38, 62];
+
 export const metadata: Metadata = {
   metadataBase: new URL(APP_URL),
   title: data.title,
@@ -70,96 +72,143 @@ export default function VerifyPage({
   }
 
   return (
-    <div className="flex h-screen w-full flex-wrap">
-      {/* Left part */}
-      <div className="flex w-full flex-col items-center justify-center bg-gray-50 md:w-1/2 lg:w-1/2">
-        <div className="z-10 mx-5 w-full max-w-md sm:mx-0">
-          <div className="flex flex-col space-y-3 px-4 pb-2 sm:px-0">
+    <>
+      <style>{`
+        @keyframes omp-rise {
+          from { opacity: 0; transform: translateY(14px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes omp-eq {
+          0%, 100% { transform: scaleY(0.35); }
+          50% { transform: scaleY(1); }
+        }
+        .omp-rise {
+          opacity: 0;
+          animation: omp-rise 0.7s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+        }
+        .omp-eq-bar {
+          transform-origin: bottom;
+          animation: omp-eq 2.8s ease-in-out infinite;
+        }
+      `}</style>
+
+      <div className="flex min-h-screen w-full flex-wrap bg-[#faf9f7]">
+        {/* Left — verify */}
+        <div className="flex w-full flex-col items-center justify-center px-6 py-12 md:w-1/2 md:px-10 lg:w-1/2">
+          <div className="omp-rise w-full max-w-md">
             <img
               src={BRAND_LOGO}
               alt={`${BRAND_NAME} Logo`}
-              className="mb-6 h-8 w-auto self-start"
+              className="mb-10 h-8 w-auto"
             />
-            <Link href="/">
-              <span className="text-balance text-3xl font-semibold tracking-tight text-gray-900">
-                Verify your login
-              </span>
-            </Link>
-            <h3 className="text-balance text-sm text-gray-600">
-              {BRAND_NAME} Deal Room — confirm it&apos;s you.
-            </h3>
-          </div>
-          <div className="flex flex-col gap-4 px-4 pt-8 sm:px-0">
-            <div className="relative">
+
+            <p className="mb-3 font-mono text-[11px] font-medium uppercase tracking-[0.22em] text-amber-700">
+              Private Deal Room
+            </p>
+            <h1 className="text-balance text-4xl font-medium leading-[1.08] tracking-tight text-stone-900">
+              Verify your login.
+            </h1>
+            <p className="mt-4 max-w-sm text-balance leading-relaxed text-stone-500">
+              {BRAND_NAME} Deal Room — confirm it&apos;s you to continue.
+            </p>
+
+            <div className="mt-10 flex flex-col gap-4">
               <Link href={verification_url}>
-                <Button className="focus:shadow-outline w-full transform rounded bg-gray-800 px-4 py-2 text-white transition-colors duration-300 ease-in-out hover:bg-gray-900 focus:outline-none">
+                <Button className="h-11 w-full rounded-md bg-stone-900 px-4 py-2 text-sm font-medium text-white shadow-sm transition-colors duration-300 ease-in-out hover:bg-stone-800">
                   Verify email
                 </Button>
               </Link>
             </div>
-          </div>
-          <p className="mt-10 w-full max-w-md px-4 text-xs text-muted-foreground sm:px-0">
-            By clicking continue, you acknowledge that you have read and agree
-            to {BRAND_NAME}&apos;s{" "}
-            <a
-              href={`${process.env.NEXT_PUBLIC_MARKETING_URL}/terms`}
-              target="_blank"
-              className="underline"
-            >
-              Terms of Service
-            </a>{" "}
-            and{" "}
-            <a
-              href={`${process.env.NEXT_PUBLIC_MARKETING_URL}/privacy`}
-              target="_blank"
-              className="underline"
-            >
-              Privacy Policy
-            </a>
-            .
-          </p>
-        </div>
-      </div>
-      {/* Right part — brand */}
-      <div className="relative hidden w-full justify-center overflow-hidden bg-[#0a0e1a] md:flex md:w-1/2 lg:w-1/2">
-        <div
-          className="pointer-events-none absolute -left-32 top-1/4 h-96 w-96 rounded-full bg-indigo-500/20 blur-3xl"
-          aria-hidden="true"
-        />
-        <div
-          className="pointer-events-none absolute -right-24 bottom-0 h-80 w-80 rounded-full bg-emerald-500/10 blur-3xl"
-          aria-hidden="true"
-        />
-        <div className="relative m-0 flex h-full w-full items-center justify-center p-10">
-          <div className="w-full max-w-lg">
-            <div className="mb-10">
-              <img
-                src={BRAND_LOGO}
-                alt={`${BRAND_NAME} Logo`}
-                className="h-9 w-auto opacity-90"
-                style={{ filter: "brightness(0) invert(1)" }}
-              />
-            </div>
-            <h2 className="text-balance text-4xl font-semibold leading-tight tracking-tight text-white">
-              One more step to your deal room.
-            </h2>
-            <p className="mt-4 max-w-md text-balance leading-relaxed text-gray-400">
-              We&apos;ve sent you a verification email. Click the button to
-              confirm your identity and continue to {BRAND_NAME} Deal Room.
-            </p>
-            <div className="mt-10 border-t border-white/10 pt-5 text-sm text-gray-500">
+
+            <div className="mt-8 border-t border-stone-200 pt-5 text-sm text-stone-500">
               Didn&apos;t receive it? Check your spam folder, or{" "}
               <a
                 href={`mailto:${SUPPORT_EMAIL}`}
-                className="font-medium text-indigo-300 hover:text-indigo-200"
+                className="font-medium text-amber-700 hover:text-amber-600"
               >
                 contact support
               </a>
               .
             </div>
+
+            <p className="mt-8 text-xs leading-relaxed text-stone-400">
+              By continuing, you acknowledge that you have read and agree to{" "}
+              {BRAND_NAME}&apos;s{" "}
+              <a
+                href={`${process.env.NEXT_PUBLIC_MARKETING_URL}/terms`}
+                target="_blank"
+                className="underline underline-offset-2 hover:text-stone-600"
+              >
+                Terms of Service
+              </a>{" "}
+              and{" "}
+              <a
+                href={`${process.env.NEXT_PUBLIC_MARKETING_URL}/privacy`}
+                target="_blank"
+                className="underline underline-offset-2 hover:text-stone-600"
+              >
+                Privacy Policy
+              </a>
+              .
+            </p>
+          </div>
+        </div>
+
+        {/* Right — brand panel */}
+        <div className="relative hidden w-full justify-center overflow-hidden bg-[#0e0c0a] md:flex md:w-1/2 lg:w-1/2">
+          <div
+            className="pointer-events-none absolute -left-40 top-1/4 h-[28rem] w-[28rem] rounded-full bg-amber-500/[0.14] blur-3xl"
+            aria-hidden="true"
+          />
+          <div
+            className="pointer-events-none absolute -right-24 bottom-0 h-80 w-80 rounded-full bg-orange-600/[0.10] blur-3xl"
+            aria-hidden="true"
+          />
+          <div className="pointer-events-none absolute inset-0 opacity-[0.35] [background-image:linear-gradient(rgba(255,255,255,0.04)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.04)_1px,transparent_1px)] [background-size:56px_56px]" />
+
+          <div className="relative z-10 flex h-full w-full items-center justify-center p-10 lg:p-16">
+            <div className="omp-rise w-full max-w-lg" style={{ animationDelay: "120ms" }}>
+              <div className="mb-12 flex items-center gap-6">
+                <img
+                  src={BRAND_LOGO}
+                  alt={`${BRAND_NAME} Logo`}
+                  className="h-9 w-auto"
+                  style={{ filter: "brightness(0) invert(1)" }}
+                />
+                <div className="flex h-9 items-end gap-[3px] opacity-80" aria-hidden="true">
+                  {EQ_BARS.map((h, i) => (
+                    <span
+                      key={i}
+                      className="omp-eq-bar w-[3px] rounded-t-sm bg-amber-500/70"
+                      style={{ height: `${h}px`, animationDelay: `${i * 0.11}s` }}
+                    />
+                  ))}
+                </div>
+              </div>
+
+              <p className="mb-4 font-mono text-[11px] font-medium uppercase tracking-[0.22em] text-amber-500/90">
+                Open Mic Productions
+              </p>
+              <h2 className="text-balance text-4xl font-medium leading-[1.1] tracking-tight text-white lg:text-5xl">
+                One more step
+                <br />
+                to your deal room.
+              </h2>
+              <p className="mt-5 max-w-md text-balance leading-relaxed text-stone-400">
+                We&apos;ve sent you a verification email. Confirm your identity
+                and continue to {BRAND_NAME} Deal Room — secure and
+                confidential, always.
+              </p>
+
+              <div className="mt-10 border-t border-white/10 pt-5 text-sm text-stone-500">
+                Hosted on SOC 2 Type II certified infrastructure — AES-256
+                encryption at rest, TLS in transit, role-based access, and a
+                full audit trail on every view.
+              </div>
+            </div>
           </div>
         </div>
       </div>
-    </div>
+    </>
   );
 }
