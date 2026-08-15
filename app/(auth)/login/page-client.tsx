@@ -102,24 +102,35 @@ export default function Login() {
         }
       `}</style>
 
-      <div className="flex min-h-screen w-full flex-wrap bg-[#faf9f7]">
+      <div className="flex min-h-screen w-full flex-wrap bg-gray-50">
         {/* Left — sign in */}
-        <div className="flex w-full flex-col items-center justify-center px-6 py-12 md:w-1/2 md:px-10 lg:w-1/2">
+        <div className="flex w-full flex-col items-center px-6 pt-16 md:w-1/2 md:px-10 lg:w-1/2">
           <div className="omp-rise w-full max-w-md">
-            <img
-              src={BRAND_LOGO}
-              alt={`${BRAND_NAME} Logo`}
-              className="mb-12 h-14 w-auto"
-            />
+            <div className="mb-12 flex items-center justify-center gap-5">
+              <img
+                src={BRAND_LOGO}
+                alt={`${BRAND_NAME} Logo`}
+                className="h-16 w-auto"
+              />
+              <div className="flex h-10 items-end gap-[3px]" aria-hidden="true">
+                {EQ_BARS.map((h, i) => (
+                  <span
+                    key={i}
+                    className="omp-eq-bar w-[3px] rounded-t-sm bg-indigo-400"
+                    style={{ height: `${h}px`, animationDelay: `${i * 0.11}s` }}
+                  />
+                ))}
+              </div>
+            </div>
 
             <p
-              className="mb-3 font-mono text-[11px] font-medium uppercase tracking-[0.22em] text-amber-700"
+              className="mb-3 font-mono text-[11px] font-medium uppercase tracking-[0.22em] text-indigo-700"
               style={{ animationDelay: "60ms" }}
             >
               Private Deal Room
             </p>
             <h1
-              className="text-balance text-4xl font-medium leading-[1.08] tracking-tight text-stone-900"
+              className="text-balance text-4xl font-medium leading-[1.08] tracking-tight text-gray-900"
               style={{ animationDelay: "120ms" }}
             >
               Sign in to your
@@ -127,7 +138,7 @@ export default function Login() {
               deal room.
             </h1>
             <p
-              className="mt-4 max-w-sm text-balance leading-relaxed text-stone-500"
+              className="mt-4 max-w-sm text-balance leading-relaxed text-gray-500"
               style={{ animationDelay: "180ms" }}
             >
               Private, role-based access to {BRAND_NAME}&apos;s deal room —
@@ -177,10 +188,10 @@ export default function Login() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 className={cn(
-                  "h-11 rounded-md border-0 bg-white px-4 text-sm text-stone-900 ring-1 ring-stone-200 transition-shadow placeholder:text-stone-400 focus-visible:ring-2 focus-visible:ring-amber-600",
+                  "h-11 rounded-md border-0 bg-white px-4 text-sm text-gray-900 ring-1 ring-gray-200 transition-shadow placeholder:text-gray-400 focus-visible:ring-2 focus-visible:ring-indigo-600",
                   email.length > 0 && !emailValidation.success
                     ? "ring-red-500"
-                    : "ring-stone-200",
+                    : "ring-gray-200",
                 )}
               />
               <div className="relative">
@@ -189,8 +200,8 @@ export default function Login() {
                   loading={clickedMethod === "email"}
                   disabled={!emailValidation.success || !!clickedMethod}
                   className={cn(
-                    "h-11 w-full transform rounded-md bg-stone-900 px-4 py-2 text-sm font-medium text-white shadow-sm transition-all duration-300 ease-in-out hover:bg-stone-800",
-                    clickedMethod === "email" && "bg-stone-800",
+                    "h-11 w-full transform rounded-md bg-gray-800 px-4 py-2 text-sm font-medium text-white shadow-sm transition-all duration-300 ease-in-out hover:bg-gray-900",
+                    clickedMethod === "email" && "bg-black",
                   )}
                 >
                   {emailButtonText}
@@ -200,11 +211,11 @@ export default function Login() {
             </form>
 
             <div className="my-6 flex items-center gap-4">
-              <span className="h-px flex-1 bg-stone-200" />
-              <span className="text-xs uppercase tracking-widest text-stone-400">
+              <span className="h-px flex-1 bg-gray-200" />
+              <span className="text-xs uppercase tracking-widest text-gray-400">
                 or
               </span>
-              <span className="h-px flex-1 bg-stone-200" />
+              <span className="h-px flex-1 bg-gray-200" />
             </div>
 
             <div className="flex flex-col space-y-2.5">
@@ -221,7 +232,7 @@ export default function Login() {
                   }}
                   loading={clickedMethod === "google"}
                   disabled={clickedMethod && clickedMethod !== "google"}
-                  className="h-11 w-full items-center justify-center space-x-2 rounded-md border border-stone-300 bg-white font-normal text-stone-800 shadow-sm hover:bg-stone-50"
+                  className="h-11 w-full items-center justify-center space-x-2 rounded-md border border-gray-300 bg-gray-100 font-normal text-gray-900 shadow-sm hover:bg-gray-200"
                 >
                   <Google className="h-5 w-5" />
                   <span>Continue with Google</span>
@@ -243,7 +254,7 @@ export default function Login() {
                   }}
                   loading={clickedMethod === "linkedin"}
                   disabled={clickedMethod && clickedMethod !== "linkedin"}
-                  className="h-11 w-full items-center justify-center space-x-2 rounded-md border border-stone-300 bg-white font-normal text-stone-800 shadow-sm hover:bg-stone-50"
+                  className="h-11 w-full items-center justify-center space-x-2 rounded-md border border-gray-300 bg-gray-100 font-normal text-gray-900 shadow-sm hover:bg-gray-200"
                 >
                   <LinkedIn />
                   <span>Continue with LinkedIn</span>
@@ -266,7 +277,7 @@ export default function Login() {
                   variant="outline"
                   loading={clickedMethod === "passkey"}
                   disabled={clickedMethod && clickedMethod !== "passkey"}
-                  className="h-11 w-full items-center justify-center space-x-2 rounded-md border border-stone-300 bg-white font-normal text-stone-800 shadow-sm hover:bg-stone-50 hover:text-stone-800"
+                  className="h-11 w-full items-center justify-center space-x-2 rounded-md border border-gray-300 bg-gray-100 font-normal text-gray-900 shadow-sm hover:bg-gray-200 hover:text-gray-900"
                 >
                   <Passkey className="h-4 w-4" />
                   <span>Continue with a passkey</span>
@@ -275,13 +286,13 @@ export default function Login() {
               </div>
             </div>
 
-            <p className="mt-8 text-xs leading-relaxed text-stone-400">
+            <p className="mt-8 text-xs leading-relaxed text-gray-400">
               By continuing, you acknowledge that you have read and agree to{" "}
               {BRAND_NAME}&apos;s{" "}
               <a
                 href={`${process.env.NEXT_PUBLIC_MARKETING_URL}/terms`}
                 target="_blank"
-                className="underline underline-offset-2 hover:text-stone-600"
+                className="underline underline-offset-2 hover:text-gray-600"
               >
                 Terms of Service
               </a>{" "}
@@ -289,7 +300,7 @@ export default function Login() {
               <a
                 href={`${process.env.NEXT_PUBLIC_MARKETING_URL}/privacy`}
                 target="_blank"
-                className="underline underline-offset-2 hover:text-stone-600"
+                className="underline underline-offset-2 hover:text-gray-600"
               >
                 Privacy Policy
               </a>
@@ -299,38 +310,20 @@ export default function Login() {
         </div>
 
         {/* Right — brand panel */}
-        <div className="relative hidden w-full justify-center overflow-hidden bg-[#0e0c0a] md:flex md:w-1/2 lg:w-1/2">
+        <div className="relative hidden w-full justify-center overflow-hidden bg-[#0a0e1a] md:flex md:w-1/2 lg:w-1/2">
           <div
-            className="pointer-events-none absolute -left-40 top-1/4 h-[28rem] w-[28rem] rounded-full bg-amber-500/[0.14] blur-3xl"
+            className="pointer-events-none absolute -left-40 top-1/4 h-[28rem] w-[28rem] rounded-full bg-indigo-500/20 blur-3xl"
             aria-hidden="true"
           />
           <div
-            className="pointer-events-none absolute -right-24 bottom-0 h-80 w-80 rounded-full bg-orange-600/[0.10] blur-3xl"
+            className="pointer-events-none absolute -right-24 bottom-0 h-80 w-80 rounded-full bg-emerald-500/10 blur-3xl"
             aria-hidden="true"
           />
           <div className="pointer-events-none absolute inset-0 opacity-[0.35] [background-image:linear-gradient(rgba(255,255,255,0.04)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.04)_1px,transparent_1px)] [background-size:56px_56px]" />
 
           <div className="relative z-10 flex h-full w-full items-center justify-center p-10 lg:p-16">
             <div className="omp-rise w-full max-w-lg" style={{ animationDelay: "120ms" }}>
-              <div className="mb-12 flex items-center gap-6">
-                <img
-                  src={BRAND_LOGO}
-                  alt={`${BRAND_NAME} Logo`}
-                  className="h-9 w-auto"
-                  style={{ filter: "brightness(0) invert(1)" }}
-                />
-                <div className="flex h-9 items-end gap-[3px] opacity-80" aria-hidden="true">
-                  {EQ_BARS.map((h, i) => (
-                    <span
-                      key={i}
-                      className="omp-eq-bar w-[3px] rounded-t-sm bg-amber-500/70"
-                      style={{ height: `${h}px`, animationDelay: `${i * 0.11}s` }}
-                    />
-                  ))}
-                </div>
-              </div>
-
-              <p className="mb-4 font-mono text-[11px] font-medium uppercase tracking-[0.22em] text-amber-500/90">
+              <p className="mb-4 font-mono text-[11px] font-medium uppercase tracking-[0.22em] text-indigo-300">
                 Open Mic Productions
               </p>
               <h2 className="text-balance text-4xl font-medium leading-[1.1] tracking-tight text-white lg:text-5xl">
@@ -338,7 +331,7 @@ export default function Login() {
                 <br />
                 a quiet room.
               </h2>
-              <p className="mt-5 max-w-md text-balance leading-relaxed text-stone-400">
+              <p className="mt-5 max-w-md text-balance leading-relaxed text-gray-400">
                 A private deal room for the documents that move your business —
                 shared on your terms, tracked page by page.
               </p>
@@ -349,14 +342,14 @@ export default function Login() {
                     key={point.title}
                     className="flex items-start gap-5 border-t border-white/10 py-5"
                   >
-                    <span className="mt-0.5 w-12 shrink-0 font-mono text-[10px] uppercase tracking-[0.18em] text-amber-500/80">
+                    <span className="mt-0.5 w-12 shrink-0 font-mono text-[10px] uppercase tracking-[0.18em] text-indigo-300">
                       {point.label}
                     </span>
                     <div>
                       <div className="text-sm font-medium text-white">
                         {point.title}
                       </div>
-                      <div className="mt-1 text-sm leading-relaxed text-stone-400">
+                      <div className="mt-1 text-sm leading-relaxed text-gray-400">
                         {point.description}
                       </div>
                     </div>
@@ -364,31 +357,31 @@ export default function Login() {
                 ))}
               </ul>
 
-              <div className="mt-8 flex items-center gap-2 border-t border-white/10 pt-5 text-sm text-stone-500">
+              <div className="mt-8 flex items-center gap-2 border-t border-white/10 pt-5 text-sm text-gray-500">
                 <span>Need help?</span>
                 <a
                   href={`mailto:${SUPPORT_EMAIL}`}
-                  className="font-medium text-amber-400/90 hover:text-amber-300"
+                  className="font-medium text-indigo-300 hover:text-indigo-200"
                 >
                   {SUPPORT_EMAIL}
                 </a>
               </div>
 
               <div className="mt-8 border-t border-white/10 pt-5">
-                <p className="mb-3 font-mono text-[10px] uppercase tracking-[0.2em] text-stone-500">
+                <p className="mb-3 font-mono text-[10px] uppercase tracking-[0.2em] text-gray-500">
                   Security &amp; Compliance
                 </p>
                 <div className="flex flex-wrap gap-2">
                   {COMPLIANCE_BADGES.map((badge) => (
                     <span
                       key={badge}
-                      className="rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5 text-xs font-medium text-stone-300"
+                      className="rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5 text-xs font-medium text-gray-300"
                     >
                       {badge}
                     </span>
                   ))}
                 </div>
-                <p className="mt-3 text-xs leading-relaxed text-stone-500">
+                <p className="mt-3 text-xs leading-relaxed text-gray-500">
                   Hosted on SOC 2 Type II certified infrastructure (Vercel and
                   Cloudflare). Documents are encrypted at rest with AES-256 and
                   in transit over TLS, with role-based access and a full audit
