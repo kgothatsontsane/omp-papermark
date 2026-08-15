@@ -109,7 +109,7 @@ export default function Login() {
             <img
               src={BRAND_LOGO}
               alt={`${BRAND_NAME} Logo`}
-              className="mb-10 h-8 w-auto"
+              className="mb-12 h-14 w-auto"
             />
 
             <p
