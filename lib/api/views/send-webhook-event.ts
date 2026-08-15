@@ -1,3 +1,4 @@
+import { isSelfHostedMode } from "@/lib/self-hosted";
 import prisma from "@/lib/prisma";
 import { log } from "@/lib/utils";
 import { sendWebhooks } from "@/lib/webhook/send-webhooks";
@@ -28,9 +29,10 @@ export async function sendLinkViewWebhook({
     });
 
     if (
-      team?.plan === "free" ||
-      team?.plan === "pro" ||
-      team?.plan.includes("trial")
+      !isSelfHostedMode() &&
+      (team?.plan === "free" ||
+        team?.plan === "pro" ||
+        team?.plan.includes("trial"))
     ) {
       // team is not on paid plan, so we don't need to send webhooks
       return;

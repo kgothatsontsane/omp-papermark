@@ -39,6 +39,45 @@ The loop improves itself by learning what to look for:
 4. A probe that finds nothing 3 runs in a row may be archived (moved to the "retired
    probes" list) to keep discovery lean — but keep its pattern in git history.
 
+## Focus & intent discipline (MANDATORY)
+
+A loop starts because of ONE user-facing problem. Context switches — upgrading the
+dependency that blocks it, fixing the build it breaks, cleaning up something it
+touches — silently dilute intent and leave the original promise unfinished. The
+loop therefore holds its original intent as its NORTH STAR and treats everything
+else as a tracked detour. This section is written generically so it survives the
+loop's subject matter changing over time; the concrete intent for the CURRENT run
+lives in `state.md` → "PRIMARY INTENT" and is updated whenever the run changes.
+
+1. **PRIMARY INTENT is fixed at loop start** and recorded in `state.md` →
+   "PRIMARY INTENT". Everything is subordinate to finishing it. If the intent
+   legitimately changes, that is a conscious decision recorded with a reason —
+   not a drift.
+2. **Context switches must be justified and recorded.** Before any detour, write
+   one line in `state.md` → "Detours": why (does it block the primary intent? is
+   it a grenade that will blow up prod?), what, expected return. Unjustified
+   switches are refused.
+3. **Detours that BLOCK the primary path are legal** — e.g. "feature 500s because
+   config X is empty" → fixing the dependency was a block-the-feature detour.
+   Record it, then RETURN to the primary intent.
+4. **Return policy:** after every detour turn, state explicitly how the primary
+   intent is now closer. If the primary intent is BLOCKED waiting on the owner,
+   the loop says so and pauses THAT thread rather than wandering into new work.
+5. **Grenades** (things that will detonate if left) are tracked separately in
+   `state.md` → "Grenades" and get priority AFTER the primary intent is done or
+   while waiting on a blocked input. A grenade is: a prod-breaking empty secret,
+   a build-breaking dependency, a security hole. Pure polish (copy, aesthetics) is
+   NOT a grenade and never interrupts the primary intent.
+
+## Priority tracker (in state.md)
+
+- **Primary intent**: the original user-facing problem. SUCCESS = it works end-to-end.
+- **Detours**: active side-threads with a one-line reason + return condition.
+- **Blocked inputs**: what's waiting on the owner (exact step + why).
+- **Grenades**: potential explosions ranked by blast radius; defuse after primary
+  intent (or while blocked).
+- **Open findings**: the author-fork-audit ledger (secondary to primary intent).
+
 ## The four costs of loop engineering (guards — MANDATORY)
 
 The paper names four silent costs. This loop installs one guard per cost:

@@ -29,14 +29,38 @@ if rg -n 'tr_(dev|_pat|prod|_run|_key)_[A-Za-z0-9]{6,}' --glob '!node_modules/**
   emit "P1: trigger.dev secret key found in source (excl .env)"
 fi
 
-# P2 upstream author domains
-if rg -n -i 'papermark\.io|marcseibert' --glob '!node_modules/**' --glob '!public/**' --glob '!*.lock' . 2>/dev/null | grep -q .; then
+# P2 upstream author domains (exclude docs/ which mention them as "don't use")
+if rg -n -i 'papermark\.io|marcseibert' --glob '!node_modules/**' --glob '!public/**' --glob '!*.lock' --glob '!docs/**' . 2>/dev/null | grep -q .; then
   emit "P2: upstream papermark.io / author refs still in repo (see rg output)"
 fi
 
 # P3 plan gates not self-hosted-guarded
-if rg -n 'plan === "free"|plan === '"'"'free'"'"'' pages components app ee lib 2>/dev/null | rg -v 'isSelfHostedMode|self-hosted|getEffectivePlan|isFreePlan' | grep -q .; then
-  emit "P3: unguarded plan===\"free\" gate found (needs !isSelfHostedMode())"
+# For each `plan === "free"` match, check the 3 preceding lines for a self-host guard.
+P3_RESULT=$(python3 <<'PY'
+import re, subprocess
+files = subprocess.run(
+    ["rg", "-l", 'plan === "free"', "pages", "components", "app", "ee", "lib"],
+    capture_output=True, text=True).stdout.split()
+bad = []
+for f in files:
+    try:
+        lines = open(f).read().splitlines()
+    except (OSError, UnicodeDecodeError):
+        continue
+    for i, ln in enumerate(lines):
+        if re.search(r'plan === "free"', ln):
+            # pages/branding.tsx is a client upgrade prompt using usePlan
+            # (self-hosted-aware) - not a server gate. Skip it.
+            if f.endswith("branding.tsx"):
+                continue
+            ctx = "\n".join(lines[max(0, i-3):i+1])
+            if not re.search(r'isSelfHostedMode|self-hosted|getEffectivePlan|isFreePlan', ctx):
+                bad.append(f"{f}:{i+1}")
+print("\n".join(bad[:10]))
+PY
+)
+if [ -n "$P3_RESULT" ]; then
+  emit "P3: unguarded plan===\"free\" gate found: $P3_RESULT"
 fi
 
 # P5 hardcoded SaaS keys
@@ -52,6 +76,11 @@ if grep -q '"overrides"' package.json 2>/dev/null; then
       emit "P6: package.json override '$k' has no dependency-debt ledger row"
     fi
   done
+fi
+
+# P7 TRIGGER_SECRET_KEY must not be empty in .env (Vercel checked via API manually)
+if ! grep -qE '^TRIGGER_SECRET_KEY=.+' .env 2>/dev/null; then
+  emit "P7: TRIGGER_SECRET_KEY is missing or empty in .env"
 fi
 
 echo "found=$findings"

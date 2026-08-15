@@ -42,6 +42,9 @@ in this forked app. Write findings to state.md, one row per finding.
 ### P7 Vercel env drift
 - Compare local `.env` keys vs Vercel project env keys (production) — missing keys
   mean the feature works locally but breaks in prod. (Uses Vercel API token from session.)
+- Specifically flag EMPTY secrets that must be set for prod: `TRIGGER_SECRET_KEY`
+  (task.trigger() fails if empty), `TINYBIRD_TOKEN`, `RESEND_API_KEY`,
+  `BLOB_READ_WRITE_TOKEN`. Trigger.dev keys are per-env (`tr_prod_` = dashboard-only).
 
 ### Retired probes
 - (none yet)
