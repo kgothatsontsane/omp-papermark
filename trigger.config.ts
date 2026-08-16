@@ -1,4 +1,4 @@
-import { ffmpeg } from "@trigger.dev/build/extensions/core";
+import { aptGet, ffmpeg } from "@trigger.dev/build/extensions/core";
 import { prismaExtension } from "@trigger.dev/build/extensions/prisma";
 import { defineConfig, timeout } from "@trigger.dev/sdk/v3";
 
@@ -18,6 +18,7 @@ export default defineConfig({
   },
   build: {
     extensions: [
+      aptGet({ packages: ["libreoffice"] }),
       prismaExtension({
         mode: "legacy",
         schema: "prisma/schema/schema.prisma",
