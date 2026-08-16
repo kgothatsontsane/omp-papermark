@@ -138,6 +138,12 @@ repo and in deployed config. Verification is deterministic per finding:
    where deployable. A finding is FIXED only when the check says no match.
 4. PERSISTENCE — update `.opencode/project-state.md` (deployments, HEAD,
    decisions) and `.opencode/knowledgebase.md` LAST_INDEXED after each fix.
+   **Operator sync (MANDATORY, anti-comprehension-rot):** at the end of every
+   turn, refresh `STATUS.md` (what's live / what changed / what's blocked /
+   what needs the owner) and give the operator a plain-text "what changed and
+   why" summary so their mental model never lags the codebase. If they ask
+   "report"/"status" mid-turn, produce it from `STATUS.md` + state.md immediately.
+   Also sync branches develop → staging → main before reporting.
 5. SCHEDULING — auto-discovery (cron) wakes the loop daily; unfinished findings
    persist in state files across turns/sessions and carry into the next run.
 
