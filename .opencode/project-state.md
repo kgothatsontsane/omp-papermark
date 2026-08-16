@@ -204,3 +204,8 @@ Files in `lib/tinybird/endpoints/`.
 
 - Tinybird Classic → Forward migration: file renames encode versions (Classic `VERSION` directive ignored by Forward).
 - Graceful degradation: only NON-security features may fail open; analytics (Tinybird) is the one degraded feature; every degradation logged.
+
+## Rotation status (2026-08-16)
+- trigger.dev prod key rotated: old `<OLD_TRIGGER_PROD_KEY>` → new `<TRIGGER_PROD_KEY>` (via `POST /api/v1/projects/{ref}/prod/regenerate-api-key` with CLI PAT from `~/Library/Preferences/trigger/config.json`). Old key kept in grace period by trigger.dev. Updated: Vercel (deleted 2 stale entries, recreated `wvzg54dN9R64suhD`), worker redeployed `20260816.1` (12 tasks). Local .env uses dev key (unaffected).
+- R2 secret rotated by owner: access key unchanged `<R2_ACCESS_KEY>`, secret → `<R2_SECRET>` (old `171975d3...` replaced). Updated: local .env, Vercel (prod+preview, id `TjaDPYpOguCPX64f`), worker prod env (HTTP API `envvars/prod`). Verified: new secret reads CSV from R2 (1305 bytes).
+- Verified end-to-end: export-visits run COMPLETED with new trigger key + new R2 secret; CSV retrieved + test export cleaned up.
