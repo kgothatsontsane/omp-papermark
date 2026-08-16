@@ -209,3 +209,11 @@ Files in `lib/tinybird/endpoints/`.
 - trigger.dev prod key rotated: old `<OLD_TRIGGER_PROD_KEY>` → new `<TRIGGER_PROD_KEY>` (via `POST /api/v1/projects/{ref}/prod/regenerate-api-key` with CLI PAT from `~/Library/Preferences/trigger/config.json`). Old key kept in grace period by trigger.dev. Updated: Vercel (deleted 2 stale entries, recreated `wvzg54dN9R64suhD`), worker redeployed `20260816.1` (12 tasks). Local .env uses dev key (unaffected).
 - R2 secret rotated by owner: access key unchanged `<R2_ACCESS_KEY>`, secret → `<R2_SECRET>` (old `171975d3...` replaced). Updated: local .env, Vercel (prod+preview, id `TjaDPYpOguCPX64f`), worker prod env (HTTP API `envvars/prod`). Verified: new secret reads CSV from R2 (1305 bytes).
 - Verified end-to-end: export-visits run COMPLETED with new trigger key + new R2 secret; CSV retrieved + test export cleaned up.
+
+## DOC/DOCX/PPT→PDF conversion — FIXED (LibreOffice in worker, no Gotenberg)
+
+- trigger.dev worker image now installs LibreOffice via `aptGet({ packages: ["libreoffice"] })` in `trigger.config.ts` (build extension).
+- `convert-files-to-pdf` rewritten to download the file to /tmp, run `libreoffice --headless --convert-to pdf --outdir`, read the PDF buffer, save via `putFileServer`, then trigger `convert-pdf-to-image-route` — same downstream flow as before. No `NEXT_PRIVATE_CONVERSION_BASE_URL` / `NEXT_PRIVATE_INTERNAL_AUTH_TOKEN` needed.
+- Worker deployed `20260816.4` (12 tasks). Vercel prod redeployed with NEW R2 secret (fixes presigned-URL 403 from old revoked secret).
+- **Verified end-to-end**: `ARTIST PRODUCER AGREEMENT.doc` → convert-files-to-pdf COMPLETED (6.9s) → convert-pdf-to-image-route COMPLETED (3 pages). Zero subscriptions, no external service.
+- Note: `.doc`/`.docx`/`.ppt`/`.pptx`/`.odt`/`.ods`/`.odp`/`.rtf`/`.txt` convert via LibreOffice. CAD (dwg/dxf) still uses the paid `convert-cad-to-pdf` API (`NEXT_PRIVATE_CONVERT_API_URL`/`KEY`) — separate, unchanged.
