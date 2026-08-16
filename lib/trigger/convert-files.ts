@@ -1,11 +1,10 @@
-import { logger, retry, task } from "@trigger.dev/sdk/v3";
+import { logger, task } from "@trigger.dev/sdk/v3";
 
 import { getFile } from "@/lib/files/get-file";
 import { putFileServer } from "@/lib/files/put-file-server";
 import prisma from "@/lib/prisma";
 
 import { updateStatus } from "../utils/generate-trigger-status";
-import { getExtensionFromContentType } from "../utils/get-content-type";
 import { convertPdfToImageRoute } from "./pdf-to-image-route";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
@@ -253,76 +252,56 @@ export const convertCadToPdfTask = task({
       type: document.versions[0].storageType,
     });
 
-    // create payload for cad to pdf conversion
-    const tasksPayload = {
-      tasks: {
-        "import-file-v1": {
-          operation: "import/url",
-          url: fileUrl,
-          filename: document.name,
-        },
-        "convert-file-v1": {
-          operation: "convert",
-          input: ["import-file-v1"],
-          input_format: getExtensionFromContentType(
-            document.versions[0].contentType,
-          ),
-          output_format: "pdf",
-          engine: "cadconverter",
-          all_layouts: true,
-          auto_zoom: false,
-        },
-        "export-file-v1": {
-          operation: "export/url",
-          input: ["convert-file-v1"],
-          inline: false,
-          archive_multiple_files: false,
-        },
-      },
-      redirect: true,
-    };
+    // Convert CAD locally: LibreOffice Draw reads DXF; DWG must be converted to
+    // DXF first with dwg2dxf (libredwg-tools, installed in the worker image via
+    // aptGet). No paid CloudConvert dependency.
+    const fileName = document.name;
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "omp-cad-"));
+    const inputPath = path.join(tmpDir, fileName);
+    const outDir = path.join(tmpDir, "out");
 
-    // Make the conversion request
-    const conversionResponse = await retry.fetch(
-      `${process.env.NEXT_PRIVATE_CONVERT_API_URL}`,
-      {
-        method: "POST",
-        body: JSON.stringify(tasksPayload),
-        headers: {
-          Authorization: `Bearer ${process.env.NEXT_PRIVATE_CONVERT_API_KEY}`,
-          "Content-Type": "application/json",
-        },
-        retry: {
-          byStatus: {
-            "500-599": {
-              strategy: "backoff",
-              maxAttempts: 3,
-              factor: 2,
-              minTimeoutInMs: 1_000,
-              maxTimeoutInMs: 30_000,
-              randomize: false,
-            },
-          },
-        },
-      },
-    );
+    try {
+      const fileResponse = await fetch(fileUrl);
+      if (!fileResponse.ok) {
+        throw new Error(
+          `Failed to download file: ${fileResponse.status} ${fileResponse.statusText}`,
+        );
+      }
+      fs.writeFileSync(inputPath, Buffer.from(await fileResponse.arrayBuffer()));
+      fs.mkdirSync(outDir, { recursive: true });
 
-    if (!conversionResponse.ok) {
-      const body = await conversionResponse.json();
-      throw new Error(
-        `Conversion failed: ${body.message} ${conversionResponse.status}`,
+      let libreOfficeInput = inputPath;
+      const ext = path.extname(fileName).toLowerCase();
+      if (ext === ".dwg") {
+        const dxfPath = inputPath.replace(/\.dwg$/i, ".dxf");
+        await execFileAsync("dwg2dxf", [inputPath, "-o", dxfPath], {
+          timeout: 120_000,
+        });
+        if (!fs.existsSync(dxfPath)) {
+          throw new Error("dwg2dxf did not produce a DXF output");
+        }
+        libreOfficeInput = dxfPath;
+      }
+
+      await execFileAsync(
+        "libreoffice",
+        ["--headless", "--convert-to", "pdf", "--outdir", outDir, libreOfficeInput],
+        { timeout: 120_000 },
       );
-    }
 
-    const conversionBuffer = Buffer.from(
-      await conversionResponse.arrayBuffer(),
-    );
+      const pdfName = fileName.replace(/\.[^.]+$/, "") + ".pdf";
+      const outputPath = path.join(outDir, pdfName);
+      if (!fs.existsSync(outputPath)) {
+        throw new Error("LibreOffice did not produce a PDF output");
+      }
+      const conversionBuffer = fs.readFileSync(outputPath);
+      fs.rmSync(tmpDir, { recursive: true, force: true });
 
-    // get docId from url with starts with "doc_" with regex
-    const match = document.versions[0].originalFile.match(/(doc_[^\/]+)\//);
-    const docId = match ? match[1] : undefined;
+      // get docId from url with starts with "doc_" with regex
+      const match = document.versions[0].originalFile.match(/(doc_[^\/]+)\//);
+      const docId = match ? match[1] : undefined;
 
-    // Save the converted file to the database
+      // Save the converted file to the database
     const { type: storageType, data } = await putFileServer({
       file: {
         name: `${document.name}.pdf`,
@@ -378,5 +357,15 @@ export const convertCadToPdfTask = task({
       docId: docId,
     });
     return;
+    } catch (error) {
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+      logger.error("CAD conversion failed", {
+        documentId: payload.documentId,
+        documentVersionId: payload.documentVersionId,
+        teamId: payload.teamId,
+        error: error instanceof Error ? error.message : error,
+      });
+      throw error;
+    }
   },
 });
