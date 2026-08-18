@@ -276,6 +276,7 @@ async function exportDocumentVisits(
     "Browser",
     "OS",
     "Device",
+    "IP Address",
   ];
 
   if (!isProPlan) {
@@ -360,6 +361,7 @@ async function exportDocumentVisits(
       userAgentData?.data[0]?.browser || "NaN",
       userAgentData?.data[0]?.os || "NaN",
       userAgentData?.data[0]?.device || "NaN",
+      userAgentData?.data[0]?.ip_address || "NaN",
     ];
 
     if (!isProPlan) {
@@ -711,6 +713,7 @@ async function exportDataroomVisits(
     "Device",
     "Country",
     "City",
+    "IP Address",
   ];
 
   // Add dynamic custom field headers
@@ -777,6 +780,7 @@ async function exportDataroomVisits(
           userAgentData?.data[0]?.device || "NaN",
           userAgentData?.data[0]?.country || "NaN",
           userAgentData?.data[0]?.city || "NaN",
+          userAgentData?.data[0]?.ip_address || "NaN",
         ];
 
         // Add custom field values for this dataroom view using direct ID lookup

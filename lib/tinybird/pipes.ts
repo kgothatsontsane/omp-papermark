@@ -92,6 +92,7 @@ export const getViewUserAgent_v2 = tb.buildPipe({
     browser: z.string(),
     os: z.string(),
     device: z.string(),
+    ip_address: z.string().nullable(),
   }),
 });
 
@@ -106,6 +107,7 @@ export const getViewUserAgent = tb.buildPipe({
     browser: z.string(),
     os: z.string(),
     device: z.string(),
+    ip_address: z.string().nullable(),
   }),
 });
 

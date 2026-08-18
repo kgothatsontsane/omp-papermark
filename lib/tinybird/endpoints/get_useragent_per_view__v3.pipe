@@ -8,7 +8,8 @@ SQL >
         city,
         browser,
         os,
-        device
+        device,
+        ip_address
     FROM
         pm_click_events__v1
     WHERE
