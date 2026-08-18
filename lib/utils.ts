@@ -9,7 +9,6 @@ import crypto from "crypto";
 import ms from "ms";
 import { customAlphabet } from "nanoid";
 import { ThreadMessage } from "openai/resources/beta/threads/messages/messages";
-import { rgb } from "pdf-lib";
 import { ParsedUrlQuery } from "querystring";
 import { toast } from "sonner";
 import { twMerge } from "tailwind-merge";
@@ -650,14 +649,6 @@ export const sanitizeList = (
 
   return [...new Set(sanitized)];
 };
-
-export function hexToRgb(hex: string) {
-  let bigint = parseInt(hex.slice(1), 16);
-  let r = ((bigint >> 16) & 255) / 255; // Convert to 0-1 range
-  let g = ((bigint >> 8) & 255) / 255; // Convert to 0-1 range
-  let b = (bigint & 255) / 255; // Convert to 0-1 range
-  return rgb(r, g, b);
-}
 
 export const trim = (u: unknown) => (typeof u === "string" ? u.trim() : u);
 

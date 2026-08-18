@@ -5,10 +5,17 @@ import { PDFDocument, StandardFonts, degrees, rgb } from "pdf-lib";
 
 import {
   getFileNameWithPdfExtension,
-  hexToRgb,
   log,
   safeTemplateReplace,
 } from "@/lib/utils";
+
+function hexToRgb(hex: string) {
+  const bigint = parseInt(hex.slice(1), 16);
+  const r = ((bigint >> 16) & 255) / 255; // Convert to 0-1 range
+  const g = ((bigint >> 8) & 255) / 255;
+  const b = (bigint & 255) / 255;
+  return rgb(r, g, b);
+}
 
 // This function can run for a maximum of 120 seconds
 export const config = {
