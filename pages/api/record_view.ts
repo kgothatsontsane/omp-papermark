@@ -39,6 +39,7 @@ const bodyValidation = z.object({
   bot: z.boolean().optional(),
   referer: z.string().optional(),
   referer_url: z.string().optional(),
+  ip_address: z.string().nullable().optional(),
 });
 
 export default async function handle(
@@ -61,50 +62,22 @@ export default async function handle(
   // Try multiple headers in order of preference.
   let ip: string | undefined;
   if (process.env.VERCEL === "1") {
-    const realIp = req.headers["x-real-ip"];
-    const forwardedFor = req.headers["x-forwarded-for"];
-    const vercelForwarded = req.headers["x-vercel-forwarded-for"];
-    const vercelIpCountry = req.headers["x-vercel-ip-country"];
-    
-    // Debug: log all IP-related headers
-    console.log("[record_view] IP debug:", JSON.stringify({
-      "x-real-ip": req.headers["x-real-ip"],
-      "x-forwarded-for": req.headers["x-forwarded-for"],
-      "x-vercel-forwarded-for": req.headers["x-vercel-forwarded-for"],
-      "x-forwarded-for-split": req.headers["x-forwarded-for"] ? (Array.isArray(req.headers["x-forwarded-for"]) ? req.headers["x-forwarded-for"][0] : req.headers["x-forwarded-for"]).split(",")[0]?.trim() : undefined,
-      "x-real-ip-type": typeof req.headers["x-real-ip"],
-      "x-forwarded-for-type": typeof req.headers["x-forwarded-for"],
-      "x-vercel-forwarded-for-type": typeof req.headers["x-vercel-forwarded-for"],
-      "x-real-ip-array": Array.isArray(req.headers["x-real-ip"]),
-      "x-forwarded-for-array": Array.isArray(req.headers["x-forwarded-for"]),
-      "x-vercel-forwarded-for-array": Array.isArray(req.headers["x-vercel-forwarded-for"]),
-      allHeaders: Object.keys(req.headers).filter(k => k.includes("ip") || k.includes("forward") || k.includes("real") || k.includes("vercel"))
-    }));
-    
-    // Handle headers that may be arrays (multiple values)
-    const getFirst = (v: string | string[] | undefined): string | undefined => 
+    const getFirst = (v: string | string[] | undefined): string | undefined =>
       Array.isArray(v) ? v[0] : v;
-    
+
     const tryGetIp = (v: string | string[] | undefined): string | undefined => {
       const first = Array.isArray(v) ? v[0] : v;
       return first?.split(",")[0]?.trim();
     };
-    
-    ip = 
+
+    ip =
       getFirst(req.headers["x-real-ip"]) ||
       tryGetIp(req.headers["x-forwarded-for"]) ||
       tryGetIp(req.headers["x-vercel-forwarded-for"] as string | string[] | undefined);
   } else {
     ip = LOCALHOST_IP;
   }
-  
-  // Debug: log the extracted IP and EU check
-  console.log("[record_view] IP extraction result:", JSON.stringify({
-    ip,
-    isEuCountry: geo?.country && EU_COUNTRY_CODES.includes(geo.country),
-    country: geo?.country
-  }));
-  
+
   const isEuCountry =
     geo?.country && EU_COUNTRY_CODES.includes(geo.country);
 
