@@ -59,13 +59,19 @@ export default async function handle(
 
   // pages-router headers are plain objects (no .get()), so read the IP header
   // directly instead of @vercel/functions ipAddress() (which needs a Request/Headers).
+  const first = (v: string | string[] | undefined): string | undefined =>
+    Array.isArray(v) ? v[0] : v;
   const forwardedIp =
-    (req.headers["x-real-ip"] as string | undefined) ||
-    (req.headers["x-forwarded-for"] as string | undefined)?.split(",")[0]?.trim();
+    first(req.headers["x-real-ip"]) ||
+    first(req.headers["x-forwarded-for"])?.split(",")[0]?.trim() ||
+    first(req.headers["x-vercel-forwarded-for"])?.split(",")[0]?.trim();
   const ip =
     process.env.VERCEL === "1" ? forwardedIp : LOCALHOST_IP;
   const isEuCountry =
     geo?.country && EU_COUNTRY_CODES.includes(geo.country);
+
+  // ponytail: temporary diagnostic
+  console.log("[record_view] ip=", JSON.stringify(ip), "xff=", JSON.stringify(req.headers["x-forwarded-for"]), "xreal=", JSON.stringify(req.headers["x-real-ip"]), "xvf=", JSON.stringify(req.headers["x-vercel-forwarded-for"]), "geo.country=", geo?.country);
 
   const {
     linkId,
