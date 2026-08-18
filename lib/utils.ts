@@ -1,13 +1,13 @@
 import { NextRouter } from "next/router";
 
 import slugify from "@sindresorhus/slugify";
-import { Message } from "ai";
+import type { Message } from "ai";
 import * as chrono from "chrono-node";
 import { type ClassValue, clsx } from "clsx";
 import crypto from "crypto";
 import ms from "ms";
 import { customAlphabet } from "nanoid";
-import { ThreadMessage } from "openai/resources/beta/threads/messages/messages";
+import type { ThreadMessage } from "openai/resources/beta/threads/messages/messages";
 import { ParsedUrlQuery } from "querystring";
 import { toast } from "sonner";
 import { twMerge } from "tailwind-merge";
