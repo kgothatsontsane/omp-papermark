@@ -4,7 +4,7 @@ DESCRIPTION >
     Event track when a visitor clicks a link
 
 SCHEMA >
-    `timestamp` DateTime64(3) `json:$.timestamp`,
+    `timestamp` Int64 `json:$.timestamp`,
     `click_id` String `json:$.click_id`,
     `view_id` String `json:$.view_id`,
     `link_id` String `json:$.link_id`,
@@ -33,5 +33,35 @@ SCHEMA >
     `ip_address` Nullable(String) `json:$.ip_address`
 
 ENGINE "MergeTree"
-ENGINE_PARTITION_KEY "toYYYYMM(timestamp)"
 ENGINE_SORTING_KEY "timestamp, view_id, link_id, click_id"
+
+
+FORWARD_QUERY >
+    SELECT
+        toUnixTimestamp64Milli(timestamp) AS timestamp,
+        click_id,
+        view_id,
+        link_id,
+        document_id,
+        dataroom_id,
+        continent,
+        country,
+        city,
+        region,
+        latitude,
+        longitude,
+        device,
+        device_model,
+        device_vendor,
+        browser,
+        browser_version,
+        os,
+        os_version,
+        engine,
+        engine_version,
+        cpu_architecture,
+        ua,
+        bot,
+        referer,
+        referer_url,
+        ip_address

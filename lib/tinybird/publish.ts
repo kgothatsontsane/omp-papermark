@@ -60,7 +60,7 @@ export const recordWebhookEvent = tb.buildIngestEndpoint({
 export const recordVideoView = tb.buildIngestEndpoint({
   datasource: "video_views__v1",
   event: z.object({
-    timestamp: z.string(),
+    timestamp: z.number().int(),
     id: z.string(),
     link_id: z.string(),
     document_id: z.string(),
@@ -102,7 +102,7 @@ export const recordVideoView = tb.buildIngestEndpoint({
 export const recordClickEvent = tb.buildIngestEndpoint({
   datasource: "click_events__v1",
   event: z.object({
-    timestamp: z.string(),
+    timestamp: z.number().int(),
     event_id: z.string(),
     session_id: z.string(),
     link_id: z.string(),
@@ -119,7 +119,7 @@ export const recordClickEvent = tb.buildIngestEndpoint({
 export const recordLinkViewTB = tb.buildIngestEndpoint({
   datasource: "pm_click_events__v1",
   event: z.object({
-    timestamp: z.string(),
+    timestamp: z.number().int(),
     click_id: z.string(),
     view_id: z.string(),
     link_id: z.string(),

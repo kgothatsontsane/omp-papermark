@@ -12,7 +12,7 @@ import { getIpAddress } from "@/lib/utils/ip";
 import { userAgentFromString } from "@/lib/utils/user-agent";
 
 const bodyValidation = z.object({
-  timestamp: z.string(),
+  timestamp: z.number().int(),
   id: z.string(),
   link_id: z.string(),
   document_id: z.string(),
@@ -86,7 +86,7 @@ export default async function handler(
     isFullscreen,
     eventType,
   } = req.body as {
-    timestamp: string;
+    timestamp: number;
     linkId: string;
     documentId: string;
     viewId: string;

@@ -122,7 +122,7 @@ class VideoTracker {
 
     const currentTime = this.videoElement.currentTime;
     const payload = JSON.stringify({
-      timestamp: new Date().toISOString(),
+      timestamp: Date.now(),
       linkId: this.trackingConfig.linkId,
       documentId: this.trackingConfig.documentId,
       viewId: this.trackingConfig.viewId,

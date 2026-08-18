@@ -61,7 +61,7 @@ export async function recordLinkView({
   const refererDomain = referer ? getDomainWithoutWWW(referer) : "(direct)";
 
   const clickData = {
-    timestamp: new Date(Date.now()).toISOString(),
+    timestamp: Date.now(),
     click_id: clickId,
     view_id: viewId,
     link_id: linkId,

@@ -507,7 +507,7 @@ export default function PagesHorizontalViewer({
         fetch("/api/record_click", {
           method: "POST",
           body: JSON.stringify({
-            timestamp: new Date().toISOString(),
+            timestamp: Date.now(),
             sessionId: viewId,
             linkId,
             documentId,

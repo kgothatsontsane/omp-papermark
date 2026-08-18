@@ -4,7 +4,7 @@ DESCRIPTION >
     Click events track when a user clicks a link within a document
 
 SCHEMA >
-    `timestamp` DateTime64(3) `json:$.timestamp`,
+    `timestamp` Int64 `json:$.timestamp`,
     `event_id` String `json:$.event_id`,
     `session_id` String `json:$.session_id`,
     `link_id` String `json:$.link_id`,
@@ -17,4 +17,17 @@ SCHEMA >
 
 ENGINE "MergeTree"
 ENGINE_SORTING_KEY "document_id,view_id,link_id,timestamp"
-ENGINE_PARTITION_KEY "toYYYYMM(timestamp)" 
+
+
+FORWARD_QUERY >
+    SELECT
+        toUnixTimestamp64Milli(timestamp) AS timestamp,
+        event_id,
+        session_id,
+        link_id,
+        document_id,
+        dataroom_id,
+        view_id,
+        page_number,
+        version_number,
+        href

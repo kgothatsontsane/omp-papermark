@@ -4,7 +4,7 @@ DESCRIPTION >
   Video views are events when a user views a video
 
 SCHEMA >
-  `timestamp` DateTime64(3) `json:$.timestamp`,
+  `timestamp` Int64 `json:$.timestamp`,
   `id` String `json:$.id`,
   `link_id` String `json:$.link_id`,
   `document_id` String `json:$.document_id`,
@@ -47,3 +47,41 @@ SCHEMA >
 ENGINE "MergeTree"
 ENGINE_SORTING_KEY "timestamp,link_id,document_id,view_id,version_number,event_type"
 
+
+FORWARD_QUERY >
+    SELECT
+        toUnixTimestamp64Milli(timestamp) AS timestamp,
+        id,
+        link_id,
+        document_id,
+        view_id,
+        dataroom_id,
+        version_number,
+        event_type,
+        start_time,
+        end_time,
+        playback_rate,
+        volume,
+        is_muted,
+        is_focused,
+        is_fullscreen,
+        country,
+        city,
+        region,
+        latitude,
+        longitude,
+        ua,
+        browser,
+        browser_version,
+        engine,
+        engine_version,
+        os,
+        os_version,
+        device,
+        device_vendor,
+        device_model,
+        cpu_architecture,
+        bot,
+        referer,
+        referer_url,
+        ip_address

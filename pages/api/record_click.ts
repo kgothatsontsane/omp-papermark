@@ -7,7 +7,7 @@ import { recordClickEvent } from "@/lib/tinybird";
 import { log } from "@/lib/utils";
 
 const bodyValidation = z.object({
-  timestamp: z.string(),
+  timestamp: z.number().int(),
   event_id: z.string(),
   session_id: z.string(),
   link_id: z.string(),
@@ -38,7 +38,7 @@ export default async function handler(
     versionNumber,
     dataroomId,
   } = req.body as {
-    timestamp: string;
+    timestamp: number;
     sessionId: string;
     linkId: string;
     documentId: string;
