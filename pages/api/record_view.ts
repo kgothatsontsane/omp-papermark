@@ -2,8 +2,6 @@ import { NextApiRequest, NextApiResponse } from "next";
 
 import { z } from "zod";
 
-import { ipAddress } from "@vercel/functions";
-
 import { newId } from "@/lib/id-helper";
 import { publishPageView } from "@/lib/tinybird";
 import { Geo } from "@/lib/types";
@@ -59,10 +57,13 @@ export default async function handle(
   const referer = req.headers.referer;
   const ua = userAgentFromString(req.headers["user-agent"]);
 
+  // pages-router headers are plain objects (no .get()), so read the IP header
+  // directly instead of @vercel/functions ipAddress() (which needs a Request/Headers).
+  const forwardedIp =
+    (req.headers["x-real-ip"] as string | undefined) ||
+    (req.headers["x-forwarded-for"] as string | undefined)?.split(",")[0]?.trim();
   const ip =
-    process.env.VERCEL === "1"
-      ? ipAddress(req.headers as unknown as Headers)
-      : LOCALHOST_IP;
+    process.env.VERCEL === "1" ? forwardedIp : LOCALHOST_IP;
   const isEuCountry =
     geo?.country && EU_COUNTRY_CODES.includes(geo.country);
 
