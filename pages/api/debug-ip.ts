@@ -1,22 +1,23 @@
 import { NextApiRequest, NextApiResponse } from "next";
 
-import { LOCALHOST_IP } from "@/lib/utils/geo";
+const getFirst = (v: string | string[] | undefined): string | undefined =>
+  Array.isArray(v) ? v[0] : v;
 
-export default async function handler(req, NextApiResponse) {
-  const getFirst = (v: string | string[] | undefined): string | undefined =>
-    Array.isArray(v) ? v[0] : v;
-
-  const tryGetIp = (v: string | string[] | undefined): string | undefined => {
-    const first = Array.isArray(v) ? v[0] : v;
-    return first?.split(",")[0]?.trim();
+export default async function handler(
+  req: NextApiRequest,
+  res: NextApiResponse,
+) {
+  const getIp = (): string => {
+    if (process.env.VERCEL === "1") {
+      const realIp = req.headers["x-real-ip"];
+      if (realIp) return Array.isArray(realIp) ? realIp[0] : realIp;
+      const forwarded = req.headers["x-forwarded-for"];
+      if (forwarded) return Array.isArray(forwarded) ? forwarded[0] : forwarded;
+      const vercelForwarded = req.headers["x-vercel-forwarded-for"];
+      if (vercelForwarded) return Array.isArray(vercelForwarded) ? vercelForwarded[0] : vercelForwarded;
+    }
+    return "127.0.0.1";
   };
-
-  let ip: string | undefined;
-  if (process.env.VERCEL === "1") {
-    ip = req.headers["x-real-ip"] || req.headers["x-forwarded-for"]?.split(",")[0]?.trim() || req.headers["x-vercel-forwarded-for"];
-  } else {
-    ip = "127.0.0.1";
-  }
 
   res.status(200).json({
     ip: req.headers["x-real-ip"] || req.headers["x-forwarded-for"] || req.headers["x-vercel-forwarded-for"] || "none",
@@ -25,10 +26,7 @@ export default async function handler(req, NextApiResponse) {
     xVercelForwardedFor: req.headers["x-vercel-forwarded-for"],
     xVercelIpCountry: req.headers["x-vercel-ip-country"],
     xVercelIpCity: req.headers["x-vercel-ip-city"],
-    xForwardedFor: req.headers["x-forwarded-for"],
-    xVercelForwardedFor: req.headers["x-vercel-forwarded-for"],
     allHeaders: Object.keys(req.headers).filter(k => k.includes("ip") || k.includes("forward") || k.includes("real") || k.includes("vercel") || k.includes("x-"))
   });
 }
 
-export default handler;
