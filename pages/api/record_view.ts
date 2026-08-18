@@ -57,13 +57,31 @@ export default async function handle(
   const referer = req.headers.referer;
   const ua = userAgentFromString(req.headers["user-agent"]);
 
-  // pages-router headers are plain objects (no .get()), so read the IP header
-  // directly instead of @vercel/functions ipAddress() (which needs a Request/Headers).
-  // Vercel guarantees x-real-ip header with raw client IP on production.
-  const ip =
-    process.env.VERCEL === "1"
-      ? (req.headers["x-real-ip"] as string | undefined)
-      : LOCALHOST_IP;
+  // Vercel provides x-real-ip header with raw client IP.
+  // Try multiple headers in order of preference.
+  let ip: string | undefined;
+  if (process.env.VERCEL === "1") {
+    const realIp = req.headers["x-real-ip"];
+    const forwardedFor = req.headers["x-forwarded-for"];
+    const vercelForwarded = req.headers["x-vercel-forwarded-for"];
+    
+    // Debug: log all IP-related headers
+    console.log("[record_view] IP debug:", JSON.stringify({
+      "x-real-ip": req.headers["x-real-ip"],
+      "x-forwarded-for": req.headers["x-forwarded-for"],
+      "x-vercel-forwarded-for": req.headers["x-vercel-forwarded-for"],
+      "x-forwarded-for-split": req.headers["x-forwarded-for"]?.split(",")[0]?.trim(),
+      allHeaders: Object.keys(req.headers).filter(k => k.includes("ip") || k.includes("forward") || k.includes("real"))
+    }));
+    
+    ip = 
+      (req.headers["x-real-ip"] as string) ||
+      (req.headers["x-forwarded-for"] as string)?.split(",")[0]?.trim() ||
+      (req.headers["x-vercel-forwarded-for"] as string)?.split(",")[0]?.trim();
+  } else {
+    ip = LOCALHOST_IP;
+  }
+  
   const isEuCountry =
     geo?.country && EU_COUNTRY_CODES.includes(geo.country);
 
