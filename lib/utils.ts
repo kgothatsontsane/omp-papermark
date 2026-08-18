@@ -2,7 +2,6 @@ import { NextRouter } from "next/router";
 
 import slugify from "@sindresorhus/slugify";
 import { Message } from "ai";
-import bcrypt from "bcryptjs";
 import * as chrono from "chrono-node";
 import { type ClassValue, clsx } from "clsx";
 import crypto from "crypto";
@@ -251,20 +250,6 @@ export const formatDateTime = (
     ...options,
   });
 };
-
-export async function hashPassword(password: string): Promise<string> {
-  const saltRounds = 10;
-  const hashedPassword = await bcrypt.hash(password, saltRounds);
-  return hashedPassword;
-}
-
-export async function checkPassword(
-  password: string,
-  hashedPassword: string,
-): Promise<boolean> {
-  const match = await bcrypt.compare(password, hashedPassword);
-  return match;
-}
 
 export function copyToClipboard(text: string, message: string): void {
   navigator.clipboard
