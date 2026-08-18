@@ -98,8 +98,12 @@ export default async function handle(
     ip = LOCALHOST_IP;
   }
   
-  // Debug: log the extracted IP
-  console.log("[record_view] Extracted IP:", JSON.stringify(ip));
+  // Debug: log the extracted IP and EU check
+  console.log("[record_view] IP extraction result:", JSON.stringify({
+    ip,
+    isEuCountry: geo?.country && EU_COUNTRY_CODES.includes(geo.country),
+    country: geo?.country
+  }));
   
   const isEuCountry =
     geo?.country && EU_COUNTRY_CODES.includes(geo.country);
