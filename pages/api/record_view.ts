@@ -64,7 +64,7 @@ export default async function handle(
     const realIp = req.headers["x-real-ip"];
     const forwardedFor = req.headers["x-forwarded-for"];
     const vercelForwarded = req.headers["x-vercel-forwarded-for"];
-    const vercelIp = req.headers["x-vercel-ip-country"]; // this exists but is country code
+    const vercelIpCountry = req.headers["x-vercel-ip-country"];
     
     // Debug: log all IP-related headers
     console.log("[record_view] IP debug:", JSON.stringify({
@@ -75,13 +75,20 @@ export default async function handle(
       "x-real-ip-type": typeof req.headers["x-real-ip"],
       "x-forwarded-for-type": typeof req.headers["x-forwarded-for"],
       "x-vercel-forwarded-for-type": typeof req.headers["x-vercel-forwarded-for"],
+      "x-real-ip-array": Array.isArray(req.headers["x-real-ip"]),
+      "x-forwarded-for-array": Array.isArray(req.headers["x-forwarded-for"]),
+      "x-vercel-forwarded-for-array": Array.isArray(req.headers["x-vercel-forwarded-for"]),
       allHeaders: Object.keys(req.headers).filter(k => k.includes("ip") || k.includes("forward") || k.includes("real") || k.includes("vercel"))
     }));
     
+    // Handle headers that may be arrays (multiple values)
+    const getFirst = (v: string | string[] | undefined): string | undefined => 
+      Array.isArray(v) ? v[0] : v;
+    
     ip = 
-      (req.headers["x-real-ip"] as string) ||
-      (req.headers["x-forwarded-for"] as string)?.split(",")[0]?.trim() ||
-      (req.headers["x-vercel-forwarded-for"] as string)?.split(",")[0]?.trim();
+      getFirst(req.headers["x-real-ip"]) ||
+      getFirst(req.headers["x-forwarded-for"])?.split(",")[0]?.trim() ||
+      getFirst(req.headers["x-vercel-forwarded-for"] as string | string[] | undefined)?.split(",")[0]?.trim();
   } else {
     ip = LOCALHOST_IP;
   }
