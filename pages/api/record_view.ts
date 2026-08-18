@@ -71,7 +71,7 @@ export default async function handle(
       "x-real-ip": req.headers["x-real-ip"],
       "x-forwarded-for": req.headers["x-forwarded-for"],
       "x-vercel-forwarded-for": req.headers["x-vercel-forwarded-for"],
-      "x-forwarded-for-split": req.headers["x-forwarded-for"]?.split(",")[0]?.trim(),
+      "x-forwarded-for-split": req.headers["x-forwarded-for"] ? (Array.isArray(req.headers["x-forwarded-for"]) ? req.headers["x-forwarded-for"][0] : req.headers["x-forwarded-for"]).split(",")[0]?.trim() : undefined,
       "x-real-ip-type": typeof req.headers["x-real-ip"],
       "x-forwarded-for-type": typeof req.headers["x-forwarded-for"],
       "x-vercel-forwarded-for-type": typeof req.headers["x-vercel-forwarded-for"],
@@ -85,10 +85,15 @@ export default async function handle(
     const getFirst = (v: string | string[] | undefined): string | undefined => 
       Array.isArray(v) ? v[0] : v;
     
+    const tryGetIp = (v: string | string[] | undefined): string | undefined => {
+      const first = Array.isArray(v) ? v[0] : v;
+      return first?.split(",")[0]?.trim();
+    };
+    
     ip = 
       getFirst(req.headers["x-real-ip"]) ||
-      getFirst(req.headers["x-forwarded-for"])?.split(",")[0]?.trim() ||
-      getFirst(req.headers["x-vercel-forwarded-for"] as string | string[] | undefined)?.split(",")[0]?.trim();
+      tryGetIp(req.headers["x-forwarded-for"]) ||
+      tryGetIp(req.headers["x-vercel-forwarded-for"] as string | string[] | undefined);
   } else {
     ip = LOCALHOST_IP;
   }
