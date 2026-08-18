@@ -57,13 +57,14 @@ export default async function handle(
   const referer = req.headers.referer;
   const ua = userAgentFromString(req.headers["user-agent"]);
 
-  // Vercel provides x-real-ip header with raw client IP.
+  // Vercel provides x-real-ip header with raw client IP on production.
   // Try multiple headers in order of preference.
   let ip: string | undefined;
   if (process.env.VERCEL === "1") {
     const realIp = req.headers["x-real-ip"];
     const forwardedFor = req.headers["x-forwarded-for"];
     const vercelForwarded = req.headers["x-vercel-forwarded-for"];
+    const vercelIp = req.headers["x-vercel-ip-country"]; // this exists but is country code
     
     // Debug: log all IP-related headers
     console.log("[record_view] IP debug:", JSON.stringify({
@@ -71,7 +72,10 @@ export default async function handle(
       "x-forwarded-for": req.headers["x-forwarded-for"],
       "x-vercel-forwarded-for": req.headers["x-vercel-forwarded-for"],
       "x-forwarded-for-split": req.headers["x-forwarded-for"]?.split(",")[0]?.trim(),
-      allHeaders: Object.keys(req.headers).filter(k => k.includes("ip") || k.includes("forward") || k.includes("real"))
+      "x-real-ip-type": typeof req.headers["x-real-ip"],
+      "x-forwarded-for-type": typeof req.headers["x-forwarded-for"],
+      "x-vercel-forwarded-for-type": typeof req.headers["x-vercel-forwarded-for"],
+      allHeaders: Object.keys(req.headers).filter(k => k.includes("ip") || k.includes("forward") || k.includes("real") || k.includes("vercel"))
     }));
     
     ip = 
