@@ -2,11 +2,14 @@ import { NextApiRequest, NextApiResponse } from "next";
 
 import { z } from "zod";
 
+import { ipAddress } from "@vercel/functions";
+
 import { newId } from "@/lib/id-helper";
 import { publishPageView } from "@/lib/tinybird";
 import { Geo } from "@/lib/types";
 import { capitalize, getDomainWithoutWWW, log } from "@/lib/utils";
-import { LOCALHOST_GEO_DATA, getGeoData } from "@/lib/utils/geo";
+import { EU_COUNTRY_CODES } from "@/lib/constants";
+import { LOCALHOST_GEO_DATA, LOCALHOST_IP, getGeoData } from "@/lib/utils/geo";
 import { userAgentFromString } from "@/lib/utils/user-agent";
 
 const bodyValidation = z.object({
@@ -55,6 +58,13 @@ export default async function handle(
 
   const referer = req.headers.referer;
   const ua = userAgentFromString(req.headers["user-agent"]);
+
+  const ip =
+    process.env.VERCEL === "1"
+      ? ipAddress(req.headers as unknown as Headers)
+      : LOCALHOST_IP;
+  const isEuCountry =
+    geo?.country && EU_COUNTRY_CODES.includes(geo.country);
 
   const {
     linkId,
@@ -107,6 +117,10 @@ export default async function handle(
     bot: ua.isBot,
     referer: referer ? getDomainWithoutWWW(referer) : "(direct)",
     referer_url: referer || "(direct)",
+    ip_address:
+      typeof ip === "string" && ip.trim().length > 0 && !isEuCountry
+        ? ip
+        : null,
   };
 
   const result = bodyValidation.safeParse(pageViewObject);

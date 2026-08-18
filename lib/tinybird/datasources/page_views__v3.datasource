@@ -33,7 +33,8 @@ SCHEMA >
   `cpu_architecture` String `json:$.cpu_architecture`,
   `bot` UInt8 `json:$.bot`,
   `referer` String `json:$.referer`,
-  `referer_url` String `json:$.referer_url`
+  `referer_url` String `json:$.referer_url`,
+  `ip_address` Nullable(String) `json:$.ip_address`
 
 
 ENGINE "MergeTree"

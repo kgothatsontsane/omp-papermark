@@ -40,6 +40,7 @@ export const publishPageView = tb.buildIngestEndpoint({
     bot: z.boolean().optional(),
     referer: z.string().optional().default("(direct)"),
     referer_url: z.string().optional().default("(direct)"),
+    ip_address: z.string().nullable().optional(),
   }),
 });
 
