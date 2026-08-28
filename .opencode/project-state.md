@@ -4,7 +4,23 @@ Living document. Updated at the end of every task when anything changes.
 Source of truth for what is deployed, decided, verified. Missing/stale → rebuild
 from git log + AGENTS.md.
 
-Last updated: 2026-08-15
+Last updated: 2026-08-19
+
+## IP capture FIXED (2026-08-19) — main bfb6693bd
+
+- **Root cause**: `pages/api/record_view.ts` — the `bodyValidation` zod schema did NOT include
+  `ip_address`. `bodyValidation.safeParse(pageViewObject)` (line ~168) strips unknown keys
+  (zod default), so `result.data` dropped `ip_address` before `publishPageView()` → Tinybird
+  stored null. IP extraction (x-real-ip/x-forwarded-for/x-vercel-forwarded-for) was always fine.
+- **Fix**: added `ip_address: z.string().nullable().optional()` to `bodyValidation`; removed debug
+  console.logs in record_view.ts.
+- **Verified**: POST /api/record_view → latest `page_views__v3` row has `ip_address: "197.184.82.29"`
+  (country ZA, city Johannesburg). Earlier rows still null (pre-fix).
+- **Cleanup**: deleted debug endpoints `pages/api/debug-headers.ts`, `pages/api/debug-ip.ts`,
+  `pages/api/test-ip.ts` (commit 63cd71b6d). `test-record-view.ts` never committed (created/discarded).
+- Deploy `dpl_Ckx4QKUeYvW793erwjrczbroRN2B` READY, domain re-aliased dealroom.open-mic.co.za.
+- Note: `package-lock.json` has unrelated unstaged change (react-email optional win32 binary from
+  an earlier npm install) — left unstaged, not committed.
 
 ## Machine tooling: Watch Skill (personal, not app) — 2026-08-15
 

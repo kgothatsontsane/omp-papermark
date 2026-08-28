@@ -99,14 +99,14 @@ export const convertPdfToImageRoute = task({
     updateStatus({ progress: 20, text: "Converting document..." });
 
     // 4. iterate through pages and upload to blob in a task
+    // ponytail: continue past a single-page failure so a transient error never
+    // bricks the whole document. Set hasPages only if >=1 page converted
+    // (graceful degradation); throw if zero succeeded so trigger.dev retries
+    // (retries.default.maxAttempts=3 in trigger.config.ts) and the failure is
+    // visible instead of silently stuck with hasPages=false.
     let currentPage = 0;
-    let conversionWithoutError = true;
+    let successCount = 0;
     for (var i = 0; i < numPages; ++i) {
-      if (!conversionWithoutError) {
-        break;
-      }
-
-      // increment currentPage
       currentPage = i + 1;
       logger.info(`Converting page ${currentPage}`, {
         currentPage,
@@ -144,28 +144,40 @@ export const convertPdfToImageRoute = task({
           documentPageId,
           payload,
         });
+        successCount++;
       } catch (error: unknown) {
-        conversionWithoutError = false;
         if (error instanceof Error) {
           logger.error("Failed to convert page", {
             error: error.message,
+            page: currentPage,
           });
         }
       }
 
       updateStatus({
         progress: (currentPage / numPages) * 100,
-        text: `${currentPage} / ${numPages} pages processed`,
+        text: `${successCount} / ${numPages} pages processed`,
       });
     }
 
-    if (!conversionWithoutError) {
-      logger.error("Failed to process pages", { payload });
+    if (successCount === 0) {
+      logger.error("Failed to process any pages", { payload });
       updateStatus({
-        progress: (currentPage / numPages) * 100,
-        text: `Error processing page ${currentPage} of ${numPages}`,
+        progress: 0,
+        text: `Error: could not convert any of ${numPages} pages`,
       });
-      return;
+      throw new Error("Failed to convert any pages");
+    }
+
+    if (successCount < numPages) {
+      logger.warn(
+        "Some pages failed to convert; continuing with partial document",
+        { successCount, numPages, payload },
+      );
+      updateStatus({
+        progress: 80,
+        text: `Processed ${successCount}/${numPages} pages (some failed)`,
+      });
     }
 
     // 5. after all pages are uploaded, update document version to hasPages = true
