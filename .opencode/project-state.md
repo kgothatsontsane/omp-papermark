@@ -4,7 +4,7 @@ Living document. Updated at the end of every task when anything changes.
 Source of truth for what is deployed, decided, verified. Missing/stale → rebuild
 from git log + AGENTS.md.
 
-Last updated: 2026-08-19
+Last updated: 2026-08-28
 
 ## IP capture FIXED (2026-08-19) — main bfb6693bd
 
@@ -87,9 +87,36 @@ Last updated: 2026-08-19
   (`NEXT_PRIVATE_CONVERSION_BASE_URL` + `NEXT_PRIVATE_INTERNAL_AUTH_TOKEN`), which is
   configured NOWHERE (not .env, not Vercel, not worker). PDF uploads work; docs/slides
   conversion will fail until a Gotenberg instance is provisioned and those vars set.
-  `REVALIDATE_TOKEN` also missing everywhere (non-blocking revalidate step).
+   `REVALIDATE_TOKEN` also missing everywhere (non-blocking revalidate step).
 
-- Changes in `7a905c71`: F7 (self-host-aware view limits), F9 (whitelabel demo assets:
+## Conversion stuck in dataroom (2026-08-28) — ROOT CAUSE + PERMANENT FIX
+
+- SYMPTOM: dataroom uploads cycled "preparing preview / converting document / optimising
+  for viewing" then errored; docs stuck `hasPages=false`.
+- INVESTIGATION: direct prod call to `/api/mupdf/convert-page` WORKED (mupdf + R2 put fine),
+  so the API path was healthy. Root cause was the **trigger.dev worker**:
+  1. At ~18:25 a deploy/version-registration blip left the conversion run
+     `run_06g4j7m1etjsolqf33e8s97b01` in `PENDING_VERSION` (never executes → doc stuck forever).
+     Worker itself was healthy (other runs completed at version 20260818.21).
+  2. LATENT CODE BUG in `lib/trigger/pdf-to-image-route.ts`: on the first page error the
+     task did `return` (not throw) → run marked COMPLETED but `hasPages` stayed false.
+     Silent permanent failure; trigger.dev global retry (3x) never fired because the run
+     "succeeded".
+- PERMANENT FIX (commit `a1501f44f`, deployed as trigger.dev `20260828.3`, 12 tasks):
+  - `convertPdfToImageRoute` now continues past a single-page failure (graceful partial
+    success) and only THROWS if ZERO pages converted → global retry + visible failure.
+  - `trigger.config.ts` already sets `retries.default.maxAttempts: 3` (applies to all tasks).
+- RESOLUTION (manual, pre-fix): re-triggered conversions for the 3 stuck docs via trigger.dev
+  API. PDFs (`cmtd9fypa`, `cmtd75ovq`) fixed via `convert-pdf-to-image-route`; the `.docx`
+  (`cmtd70bel`, type `docs`) fixed via `convert-files-to-pdf` (LibreOffice docx→pdf, which
+  then triggers the image route). All three now `hasPages=true`; no other stuck docs in 7d.
+- CORRECTION (stale note above): docx/slides conversion does NOT use Gotenberg. `convert-files.ts`
+  converts locally with **LibreOffice** installed in the worker image via `aptGet` in
+  `trigger.config.ts` (`build.extensions`). It WORKED this session (doc3 → 10 pages). The
+  `NEXT_PRIVATE_CONVERSION_BASE_URL` / `NEXT_PRIVATE_INTERNAL_AUTH_TOKEN` vars are unused by
+  this path.
+
+ - Changes in `7a905c71`: F7 (self-host-aware view limits), F9 (whitelabel demo assets:
   local `dataroom-demo.mp4` + `favicon.jpeg`, author-CDN refs removed), MCP-verification
   made mandatory in loop.
 
