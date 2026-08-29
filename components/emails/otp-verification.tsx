@@ -15,6 +15,7 @@ import {
 } from "@react-email/components";
 
 import { BRAND_NAME } from "@/lib/branding";
+import EmailLogo from "@/components/emails/email-logo";
 
 export default function OtpEmailVerification({
   email = "test@example.co",
@@ -45,7 +46,7 @@ export default function OtpEmailVerification({
                 />
               ) : (
                 <Text className="text-2xl font-normal">
-                  <span className="font-bold tracking-tighter">{BRAND_NAME}</span>
+                  <EmailLogo />
                 </Text>
               )}
             </div>

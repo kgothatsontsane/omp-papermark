@@ -14,6 +14,7 @@ import {
 } from "@react-email/components";
 
 import { BRAND_NAME } from "@/lib/branding";
+import EmailLogo from "@/components/emails/email-logo";
 
 export default function DomainDeleted({
   domain = "dealroom.open-mic.co.za",
@@ -28,7 +29,7 @@ export default function DomainDeleted({
         <Body className="mx-auto my-auto bg-white font-sans">
           <Container className="mx-auto my-10 w-[465px] p-5">
             <Text className="mx-0 mb-8 mt-4 p-0 text-center text-2xl font-normal">
-              <span className="font-bold tracking-tighter">{BRAND_NAME}</span>
+              <EmailLogo />
             </Text>
             <Text className="font-seminbold mx-0 mb-8 mt-4 p-0 text-center text-xl">
               Domain Deleted

@@ -18,6 +18,7 @@ import {
 
 import { BRAND_NAME } from "@/lib/branding";
 import { UploadIcon } from "lucide-react";
+import EmailLogo from "@/components/emails/email-logo";
 
 interface PapermarkYearInReviewEmailProps {
   year: number;
@@ -57,7 +58,7 @@ export default function PapermarkYearInReviewEmail({
           <Container className="mx-auto w-full max-w-[600px] p-0">
             <Section className="p-8 text-center">
               <Text className="mx-0 mb-8 mt-4 p-0 text-center text-2xl font-normal">
-                <span className="font-bold tracking-tighter">{BRAND_NAME}</span>
+                <EmailLogo />
               </Text>
               <Text className="text-sm font-normal uppercase tracking-wider">
                 {year} in review

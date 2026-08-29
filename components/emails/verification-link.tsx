@@ -14,6 +14,7 @@ import {
 } from "@react-email/components";
 
 import { BRAND_NAME } from "@/lib/branding";
+import EmailLogo from "@/components/emails/email-logo";
 
 const VerificationLinkEmail = ({
   url = "https://dealroom.open-mic.co.za",
@@ -28,7 +29,7 @@ const VerificationLinkEmail = ({
         <Body className="mx-auto my-auto bg-white font-sans">
           <Container className="mx-auto my-10 max-w-[500px] rounded border border-solid border-gray-200 px-10 py-5">
             <Text className="mx-0 mb-8 mt-4 p-0 text-center text-2xl font-normal">
-              <span className="font-bold tracking-tighter">{BRAND_NAME}</span>
+              <EmailLogo />
             </Text>
             <Text className="mx-0 my-7 p-0 text-center text-xl font-semibold text-black">
               Your {BRAND_NAME} Login Link
