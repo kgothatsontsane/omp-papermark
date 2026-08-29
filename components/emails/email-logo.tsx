@@ -5,8 +5,8 @@ import { APP_URL, BRAND_LOGO_PNG, BRAND_NAME } from "@/lib/branding";
 export const EMAIL_LOGO_URL = `${APP_URL}${BRAND_LOGO_PNG}`;
 
 export default function EmailLogo({
-  width = 120,
-  height = 42,
+  width = 160,
+  height = 56,
   className = "mx-auto",
 }: {
   width?: number;
