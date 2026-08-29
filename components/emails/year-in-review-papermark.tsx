@@ -70,28 +70,7 @@ export default function PapermarkYearInReviewEmail({
                 What a year it&apos;s been! Let&apos;s take a look at how
                 you&apos;ve used {BRAND_NAME} to share your important documents.
               </Text>
-              <Link
-                href={`https://x.com/intent/post?text=In%202024%2C%20my%20documents%20have%20been%20viewed%20${minutesSpentOnDocs}%20minutes%20on%20%40papermarkio%2C%20by%3A%0A%0A%E2%80%A2%20Uploading%20${uploadedDocuments}%20documents%0A%E2%80%A2%20Sharing%20${sharedLinks}%20links%0A%E2%80%A2%20Receiving%20${receivedViews}%20views%0A%0A&url=https%3A%2F%2Fdealroom.open-mic.co.za%2Fyear-in-review`}
-                className="inline-flex items-center rounded-full bg-gray-900 px-12 py-4 text-center text-sm font-bold text-white no-underline"
-              >
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  width="24"
-                  height="24"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  className="lucide lucide-upload mr-2 h-4 w-4"
-                >
-                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                  <polyline points="17 8 12 3 7 8" />
-                  <line x1="12" x2="12" y1="3" y2="15" />
-                </svg>
-                Share your stats
-              </Link>
+
             </Section>
 
             <Section className="my-6 rounded-2xl bg-[#fb7a00]/10 bg-[radial-gradient(circle_at_bottom_right,#fb7a00_0%,transparent_60%)] p-8 text-center">
@@ -233,28 +212,7 @@ export default function PapermarkYearInReviewEmail({
                 We&apos;re excited to support you next year! <br />
                 Happy Holidays from the {BRAND_NAME} team :)
               </Text>
-              <Link
-                href={`https://x.com/intent/post?text=In%202024%2C%20my%20documents%20have%20been%20viewed%20${minutesSpentOnDocs}%20minutes%20on%20%40papermarkio%2C%20by%3A%0A%0A%E2%80%A2%20Uploading%20${uploadedDocuments}%20documents%0A%E2%80%A2%20Sharing%20${sharedLinks}%20links%0A%E2%80%A2%20Receiving%20${receivedViews}%20views%0A%0A&url=https%3A%2F%2Fdealroom.open-mic.co.za%2Fyear-in-review`}
-                className="mt-4 inline-flex items-center rounded-full bg-gray-900 px-12 py-4 text-center text-sm font-bold text-white no-underline"
-              >
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  width="24"
-                  height="24"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  className="lucide lucide-upload mr-2 h-4 w-4"
-                >
-                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                  <polyline points="17 8 12 3 7 8" />
-                  <line x1="12" x2="12" y1="3" y2="15" />
-                </svg>
-                Share your stats
-              </Link>
+
               <Link
                 href="https://dealroom.open-mic.co.za/documents"
                 className="mt-4 block items-center text-center text-sm font-bold text-gray-900 no-underline"

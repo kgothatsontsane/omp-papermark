@@ -406,7 +406,7 @@ export function constructMetadata({
       title,
       description,
       images: [image],
-      creator: "@papermarkio",
+      creator: "@openmic",
     },
     favicon,
     ...(noIndex && {

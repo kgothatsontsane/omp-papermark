@@ -73,29 +73,15 @@ const WelcomeEmail = ({ name }: WelcomeEmailProps) => {
               <Text className="text-sm">
                 <ul className="list-inside list-disc text-sm">
                   <li>
-                    Star the repo on{" "}
+                    Visit{" "}
                     <Link
-                      href="https://github.com/mfts/papermark"
+                      href="https://dealroom.open-mic.co.za"
                       target="_blank"
                     >
-                      GitHub
+                      Open Mic Productions
                     </Link>
                   </li>
-                  <li>
-                    Follow the journey on{" "}
-                    <Link href="https://x.com/papermarkio" target="_blank">
-                      Twitter
-                    </Link>
-                  </li>
-                  <li>
-                    Have a call to talk enterprise{" "}
-                    <Link
-                      href="https://cal.com/marcseitz/papermark"
-                      target="_blank"
-                    >
-                      Book
-                    </Link>
-                  </li>
+
                 </ul>
               </Text>
             </Section>

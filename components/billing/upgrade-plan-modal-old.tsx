@@ -286,13 +286,9 @@ export function UpgradePlanModal({
                 </button>
               </DataroomTrialModal>
             ) : (
-              <a
-                href="https://cal.com/marcseitz/papermark"
-                target="_blank"
-                className="underline-offset-4 transition-all hover:text-gray-800 hover:underline hover:dark:text-muted-foreground/80"
-              >
+              <span className="underline-offset-4 transition-all hover:text-gray-800 hover:dark:text-muted-foreground/80">
                 Looking for {BRAND_NAME} Enterprise?
-              </a>
+              </span>
             )}
           </div>
         </div>

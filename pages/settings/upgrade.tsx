@@ -268,13 +268,9 @@ export default function UpgradePage() {
           All plans include unlimited viewers and page by page document
           analytics.
         </a>
-        <a
-          href="https://cal.com/marcseitz/papermark"
-          target="_blank"
-          className="text-sm text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
-        >
+        <span className="text-sm text-muted-foreground underline-offset-4 hover:text-foreground hover:underline">
           Looking for {BRAND_NAME} Enterprise?
-        </a>
+        </span>
       </div>
     </div>
   );

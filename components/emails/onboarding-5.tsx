@@ -71,12 +71,7 @@ const Onboarding3Email = () => {
             <Text className="text-sm">
               If you want to self-host {BRAND_NAME}, and build fully customizable
               experience{" "}
-              <a
-                href="https://cal.com/marcseitz/papermark"
-                className="text-blue-500 underline"
-              >
-                book a call
-              </a>{" "}
+              book a call{" "}
               with us.
             </Text>
             <Hr />

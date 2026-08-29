@@ -65,12 +65,7 @@ const Onboarding4Email = () => {
             </Section>
             <Text className="text-sm">
               If you are looking for full white-labelling just{" "}
-              <a
-                href="https://cal.com/marcseitz/papermark"
-                className="text-blue-500 underline"
-              >
-                book a call
-              </a>{" "}
+              book a call{" "}
               with us.
             </Text>
             <Hr />

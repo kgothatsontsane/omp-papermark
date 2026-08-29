@@ -228,7 +228,7 @@ export default function Nav({
                 />
               ) : (
                 <Link
-                  href={`https://dealroom.open-mic.co.za/home?utm_campaign=navbar&utm_medium=navbar&utm_source=papermark-${linkId}`}
+                  href={`https://dealroom.open-mic.co.za/home?utm_campaign=navbar&utm_medium=navbar&utm_source=openmic-${linkId}`}
                   target="_blank"
                   className="text-2xl font-bold tracking-tighter text-white"
                 >

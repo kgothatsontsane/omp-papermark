@@ -82,7 +82,7 @@ const UpgradePlanEmail = ({
             <Text className="text-sm leading-6 text-black">
               As you might already know, we are a bootstrapped and{" "}
               <Link
-                href="https://github.com/mfts/papermark"
+                href="https://dealroom.open-mic.co.za"
                 target="_blank"
                 className="font-medium text-emerald-500 no-underline"
               >

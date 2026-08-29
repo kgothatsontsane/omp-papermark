@@ -73,7 +73,7 @@ export default function ViewPage() {
         <div className="relative mx-auto flex h-full w-full justify-center">
           <img
             className="mx-auto block object-contain"
-            src={"/_example/papermark-example-page.png"}
+            src={"/_example/open-mic-example-page.png"}
             alt={`Demo Page 1`}
           />
         </div>
