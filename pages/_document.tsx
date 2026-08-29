@@ -4,12 +4,25 @@ export default function Document() {
   return (
     <Html lang="en" className="bg-background" suppressHydrationWarning>
       <Head>
-        {/* ponytail: McMaster-style perf — prefetch linked HTML on hover + preconnect analytics */}
+        {/* ponytail: McMaster-Carr-style perf — prefetch linked HTML on hover (Speculation Rules API) + preconnect asset/analytics origins */}
         <link
           rel="preconnect"
           href="https://api.eu-west-1.aws.tinybird.co"
           crossOrigin="anonymous"
         />
+        {process.env.NEXT_PRIVATE_UPLOAD_DISTRIBUTION_HOST ? (
+          <>
+            <link
+              rel="preconnect"
+              href={`https://${process.env.NEXT_PRIVATE_UPLOAD_DISTRIBUTION_HOST}`}
+              crossOrigin="anonymous"
+            />
+            <link
+              rel="dns-prefetch"
+              href={`https://${process.env.NEXT_PRIVATE_UPLOAD_DISTRIBUTION_HOST}`}
+            />
+          </>
+        ) : null}
         <script
           type="speculationrules"
           dangerouslySetInnerHTML={{
@@ -17,7 +30,7 @@ export default function Document() {
               prefetch: [
                 {
                   source: "document",
-                  where: { selector: { hover: "a" } },
+                  where: { selector: { href_matches: "/*" } },
                   eagerness: "conservative",
                 },
               ],
