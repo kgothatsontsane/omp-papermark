@@ -44,19 +44,23 @@ export const sendEmail = async ({
 
   const plainText = await render(react, { plainText: true });
 
+  const envFromEmail = (() => {
+    const v = process.env.RESEND_FROM_EMAIL;
+    if (!v) return null;
+    const m = v.match(/<([^>]+)>/) ?? v.match(/[\w.+-]+@[\w-]+\.[\w.-]+/);
+    return m ? (m[1] ?? m[0]) : v;
+  })();
+
+  const defaultEmail = marketing || scheduledAt
+    ? "marc@open-mic.co.za"
+    : system
+      ? "system@open-mic.co.za"
+      : verify
+        ? "noreply@open-mic.co.za"
+        : "marc@open-mic.co.za";
+
   const fromAddress =
-    from ??
-    (marketing
-      ? `${BRAND_NAME} <marc@open-mic.co.za>`
-      : system
-        ? `${BRAND_NAME} <system@open-mic.co.za>`
-        : verify
-            ? process.env.RESEND_FROM_EMAIL ||
-            `${BRAND_NAME} <noreply@open-mic.co.za>`
-          : !!scheduledAt
-            ? `${BRAND_NAME} <marc@open-mic.co.za>`
-            : process.env.RESEND_FROM_EMAIL ||
-              `${BRAND_NAME} <marc@open-mic.co.za>`);
+    from ?? `${BRAND_NAME} <${envFromEmail ?? defaultEmail}>`;
 
   try {
     const { data, error } = await resend.emails.send({
