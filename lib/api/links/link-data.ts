@@ -337,6 +337,101 @@ export async function fetchDataroomDocumentLinkData({
   return { linkData, brand };
 }
 
+// Shared by the dataroom-document API route and getStaticProps — reads the
+// single document in-process instead of an internal HTTP call.
+export async function getDataroomDocumentLinkViewData({
+  id,
+  documentId: dataroomDocumentId,
+  email,
+}: {
+  id: string;
+  documentId: string;
+  email?: string;
+}): Promise<LinkViewDataResult> {
+  const link = await prisma.link.findUnique({
+    where: { id, linkType: "DATAROOM_LINK" },
+    select: {
+      id: true,
+      expiresAt: true,
+      emailProtected: true,
+      emailAuthenticated: true,
+      allowDownload: true,
+      enableFeedback: true,
+      enableScreenshotProtection: true,
+      password: true,
+      isArchived: true,
+      enableIndexFile: true,
+      enableCustomMetatag: true,
+      metaTitle: true,
+      metaDescription: true,
+      metaImage: true,
+      metaFavicon: true,
+      enableQuestion: true,
+      linkType: true,
+      feedback: { select: { id: true, data: true } },
+      enableAgreement: true,
+      agreement: true,
+      showBanner: true,
+      enableWatermark: true,
+      watermarkConfig: true,
+      groupId: true,
+      permissionGroupId: true,
+      audienceType: true,
+      dataroomId: true,
+      teamId: true,
+      team: { select: { plan: true, globalBlockList: true } },
+      customFields: {
+        select: {
+          id: true,
+          type: true,
+          identifier: true,
+          label: true,
+          placeholder: true,
+          required: true,
+          disabled: true,
+          orderIndex: true,
+        },
+        orderBy: { orderIndex: "asc" },
+      },
+    },
+  });
+
+  if (!link) return { notFound: true };
+  if (link.isArchived) return { notFound: true };
+
+  const globalBlockCheck = checkGlobalBlockList(
+    email,
+    link.team?.globalBlockList,
+  );
+  if (globalBlockCheck.error)
+    return { error: globalBlockCheck.error, status: 400 };
+  if (globalBlockCheck.isBlocked)
+    return { error: "Access denied", status: 403 };
+
+  const data = await fetchDataroomDocumentLinkData({
+    linkId: id,
+    teamId: link.teamId!,
+    dataroomDocumentId,
+    permissionGroupId: link.permissionGroupId || undefined,
+    ...(link.audienceType === LinkAudienceType.GROUP &&
+      link.groupId && { groupId: link.groupId }),
+  });
+
+  const teamPlan = link.team?.plan || "free";
+  const brand = data.brand;
+  const returnLink = {
+    ...link,
+    dataroomDocument: data.linkData.dataroom?.documents[0],
+    ...(teamPlan === "free" && {
+      enableAgreement: false,
+      enableWatermark: false,
+      permissionGroupId: null,
+    }),
+  };
+
+  return { linkType: link.linkType, link: returnLink, brand };
+}
+
 export async function fetchDocumentLinkData({
   linkId,
   teamId,

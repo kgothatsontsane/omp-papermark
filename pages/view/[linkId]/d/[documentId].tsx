@@ -11,6 +11,7 @@ import { ExtendedRecordMap } from "notion-types";
 import { parsePageId } from "notion-utils";
 import z from "zod";
 
+import { getDataroomDocumentLinkViewData } from "@/lib/api/links/link-data";
 import notion from "@/lib/notion";
 import { addSignedUrls } from "@/lib/notion/utils";
 import { CustomUser, LinkWithDataroomDocument, NotionTheme } from "@/lib/types";
@@ -187,11 +188,17 @@ export async function getStaticProps(context: GetStaticPropsContext) {
   try {
     const linkId = z.string().cuid().parse(linkIdParam);
     const documentId = z.string().cuid().parse(documentIdParam);
-    const res = await fetch(
-      `${process.env.NEXTAUTH_URL}/api/links/${linkId}/documents/${documentId}`,
-    );
-    const { linkType, link, brand } =
-      (await res.json()) as DataroomDocumentLinkData;
+    const result = await getDataroomDocumentLinkViewData({
+      id: linkId,
+      documentId: documentId,
+      email: undefined,
+    });
+
+    if (!("linkType" in result)) {
+      return { notFound: true };
+    }
+
+    const { linkType, link, brand } = result;
 
     if (!link || !linkType) {
       return { notFound: true };
