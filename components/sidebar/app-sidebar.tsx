@@ -176,8 +176,15 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       {...props}
     >
       <SidebarHeader className="gap-y-8">
-        <p className="hidden w-full justify-center text-2xl font-bold tracking-tighter text-black group-data-[collapsible=icon]:inline-flex dark:text-white">
-          <Link href="/dashboard">P</Link>
+        <p className="hidden w-full justify-center group-data-[collapsible=icon]:inline-flex">
+          <Link href="/dashboard" aria-label={BRAND_NAME}>
+            {/* ponytail: replaced Papermark "P" mark with the Open Mic favicon */}
+            <img
+              src="/favicon.ico"
+              alt={BRAND_NAME}
+              className="h-6 w-6"
+            />
+          </Link>
         </p>
         <p className="ml-2 flex items-center text-2xl font-bold tracking-tighter text-black group-data-[collapsible=icon]:hidden dark:text-white">
           <Link href="/dashboard">{BRAND_NAME}</Link>

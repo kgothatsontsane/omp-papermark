@@ -53,6 +53,31 @@ export default function RootLayout({
           domain="dealroom.open-mic.co.za"
           enabled={process.env.NEXT_PUBLIC_VERCEL_ENV === "production"}
         />
+        {/* ponytail: McMaster-style perf — prefetch linked HTML on hover + preconnect analytics */}
+        <link
+          rel="preconnect"
+          href="https://api.eu-west-1.aws.tinybird.co"
+          crossOrigin="anonymous"
+        />
+        <link
+          rel="preconnect"
+          href="https://plausible.io"
+          crossOrigin="anonymous"
+        />
+        <script
+          type="speculationrules"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify({
+              prefetch: [
+                {
+                  source: "document",
+                  where: { selector: { hover: "a" } },
+                  eagerness: "conservative",
+                },
+              ],
+            }),
+          }}
+        />
       </head>
       <body className={inter.className}>{children}</body>
     </html>
