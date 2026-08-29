@@ -119,6 +119,15 @@ Last updated: 2026-08-28
   PNG-embedded ICO generated via node — sharp in this build only emits PNG, not ICO).
   No link change needed (`pages/_app.tsx` already references `/favicon.ico`; App Router
   auto-serves `public/favicon.ico` too).
+- AVATAR UPLOAD 500 (2026-08-29): `components/account/upload-avatar.tsx` → `uploadImage`
+  (`lib/utils.ts`) → `PATCH /api/account`. ROOT CAUSE: `uploadImage` returned a RELATIVE url
+  (`/api/file/s3/branding/...`) but `pages/api/account/index.ts` validates `image` with
+  `z.string().url()` (absolute only). The `parseAsync` throw is OUTSIDE the try/catch →
+  unhandled 500 on every avatar save. FIX (commit after this): `uploadImage` now returns an
+  absolute url via `NEXT_PUBLIC_BASE_URL` (fallback `window.location.origin`). This also
+  corrects OG/meta image urls for all other `uploadImage` callers (branding, link thumbnails,
+  favicons). NOTE: `parseAsync` in `/api/account` is still outside try/catch — a non-url image
+  value would still 500 instead of 400; left as-is to keep the fix minimal.
 
  - Changes in `7a905c71`: F7 (self-host-aware view limits), F9 (whitelabel demo assets:
   local `dataroom-demo.mp4` + `favicon.jpeg`, author-CDN refs removed), MCP-verification

@@ -546,7 +546,10 @@ export const uploadImage = async (
     throw new Error("Failed to upload image");
   }
 
-  return `/api/file/s3/branding/${key
+  const baseUrl =
+    process.env.NEXT_PUBLIC_BASE_URL ||
+    (typeof window !== "undefined" ? window.location.origin : "");
+  return `${baseUrl}/api/file/s3/branding/${key
     .split("/")
     .map(encodeURIComponent)
     .join("/")}`;
