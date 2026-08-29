@@ -1,19 +1,15 @@
 import { NextApiRequest, NextApiResponse } from "next";
 
-import { Brand, DataroomBrand, LinkAudienceType } from "@prisma/client";
+import { LinkAudienceType } from "@prisma/client";
 import { getServerSession } from "next-auth/next";
 
-import {
-  fetchDataroomLinkData,
-  fetchDocumentLinkData,
-} from "@/lib/api/links/link-data";
+import { getLinkViewData } from "@/lib/api/links/link-data";
 import prisma from "@/lib/prisma";
 import { CustomUser } from "@/lib/types";
 import {
   decryptEncrpytedPassword,
   generateEncrpytedPassword,
 } from "@/lib/utils";
-import { checkGlobalBlockList } from "@/lib/utils/global-block-list";
 
 import { DomainObject } from "..";
 import { authOptions } from "../../auth/[...nextauth]";
@@ -27,138 +23,23 @@ export default async function handle(
     const { id } = req.query as { id: string };
 
     try {
-      console.time("get-link");
-      const link = await prisma.link.findUnique({
-        where: {
-          id: id,
-        },
-        select: {
-          id: true,
-          expiresAt: true,
-          emailProtected: true,
-          emailAuthenticated: true,
-          allowDownload: true,
-          enableFeedback: true,
-          enableScreenshotProtection: true,
-          password: true,
-          isArchived: true,
-          enableIndexFile: true,
-          enableCustomMetatag: true,
-          metaTitle: true,
-          metaDescription: true,
-          metaImage: true,
-          metaFavicon: true,
-          enableQuestion: true,
-          linkType: true,
-          feedback: {
-            select: {
-              id: true,
-              data: true,
-            },
-          },
-          enableAgreement: true,
-          agreement: true,
-          showBanner: true,
-          enableWatermark: true,
-          watermarkConfig: true,
-          groupId: true,
-          permissionGroupId: true,
-          audienceType: true,
-          dataroomId: true,
-          teamId: true,
-          team: {
-            select: {
-              plan: true,
-              globalBlockList: true,
-            },
-          },
-          customFields: {
-            select: {
-              id: true,
-              type: true,
-              identifier: true,
-              label: true,
-              placeholder: true,
-              required: true,
-              disabled: true,
-              orderIndex: true,
-            },
-            orderBy: {
-              orderIndex: "asc",
-            },
-          },
-        },
-      });
+      const { email } = req.query as { email?: string };
 
-      console.timeEnd("get-link");
+      const result = await getLinkViewData({ id, email });
 
-      if (!link) {
+      if ("notFound" in result) {
         return res.status(404).json({ error: "Link not found" });
       }
 
-      if (link.isArchived) {
-        return res.status(404).json({ error: "Link is archived" });
+      if ("error" in result) {
+        return res.status(result.status).json({ message: result.error });
       }
 
-      const { email } = req.query as { email?: string };
-      const globalBlockCheck = checkGlobalBlockList(
-        email,
-        link.team?.globalBlockList,
-      );
-      if (globalBlockCheck.error) {
-        return res.status(400).json({ message: globalBlockCheck.error });
-      }
-      if (globalBlockCheck.isBlocked) {
-        return res.status(403).json({ message: "Access denied" });
-      }
-
-      const linkType = link.linkType;
-
-      let brand: Partial<Brand> | Partial<DataroomBrand> | null = null;
-      let linkData: any;
-
-      if (linkType === "DOCUMENT_LINK") {
-        console.time("get-document-link-data");
-        const data = await fetchDocumentLinkData({
-          linkId: id,
-          teamId: link.teamId!,
-        });
-        linkData = data.linkData;
-        brand = data.brand;
-        console.timeEnd("get-document-link-data");
-      } else if (linkType === "DATAROOM_LINK") {
-        console.time("get-dataroom-link-data");
-        const data = await fetchDataroomLinkData({
-          linkId: id,
-          dataroomId: link.dataroomId,
-          teamId: link.teamId!,
-          permissionGroupId: link.permissionGroupId || undefined,
-          ...(link.audienceType === LinkAudienceType.GROUP &&
-            link.groupId && {
-              groupId: link.groupId,
-            }),
-        });
-        linkData = data.linkData;
-        brand = data.brand;
-        // Include access controls in the link data for the frontend
-        linkData.accessControls = data.accessControls;
-        console.timeEnd("get-dataroom-link-data");
-      }
-
-      const teamPlan = link.team?.plan || "free";
-
-      const returnLink = {
-        ...link,
-        ...linkData,
-        dataroomId: undefined,
-        ...(teamPlan === "free" && {
-          enableAgreement: false,
-          enableWatermark: false,
-          permissionGroupId: null,
-        }),
-      };
-
-      return res.status(200).json({ linkType, link: returnLink, brand });
+      return res.status(200).json({
+        linkType: result.linkType,
+        link: result.link,
+        brand: result.brand,
+      });
     } catch (error) {
       console.error("Error fetching link data:", error);
       return res.status(500).json({

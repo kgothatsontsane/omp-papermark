@@ -1,11 +1,13 @@
 import {
   ItemType,
+  LinkAudienceType,
   PermissionGroupAccessControls,
   ViewerGroupAccessControls,
 } from "@prisma/client";
 
 import prisma from "@/lib/prisma";
 import { sortItemsByIndexAndName } from "@/lib/utils/sort-items-by-index-name";
+import { checkGlobalBlockList } from "@/lib/utils/global-block-list";
 
 // Helper function to get all parent folder IDs for given folder IDs
 async function getAllParentFolderIds(
@@ -390,4 +392,118 @@ export async function fetchDocumentLinkData({
   });
 
   return { linkData, brand };
+}
+
+// Shared by the /api/links/:id route and getStaticProps so the public view
+// pages read data in-process instead of making an internal HTTP round-trip
+// (which adds a second serverless cold-start + network hop on every render).
+export type LinkViewDataResult =
+  | { linkType: string; link: any; brand: any }
+  | { notFound: true }
+  | { error: string; status: number };
+
+export async function getLinkViewData({
+  id,
+  email,
+}: {
+  id: string;
+  email?: string;
+}): Promise<LinkViewDataResult> {
+  const link = await prisma.link.findUnique({
+    where: { id },
+    select: {
+      id: true,
+      expiresAt: true,
+      emailProtected: true,
+      emailAuthenticated: true,
+      allowDownload: true,
+      enableFeedback: true,
+      enableScreenshotProtection: true,
+      password: true,
+      isArchived: true,
+      enableIndexFile: true,
+      enableCustomMetatag: true,
+      metaTitle: true,
+      metaDescription: true,
+      metaImage: true,
+      metaFavicon: true,
+      enableQuestion: true,
+      linkType: true,
+      feedback: { select: { id: true, data: true } },
+      enableAgreement: true,
+      agreement: true,
+      showBanner: true,
+      enableWatermark: true,
+      watermarkConfig: true,
+      groupId: true,
+      permissionGroupId: true,
+      audienceType: true,
+      dataroomId: true,
+      teamId: true,
+      team: { select: { plan: true, globalBlockList: true } },
+      customFields: {
+        select: {
+          id: true,
+          type: true,
+          identifier: true,
+          label: true,
+          placeholder: true,
+          required: true,
+          disabled: true,
+          orderIndex: true,
+        },
+        orderBy: { orderIndex: "asc" },
+      },
+    },
+  });
+
+  if (!link) return { notFound: true };
+  if (link.isArchived) return { notFound: true };
+
+  const globalBlockCheck = checkGlobalBlockList(
+    email,
+    link.team?.globalBlockList,
+  );
+  if (globalBlockCheck.error)
+    return { error: globalBlockCheck.error, status: 400 };
+  if (globalBlockCheck.isBlocked) return { error: "Access denied", status: 403 };
+
+  const linkType = link.linkType;
+  let brand: any = null;
+  let linkData: any;
+
+  if (linkType === "DOCUMENT_LINK") {
+    const data = await fetchDocumentLinkData({
+      linkId: id,
+      teamId: link.teamId!,
+    });
+    linkData = data.linkData;
+    brand = data.brand;
+  } else if (linkType === "DATAROOM_LINK") {
+    const data = await fetchDataroomLinkData({
+      linkId: id,
+      dataroomId: link.dataroomId,
+      teamId: link.teamId!,
+      permissionGroupId: link.permissionGroupId || undefined,
+      ...(link.audienceType === LinkAudienceType.GROUP &&
+        link.groupId && { groupId: link.groupId }),
+    });
+    linkData = data.linkData;
+    brand = data.brand;
+    linkData.accessControls = data.accessControls;
+  }
+
+  const teamPlan = link.team?.plan || "free";
+  const returnLink = {
+    ...link,
+    ...linkData,
+    dataroomId: undefined,
+    ...(teamPlan === "free" && {
+      enableAgreement: false,
+      enableWatermark: false,
+      permissionGroupId: null,
+    }),
+  };
+
+  return { linkType, link: returnLink, brand };
 }

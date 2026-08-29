@@ -11,6 +11,7 @@ import { ExtendedRecordMap } from "notion-types";
 import { parsePageId } from "notion-utils";
 import z from "zod";
 
+import { getLinkViewData } from "@/lib/api/links/link-data";
 import notion from "@/lib/notion";
 import { addSignedUrls } from "@/lib/notion/utils";
 import {
@@ -64,12 +65,15 @@ export const getStaticProps = async (context: GetStaticPropsContext) => {
 
   try {
     const linkId = z.string().cuid().parse(linkIdParam);
-    const res = await fetch(`${process.env.NEXTAUTH_URL}/api/links/${linkId}`);
-    if (!res.ok) {
-      throw new Error(`Failed to fetch: ${res.status}`);
+    const result = await getLinkViewData({ id: linkId });
+
+    if (!("linkType" in result)) {
+      return {
+        notFound: true,
+      };
     }
 
-    const { linkType, link, brand } = (await res.json()) as
+    const { linkType, link, brand } = result as
       | DocumentLinkData
       | DataroomLinkData;
 
