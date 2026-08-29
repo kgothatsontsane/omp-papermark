@@ -115,6 +115,10 @@ Last updated: 2026-08-28
   `trigger.config.ts` (`build.extensions`). It WORKED this session (doc3 → 10 pages). The
   `NEXT_PRIVATE_CONVERSION_BASE_URL` / `NEXT_PRIVATE_INTERNAL_AUTH_TOKEN` vars are unused by
   this path.
+- FAVICON (2026-08-28): replaced `public/favicon.ico` with the Open Mic logo PNG (180×180,
+  PNG-embedded ICO generated via node — sharp in this build only emits PNG, not ICO).
+  No link change needed (`pages/_app.tsx` already references `/favicon.ico`; App Router
+  auto-serves `public/favicon.ico` too).
 
  - Changes in `7a905c71`: F7 (self-host-aware view limits), F9 (whitelabel demo assets:
   local `dataroom-demo.mp4` + `favicon.jpeg`, author-CDN refs removed), MCP-verification
