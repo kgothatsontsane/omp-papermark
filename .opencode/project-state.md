@@ -126,8 +126,22 @@ Last updated: 2026-08-28
   unhandled 500 on every avatar save. FIX (commit after this): `uploadImage` now returns an
   absolute url via `NEXT_PUBLIC_BASE_URL` (fallback `window.location.origin`). This also
   corrects OG/meta image urls for all other `uploadImage` callers (branding, link thumbnails,
-  favicons). NOTE: `parseAsync` in `/api/account` is still outside try/catch — a non-url image
+  favicons).   NOTE: `parseAsync` in `/api/account` is still outside try/catch — a non-url image
   value would still 500 instead of 400; left as-is to keep the fix minimal.
+- BRANDING (2026-08-29): replaced the Papermark letter-mark `P` in the admin sidebar
+  collapsed icon (`components/sidebar/app-sidebar.tsx` — was `<Link>P</Link>`) with the
+  Open Mic favicon (`/favicon.ico`). Full-mode header already shows `BRAND_NAME`
+  ("Open Mic Productions") via `lib/branding.ts`. `lib/branding.ts` already points
+  `BRAND_LOGO` at `/_static/open-mic/omp_logo_b.svg`; the wide wordmark is NOT suitable
+  for the 24px collapsed icon, so the square favicon mark was used.
+- PERF (2026-08-29): implemented McMaster/mcmaster.com speed techniques from Wes Bos
+  video (youtube.com/watch?v=-Ln-8QM8KhQ). Added to `pages/_document.tsx` AND
+  `app/layout.tsx`: (1) `<script type="speculationrules">` with `prefetch` on `a:hover`,
+  `eagerness: "conservative"` — mirrors McMaster's hover-HTML-prefetch (no JS exec, HTML
+  only, safe for an app); (2) `<link rel="preconnect">` to Tinybird analytics
+  (`api.eu-west-1.aws.tinybird.co`) and Plausible (`plausible.io`). NOT changed: inlined
+  CSS (Next bundles/inlines critical CSS in prod already) and fixed image dims (use
+  next/image). Fonts already self-hosted via next/font (no external font origin).
 
  - Changes in `7a905c71`: F7 (self-host-aware view limits), F9 (whitelabel demo assets:
   local `dataroom-demo.mp4` + `favicon.jpeg`, author-CDN refs removed), MCP-verification
