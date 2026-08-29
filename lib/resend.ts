@@ -48,7 +48,10 @@ export const sendEmail = async ({
     const v = process.env.RESEND_FROM_EMAIL;
     if (!v) return null;
     const m = v.match(/<([^>]+)>/) ?? v.match(/[\w.+-]+@[\w-]+\.[\w.-]+/);
-    return m ? (m[1] ?? m[0]) : v;
+    const email = m ? (m[1] ?? m[0]) : v;
+    // Only trust the env override if it's on the Open Mic domain; a stale
+    // papermark.io value would otherwise keep sending from the wrong domain.
+    return email?.endsWith("open-mic.co.za") ? email : null;
   })();
 
   const defaultEmail = marketing || scheduledAt
