@@ -75,6 +75,14 @@ const nextConfig = {
             value: "camera=(), microphone=(), geolocation=(), payment=()",
           },
           {
+            key: "Cross-Origin-Opener-Policy",
+            value: "same-origin",
+          },
+          {
+            key: "Cross-Origin-Resource-Policy",
+            value: "same-origin",
+          },
+          {
             key: "Report-To",
             value: JSON.stringify({
               group: "csp-endpoint",
@@ -94,6 +102,20 @@ const nextConfig = {
               `connect-src 'self' https: ${isDev ? "http: ws: wss:" : ""}; ` + // Add WebSocket for hot reload
               `${isDev ? "" : "upgrade-insecure-requests;"} ` +
               "report-to csp-endpoint;",
+          },
+          {
+            key: "Content-Security-Policy",
+            value:
+              `default-src 'self'; ` +
+              `script-src 'self' 'unsafe-inline' https:; ` +
+              `style-src 'self' 'unsafe-inline' https:; ` +
+              `img-src 'self' data: blob: https:; ` +
+              `font-src 'self' data: https:; ` +
+              `frame-ancestors 'none'; ` +
+              `connect-src 'self' https:; ` +
+              `object-src 'none'; ` +
+              `base-uri 'self'; ` +
+              `${isDev ? "" : "upgrade-insecure-requests;"}`,
           },
         ],
       },

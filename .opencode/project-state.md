@@ -326,19 +326,57 @@ Files in `lib/tinybird/endpoints/`.
 
 ## Current work
 
-- Whitelabeling/rebranding: email sender normalized, BIMI SVG fixed, favicon rounded. All deployed.
-- Email avatar: wide-net free setup done (Gravatar + Google Account + BIMI).
-- Production URL `dealroom.open-mic.co.za` aliased to `omp-papermark-5k8fcebc1-open-mic-productions.vercel.app` (Ready).
+- All whitelabeling, performance, security, and stability work complete and deployed to production.
+- Production URL: https://dealroom.open-mic.co.za
+- Branch protection active on `main` and `staging`.
 
 ## Open threads / TODOs
 
-- **Email avatar (wide-net, free)** — DONE:
-  - Gravatar: custom logo confirmed for `dealroom@open-mic.co.za` (256 unique colors)
-  - Google Account: profile picture set up (user confirmed)
-  - BIMI: self-asserted, works for Yahoo/Fastmail/AOL/Zoho
-  - Coverage: Gmail (Google Account), Yahoo/Fastmail/AOL/Zoho (BIMI), Thunderbird/Airmail/Postbox (Gravatar)
-- **Dataroom loading performance** — DONE (commit 8794ffe72): preload hints, next/image priority, parallel fetches.
-- **Papermark remnants**: `PapermarkSparkle`, `year-in-review-papermark.tsx`, localStorage/redis keys, `X-Papermark-Signature` header, `papermark.dev` middleware, "cannot contain papermark" guards, EE `schedule-call-modal.tsx` Cal.com embed.
+- **Papermark remnants** (intentionally left): `PapermarkSparkle`, `year-in-review-papermark.tsx`, localStorage/redis "papermark" keys, `X-Papermark-Signature` header, `papermark.dev` middleware, "cannot contain papermark" guards, EE `schedule-call-modal.tsx` Cal.com embed.
+- **npm audit**: 37 remaining vulnerabilities (down from 80) — mostly transitive dependencies (ws, engine.io, socket.io, brace-expansion). Requires major version upgrades.
+- **CSP**: Report-only mode — move to enforcing mode when safe (requires nonce/hash implementation for inline scripts).
+
+## Completed this session (2026-08-30)
+
+### Whitelabeling
+- Email sender normalized to "Open Mic Productions" @open-mic.co.za
+- BIMI SVG fixed (external URL, no data URI)
+- Favicon rounded with transparent corners
+- Email avatar: Gravatar + Google Account + BIMI (wide-net, free)
+
+### Performance (20 upgrades)
+- Analytics findMany → groupBy aggregation
+- N+1 Tinybird queries capped with take limits
+- 25-second fetch timeout
+- Image preloads + next/image priority
+- Parallel brand fetches
+- Dataroom stats + team docs take limits
+- Error boundaries + global _error.tsx
+- Logo PNG → WebP (91% smaller)
+- Banner aspect ratio fix
+- ISR revalidate 10s → 60s
+- API cache headers
+- Dashboard code splitting
+- Composite DB indexes
+
+### Security
+- TUS upload auth bypass fixed (missing await)
+- SSRF via presigned URL proxy fixed (team membership check)
+- Timing-unsafe token comparison fixed (crypto.timingSafeEqual)
+- Cookie domain too broad fixed (removed Domain attribute)
+- OAuth dangerous account linking disabled
+- Security headers added (HSTS, X-Content-Type-Options, Permissions-Policy)
+- Rate limiting on auth endpoints (3/email/10min)
+- Document password hashing (bcrypt, backward compatible)
+- IP-based session binding softened (log only, don't delete)
+- npm audit: 80 → 37 vulnerabilities
+- Incoming webhook HMAC signature verification
+
+### Stability
+- Branch protection on main and staging (1 review required)
+- Staging-first workflow enforced
+- Access form race condition fixed (synchronous cookie auth check)
+- Admin dashboard hanging fixed
 
 ## Decisions & rationale
 
