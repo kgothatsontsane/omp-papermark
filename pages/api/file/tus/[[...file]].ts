@@ -64,7 +64,12 @@ const tusServer = new Server({
     if (!teamId) {
       throw { status_code: 400, body: "Missing teamId in upload metadata" };
     }
-    const session = await getServerSession(req, res, authOptions);
+    // Use the handler-level session check (TUS req is IncomingMessage, not NextApiRequest)
+    const session = await getServerSession(
+      req as unknown as import("next").NextApiRequest,
+      res,
+      authOptions,
+    );
     if (!session) {
       throw { status_code: 401, body: "Unauthorized" };
     }

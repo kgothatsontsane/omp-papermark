@@ -185,11 +185,8 @@ const nextConfig = {
       },
     ];
   },
-  experimental: {
-    outputFileTracingIncludes: {
-      "/api/mupdf/*": ["./node_modules/mupdf/dist/*.wasm"],
-    },
-    missingSuspenseWithCSRBailout: false,
+  outputFileTracingIncludes: {
+    "/api/mupdf/*": ["./node_modules/mupdf/dist/*.wasm"],
   },
 };
 
