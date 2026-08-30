@@ -75,7 +75,10 @@ Vercel deployment, Tinybird for analytics events.
   silently revert. Exceptions only for a pinned native/platform requirement.
 - **Branch/environment protocol (MANDATORY):** `main` = production,
   `staging` = staging, `develop` = development. Feature work happens on
-  `develop` → merges flow up. Never commit directly to `main` for feature work.
+  `develop` → PR to `staging` (deploy & verify) → PR to `main` (production).
+  **Never commit directly to `main` or `staging`** — all changes via PR with
+  at least 1 review approval. Both branches are protected (no force push,
+  no deletions). Verify staging is stable before merging to production.
   Vercel maps each branch to its own environment.
 - **Always show verification links (MANDATORY):** after completing a task that has
   a viewable artifact (deployment, endpoint, PR, dashboard), output the relevant
