@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
 
+import Image from "next/image";
+
 import { Brand, CustomField, DataroomBrand } from "@prisma/client";
 
 import { determineTextColor } from "@/lib/utils/determine-text-color";
@@ -117,10 +119,14 @@ export default function AccessForm({
           }}
         >
           <div className="flex h-16 items-center justify-start px-2 sm:px-6 lg:px-8">
-            <img
+            <Image
               src={brand.logo as string}
               alt="Brand Logo"
+              width={144}
+              height={64}
               className="h-16 w-auto object-contain"
+              priority
+              unoptimized
             />
           </div>
         </nav>

@@ -4,6 +4,19 @@ export default function Document() {
   return (
     <Html lang="en" className="bg-background" suppressHydrationWarning>
       <Head>
+        {/* Preload critical dataroom images — above-the-fold logo + banner */}
+        <link
+          rel="preload"
+          as="image"
+          href="/_static/open-mic/omp_logo_b.png"
+          type="image/png"
+        />
+        <link
+          rel="preload"
+          as="image"
+          href="/_static/open-mic/omp_banner_w.jpg"
+          type="image/jpeg"
+        />
         {/* ponytail: McMaster-Carr-style perf — prefetch linked HTML on hover (Speculation Rules API) + preconnect asset/analytics origins */}
         <link
           rel="preconnect"

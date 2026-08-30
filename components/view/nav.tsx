@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import { useRouter } from "next/router";
 
 import React, { useEffect, useState } from "react";
@@ -218,13 +219,14 @@ export default function Nav({
           <div className="flex flex-1 items-center justify-start">
             <div className="relative flex h-16 w-36 flex-shrink-0 items-center">
               {brand && brand.logo ? (
-                <img
-                  className="h-16 w-36 object-contain"
+                <Image
+                  className="object-contain"
                   src={brand.logo}
                   alt="Logo"
-                  // fill
-                  // quality={100}
-                  // priority
+                  width={144}
+                  height={64}
+                  priority
+                  unoptimized
                 />
               ) : (
                 <Link

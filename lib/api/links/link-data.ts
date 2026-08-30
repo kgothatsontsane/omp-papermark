@@ -183,29 +183,30 @@ export async function fetchDataroomLinkData({
     linkData.dataroom.documents,
   );
 
-  const dataroomBrand = await prisma.dataroomBrand.findFirst({
-    where: {
-      dataroomId: linkData.dataroom.id,
-    },
-    select: {
-      logo: true,
-      banner: true,
-      brandColor: true,
-      accentColor: true,
-      welcomeMessage: true,
-    },
-  });
-
-  const teamBrand = await prisma.brand.findFirst({
-    where: {
-      teamId: linkData.dataroom.teamId,
-    },
-    select: {
-      logo: true,
-      brandColor: true,
-      accentColor: true,
-    },
-  });
+  const [dataroomBrand, teamBrand] = await Promise.all([
+    prisma.dataroomBrand.findFirst({
+      where: {
+        dataroomId: linkData.dataroom.id,
+      },
+      select: {
+        logo: true,
+        banner: true,
+        brandColor: true,
+        accentColor: true,
+        welcomeMessage: true,
+      },
+    }),
+    prisma.brand.findFirst({
+      where: {
+        teamId: linkData.dataroom.teamId,
+      },
+      select: {
+        logo: true,
+        brandColor: true,
+        accentColor: true,
+      },
+    }),
+  ]);
 
   const brand = {
     logo: dataroomBrand?.logo || teamBrand?.logo,
