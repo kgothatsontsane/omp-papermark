@@ -13,7 +13,6 @@ import { authOptions } from "../../auth/[...nextauth]";
 
 export const config = {
   // in order to enable `waitUntil` function
-  supportsResponseStreaming: true,
 };
 
 export default async function handle(
