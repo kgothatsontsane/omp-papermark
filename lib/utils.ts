@@ -48,16 +48,22 @@ export async function fetcher<JSON = any>(
   input: RequestInfo,
   init?: RequestInit,
 ): Promise<JSON> {
-  const res = await fetch(input, init);
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 25000);
+  try {
+    const res = await fetch(input, { ...init, signal: controller.signal });
 
-  if (!res.ok) {
-    const error = await res.text();
-    const err = new Error(error) as SWRError;
-    err.status = res.status;
-    throw err;
+    if (!res.ok) {
+      const error = await res.text();
+      const err = new Error(error) as SWRError;
+      err.status = res.status;
+      throw err;
+    }
+
+    return res.json();
+  } finally {
+    clearTimeout(timeout);
   }
-
-  return res.json();
 }
 
 export const log = async ({

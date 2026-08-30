@@ -154,22 +154,17 @@ export default async function handler(
 
     switch (type) {
       case "overview": {
-        const [viewStats, graphData] = await Promise.all([
-          // Get view stats with relational counts
-          prisma.view.findMany({
+        const [viewCounts, graphData] = await Promise.all([
+          // Use database aggregation instead of loading all rows
+          prisma.view.groupBy({
+            by: ["linkId", "documentId", "viewerId"],
             where: {
               teamId,
               viewedAt: intervalFilter,
               isArchived: false,
               viewType: "DOCUMENT_VIEW",
             },
-            select: {
-              id: true,
-              viewerEmail: true,
-              linkId: true,
-              documentId: true,
-              viewerId: true,
-            },
+            _count: { _all: true },
           }),
           // Get views data for graph grouped by day
           interval === "24h"
@@ -216,19 +211,18 @@ export default async function handler(
               `,
         ]);
 
-        // Calculate counts from viewStats
-        const uniqueLinks = new Set(viewStats.map((view) => view.linkId));
-        const uniqueDocuments = new Set(
-          viewStats.map((view) => view.documentId),
-        );
-        const uniqueVisitors = new Set(viewStats.map((view) => view.viewerId));
+        // Calculate counts from aggregated data
+        const uniqueLinks = new Set(viewCounts.map((v) => v.linkId));
+        const uniqueDocuments = new Set(viewCounts.map((v) => v.documentId));
+        const uniqueVisitors = new Set(viewCounts.map((v) => v.viewerId));
+        const totalViews = viewCounts.reduce((sum, v) => sum + v._count._all, 0);
 
         return res.status(200).json({
           counts: {
             links: uniqueLinks.size,
             documents: uniqueDocuments.size,
             visitors: uniqueVisitors.size,
-            views: viewStats.length,
+            views: totalViews,
           },
           graph: (graphData as { date: Date; views: bigint }[]).map(
             (point) => ({
@@ -302,6 +296,7 @@ export default async function handler(
           orderBy: {
             createdAt: "desc",
           },
+          take: 100,
         });
 
         // Transform the data to match the table requirements
@@ -394,6 +389,7 @@ export default async function handler(
           orderBy: {
             createdAt: "desc",
           },
+          take: 100,
         });
 
         // Transform the data to match the table requirements
@@ -457,6 +453,7 @@ export default async function handler(
               },
             },
           },
+          take: 100,
         });
 
         // Transform the data to match the table requirements
@@ -535,6 +532,7 @@ export default async function handler(
           orderBy: {
             viewedAt: "desc",
           },
+          take: 100,
         });
 
         // Transform the data to match the table requirements
