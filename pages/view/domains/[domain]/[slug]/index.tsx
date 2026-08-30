@@ -136,7 +136,7 @@ export const getStaticProps = async (context: GetStaticPropsContext) => {
             teamId === "cm7nlkrhm0000qgh0nvyrrywr" ||
             teamId === "clup33by90000oewh4rfvp2eg",
         },
-        revalidate: 10,
+        revalidate: 60,
       };
     }
 
@@ -209,7 +209,7 @@ export const getStaticProps = async (context: GetStaticPropsContext) => {
             teamId === "cm7nlkrhm0000qgh0nvyrrywr" ||
             teamId === "clup33by90000oewh4rfvp2eg",
         },
-        revalidate: 10,
+        revalidate: 60,
       };
     }
   } catch (error) {

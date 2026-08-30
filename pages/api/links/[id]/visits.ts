@@ -143,6 +143,10 @@ export default async function handle(
 
       // TODO: Check that the user is owner of the links, otherwise return 401
 
+      res.setHeader(
+        "Cache-Control",
+        "private, s-maxage=30, stale-while-revalidate=300",
+      );
       return res.status(200).json(viewsWithDuration);
     } catch (error) {
       log({

@@ -217,6 +217,10 @@ export default async function handler(
         const uniqueVisitors = new Set(viewCounts.map((v) => v.viewerId));
         const totalViews = viewCounts.reduce((sum, v) => sum + v._count._all, 0);
 
+        res.setHeader(
+          "Cache-Control",
+          "private, s-maxage=30, stale-while-revalidate=300",
+        );
         return res.status(200).json({
           counts: {
             links: uniqueLinks.size,
@@ -342,6 +346,7 @@ export default async function handler(
           }),
         );
 
+        res.setHeader("Cache-Control", "private, s-maxage=30, stale-while-revalidate=300");
         return res.status(200).json(transformedLinks);
       }
 
@@ -426,6 +431,7 @@ export default async function handler(
           }),
         );
 
+        res.setHeader("Cache-Control", "private, s-maxage=30, stale-while-revalidate=300");
         return res.status(200).json(transformedDocuments);
       }
 
@@ -494,6 +500,7 @@ export default async function handler(
           }),
         );
 
+        res.setHeader("Cache-Control", "private, s-maxage=30, stale-while-revalidate=300");
         return res.status(200).json(transformedVisitors);
       }
 
@@ -587,6 +594,7 @@ export default async function handler(
           }),
         );
 
+        res.setHeader("Cache-Control", "private, s-maxage=30, stale-while-revalidate=300");
         return res.status(200).json(transformedViews);
       }
 

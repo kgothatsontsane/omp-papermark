@@ -1,5 +1,6 @@
 import { useRouter } from "next/router";
 
+import dynamic from "next/dynamic";
 import { useRef, useState } from "react";
 
 import { useTeam } from "@/context/team-context";
@@ -10,19 +11,30 @@ import useSWR from "swr";
 
 import { AnalyticsCard } from "@/components/analytics/analytics-card";
 import DashboardViewsChart from "@/components/analytics/dashboard-views-chart";
-import DocumentsTable from "@/components/analytics/documents-table";
-import LinksTable from "@/components/analytics/links-table";
 import {
   TimeRange,
   TimeRangeSelect,
 } from "@/components/analytics/time-range-select";
-import ViewsTable from "@/components/analytics/views-table";
-import VisitorsTable from "@/components/analytics/visitors-table";
 import AppLayout from "@/components/layouts/app";
 import { TabMenu } from "@/components/tab-menu";
 
 import { usePlan } from "@/lib/swr/use-billing";
 import { fetcher } from "@/lib/utils";
+
+const DocumentsTable = dynamic(
+  () => import("@/components/analytics/documents-table"),
+  { ssr: false },
+);
+const LinksTable = dynamic(() => import("@/components/analytics/links-table"), {
+  ssr: false,
+});
+const ViewsTable = dynamic(() => import("@/components/analytics/views-table"), {
+  ssr: false,
+});
+const VisitorsTable = dynamic(
+  () => import("@/components/analytics/visitors-table"),
+  { ssr: false },
+);
 
 interface OverviewData {
   counts: {

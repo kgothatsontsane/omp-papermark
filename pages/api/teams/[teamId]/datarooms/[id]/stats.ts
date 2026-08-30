@@ -162,6 +162,10 @@ export default async function handle(
         total_duration,
       };
 
+      res.setHeader(
+        "Cache-Control",
+        "private, s-maxage=30, stale-while-revalidate=300",
+      );
       return res.status(200).json(stats);
     } catch (error) {
       errorhandler(error, res);

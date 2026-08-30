@@ -231,6 +231,8 @@ model View {
   @@index([teamId])
   @@index([viewedAt(sort: Desc)]) // Performance optimization for date aggregations
   @@index([viewerId, documentId]) // Performance optimization for joins with filtering
+  @@index([teamId, viewedAt, isArchived, viewType]) // Analytics overview aggregation
+  @@index([dataroomId, isArchived, viewType, viewedAt]) // Dataroom stats filtering
 }
 
 enum ViewType {
