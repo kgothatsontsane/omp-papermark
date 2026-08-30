@@ -84,6 +84,11 @@ Vercel deployment, Tinybird for analytics events.
   a viewable artifact (deployment, endpoint, PR, dashboard), output the relevant
   link(s) + a status list (production/staging/development/deployed/pending).
   Never end a task with "it's done" and no way to verify it.
+- **Sourcery AI review feedback is MANDATORY to address (MANDATORY):** when reviewing
+  PRs, always check for Sourcery AI comments. Any issues, concerns, or suggestions
+  raised by Sourcery MUST be addressed — fix the code, update the PR, and re-review
+  until Sourcery approves. Never merge a PR with unresolved Sourcery concerns.
+  This applies to all future PR reviews without exception.
 
 ## Verification
 
