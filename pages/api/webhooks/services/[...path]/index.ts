@@ -19,6 +19,7 @@ import {
 } from "@/lib/utils";
 import { getSupportedContentType } from "@/lib/utils/get-content-type";
 import { sendLinkCreatedWebhook } from "@/lib/webhook/triggers/link-created";
+import { verifyWebhookSignature } from "@/lib/webhook/signature";
 
 export const config = {
   // in order to enable `waitUntil` function
@@ -166,11 +167,36 @@ export default async function incomingWebhookHandler(
         externalId: webhookId,
         teamId: teamId,
       },
-      include: { team: true },
+      select: {
+        id: true,
+        externalId: true,
+        name: true,
+        secret: true,
+        source: true,
+        actions: true,
+        teamId: true,
+        team: true,
+      },
     });
 
     if (!incomingWebhook) {
       return res.status(404).json({ error: "Webhook not found" });
+    }
+
+    // Verify HMAC signature if webhook has a secret configured
+    if (incomingWebhook.secret) {
+      const signature = req.headers["x-webhook-signature"] as string;
+      if (!signature) {
+        return res.status(401).json({ error: "Missing webhook signature" });
+      }
+      const isValid = verifyWebhookSignature(
+        incomingWebhook.secret,
+        req.body,
+        signature,
+      );
+      if (!isValid) {
+        return res.status(401).json({ error: "Invalid webhook signature" });
+      }
     }
 
     // Validate request body against the schema
