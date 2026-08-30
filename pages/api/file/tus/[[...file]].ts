@@ -11,6 +11,8 @@ import { getTeamS3ClientAndConfig } from "@/lib/files/aws-client";
 import { RedisLocker } from "@/lib/files/tus-redis-locker";
 import { newId } from "@/lib/id-helper";
 import { lockerRedisClient } from "@/lib/redis";
+import prisma from "@/lib/prisma";
+import { CustomUser } from "@/lib/types";
 import { log } from "@/lib/utils";
 
 import { authOptions } from "../../auth/[...nextauth]";
@@ -54,6 +56,28 @@ const tusServer = new Server({
     // Extract the ID from the URL
     const id = (req.url as string).split("/api/file/tus/")[1];
     return Buffer.from(id, "base64url").toString("utf-8");
+  },
+  async onUploadCreate(req, res, upload) {
+    // Validate that the session user belongs to the team in the upload metadata
+    const metadata = upload.metadata || {};
+    const { teamId } = metadata as { teamId?: string };
+    if (!teamId) {
+      throw { status_code: 400, body: "Missing teamId in upload metadata" };
+    }
+    const session = await getServerSession(req, res, authOptions);
+    if (!session) {
+      throw { status_code: 401, body: "Unauthorized" };
+    }
+    const userTeam = await prisma.userTeam.findFirst({
+      where: {
+        userId: (session.user as CustomUser).id,
+        teamId: teamId,
+      },
+    });
+    if (!userTeam) {
+      throw { status_code: 403, body: "Access denied to this team" };
+    }
+    return res;
   },
   onResponseError(req, res, err) {
     log({
