@@ -4,7 +4,46 @@ Living document. Updated at the end of every task when anything changes.
 Source of truth for what is deployed, decided, verified. Missing/stale → rebuild
 from git log + AGENTS.md.
 
-Last updated: 2026-08-28
+Last updated: 2026-08-30
+
+## Branch protection (2026-08-30) — PRODUCTION STABILITY
+
+- **`main` (production)**: Protected — requires 1 PR review, no force push, no deletions, enforce admins
+- **`staging`**: Protected — requires 1 PR review, no force push, no deletions
+- **`develop`**: Open (feature work)
+- **Workflow**: `develop` → PR → `staging` (deploy & test) → PR → `main` (production)
+- **Vercel**: Each branch auto-deploys to its own environment (main=production, staging=preview, develop=dev)
+- **Rule**: Never commit directly to `main`. All changes flow through staging for verification first.
+
+## Remaining deep dive improvements (2026-08-30) — main 5a81800ad
+
+- **Dataroom stats**: Added `take: 1000` limit on views query, replaced `include: { views: true }` with targeted `findMany` (was loading ALL views into memory)
+- **Team detail API**: Added `take: 100` limit on documents query
+- **Error boundaries**: Created `components/error-boundary.tsx` (reusable ErrorBoundary) and `pages/_error.tsx` (global error page)
+- **Image optimization**: Converted logo PNG → WebP (391KB → 33KB, 91.5% savings), white logo (279KB → 33KB), created cropped banner (1384×1384 → 1920×320, proper aspect ratio), updated branding constants to use WebP
+
+## Access form flash FIXED (2026-08-30) — main e8b0f72a3
+
+- **Problem**: Email/password access form briefly appeared after authentication, then disappeared (race condition)
+- **Root cause**: Cookie token was retrieved in `useEffect` (AFTER first render), so `token` was `undefined` on first render, causing AccessForm to show. Once cookie was retrieved, token became available and form disappeared.
+- **Fix**:
+  - Made cookie token + email retrieval synchronous using `useState` initializer (available on first render)
+  - Added `isCheckingAuth` state to show loading spinner while token verification is in flight (no AccessForm flash)
+  - Applied to both dataroom and document view pages
+- **Security**: No compromise. Token is still verified server-side. Client-side only shows loading state instead of form.
+
+- **ISR revalidate**: Increased from 10s → 60s for branded pages (less server load, better cache hit rate)
+- **API caching headers**: Added `Cache-Control: private, s-maxage=30, stale-while-revalidate=300` to analytics, visits, dataroom stats endpoints
+- **Dashboard code splitting**: Converted DocumentsTable, LinksTable, ViewsTable, VisitorsTable to dynamic imports (loaded on tab click, not initial page load)
+- **Composite DB indexes**: Added `(teamId, viewedAt, isArchived, viewType)` and `(dataroomId, isArchived, viewType, viewedAt)` for analytics queries
+
+- **Problem**: After email verification, dataroom images (logo, banner) loaded slowly and visibly piece by piece. Caused by: plain `<img>` tags, no preload hints, sequential brand fetches, 400KB logo PNG.
+- **Fixes**:
+  - Added `<link rel="preload" as="image">` for logo and banner in `pages/_document.tsx`
+  - Converted logo to `next/image` with `priority` in nav-dataroom.tsx, nav.tsx, access-form/index.tsx
+  - Added `fetchPriority="high"` to banner `<img>`
+  - Parallelized dataroomBrand + teamBrand fetches in `lib/api/links/link-data.ts` (Promise.all)
+  - Added `width`/`height` to logo to prevent layout shift
 
 ## IP capture FIXED (2026-08-19) — main bfb6693bd
 
@@ -41,13 +80,38 @@ Last updated: 2026-08-28
 - This machine's internet is ~50KB/s baseline (Cloudflare/Ubuntu mirrors
   measured) — downloads are slow; nothing fixes the pipe.
 
-## Current git state (2026-08-15)
+## Favicon rounded (2026-08-30) — main 3af1556bc
+
+- Replaced `public/favicon.ico` with a rounded-corner version (128×128 RGBA, 24px radius, transparent corners).
+- Production URL was aliased to a 23-day-old deploy; `vercel --prod` timed out before re-aliasing, so the alias was set manually:
+  `vercel alias set omp-papermark-5k8fcebc1-open-mic-productions.vercel.app dealroom.open-mic.co.za` → success.
+- Production now serves the rounded favicon (corner alpha=0, center alpha=255 verified).
+
+## BIMI SVG fix (2026-08-30) — main 0bcd558c1
+
+- Root cause of "no avatar" in email: `bimi.svg` embedded the logo as a base64 `data:` URI inside `<image xlink:href="data:image/png;base64,...">`. BIMI validators/Gmail reject data URIs; require an external `href`.
+- Fix: rewrote `public/_static/open-mic/bimi.svg` to use `<image href="https://dealroom.open-mic.co.za/_static/open-mic/bimi-logo.png"/>`, extracted PNG as `public/_static/open-mic/bimi-logo.png` (10613 bytes, 180×180).
+- Both SVG and PNG serve correctly from production (`image/svg+xml` and `image/png` content-types).
+- BIMI DNS record: `v=BIMI1; l=https://dealroom.open-mic.co.za/_static/open-mic/bimi.svg;`. DMARC: `v=DMARC1;p=quarantine;...`. DKIM key exists at `default._domainkey.open-mic.co.za`. DNS managed by `webhosting4southafrica.co.za`.
+- Gmail requires a VMC (Verified Mark Certificate) for BIMI avatars; none obtained yet. An `a=default._domainkey.open-mic.co.za` anchor could be added to the BIMI record using the existing DKIM key — requires DNS provider access.
+
+## Email sender normalization (2026-08-30) — main f01d4f21a
+
+- Created `lib/email-from.ts` with pure `extractEmail()` + `buildFromAddress()` helpers (verified 6/6 test cases).
+- Updated `lib/resend.ts` to use `buildFromAddress` — all From addresses now normalize to `BRAND_NAME` display name with `open-mic.co.za` domain.
+- `RESEND_FROM_EMAIL` env updated to `dealroom@open-mic.co.za` on Production + Preview via Vercel CLI.
+
+## Admin dashboard hanging FIXED (2026-08-30) — main ef677eee9
+
+- **Root cause**: Analytics `overview` case in `pages/api/analytics/index.ts` fetched ALL view rows via `prisma.view.findMany()` into memory, then computed unique counts in JS. For teams with 1000+ views, this exceeded Vercel's 30s function limit → dashboard hung.
+- **Fix 1**: Replaced `findMany` with `prisma.view.groupBy()` for unique link/document/visitor counts — database aggregation instead of loading all rows.
+- **Fix 2**: Added `take: 100` limits to `links`, `documents`, `visitors`, `views` cases to prevent unbounded N+1 Tinybird queries.
+- **Fix 3**: Added 25-second `AbortController` timeout to `fetcher` in `lib/utils.ts` — hung API no longer blocks client indefinitely.
+- Email logo size increased from 160×56 to 240×84 for better visibility.
 
 - Branches: `main` (production) / `staging` / `develop`.
-- HEAD on all branches ~`19fde644` (docs commit). Production (main) live, domain aliased.
-- Upload fixes landed: duplicate-name rename/overwrite dialog (678c1519),
-  graceful degradation for background conversion triggers (9b54b1cf), same for
-  agreement uploads (3f2dfc5f).
+- HEAD: `3af1556bc` (fix: make favicon rounded with transparent corners). Pushed, origin/main in sync.
+- Recent: `0bcd558c1` (BIMI SVG external URL), `9f303caf9`/`2d1e539d1` (perf: in-process link view data), `918cb160e` (perf: Speculation Rules + preconnect), `f01d4f21a` (email sender normalization).
 
 ## Upload failure ROOT CAUSE (2026-08-15) — FIXED + R2/worker verified E2E
 
@@ -168,9 +232,9 @@ Last updated: 2026-08-28
 | `staging` | preview (auto) | https://omp-papermark-7wayqaw9w-open-mic-productions.vercel.app | LIVE @ bfa423de |
 | `develop` | preview (auto) | https://omp-papermark-4gvx03voh-open-mic-productions.vercel.app | LIVE @ bfa423de |
 
-- Latest production deploy (2026-08-15): commit `bfa423de`, URL
-  https://omp-papermark-8j2bl5bp8-open-mic-productions.vercel.app, READY. App serves
-  "Login | Open Mic Productions" (whitelabeled).
+- Latest production deploy: `5k8fcebc1` (Ready, 3m build), aliased to `dealroom.open-mic.co.za` (manually set after `vercel --prod` timed out).
+- Previous: `29796zn0t` (Ready, 3m build).
+- Note: `vercel --prod` timed out at 120s during this session — the deploy was triggered but the CLI hung before re-aliasing. Manual `vercel alias set` was required.
 - Note: the first push (`d0c3f5c9`) had a build error (`module_compilation_error` —
   trigger.dev v4 SDK's `skills.js` imports Node builtins into the client bundle).
   Fixed in `bfa423de` by importing `runMetadata` from `@trigger.dev/core/v3` in
@@ -215,7 +279,7 @@ The current state was reached in one long session. Timeline:
 ## Git
 
 - Branch `main`, remote `github.com:kgothatsontsane/omp-papermark.git`.
-- HEAD: `953b8fc6` — "fix: align Tinybird resources with Forward workspace and log degradation" (pushed, origin/main in sync).
+- HEAD: `3af1556bc` — "fix: make favicon rounded with transparent corners" (pushed, origin/main in sync).
 - Recent history style: `fix: handle NaN versionNumber and invalid documentId in thumbnail endpoint`, `fix: use Promise.allSettled in visits endpoint...`, `fix: handle Tinybuster 403 errors in all stats endpoints`.
 
 ## Tinybird deployment (live)
@@ -262,13 +326,19 @@ Files in `lib/tinybird/endpoints/`.
 
 ## Current work
 
-- `lib/tracking/record-link-view.ts:106-115` — `recordTinybird()` wraps `recordLinkViewTB(clickData)`
-  in try/catch; on failure logs `Graceful degradation: Tinybird ingest failed for link ... (view ...)`
-  via `log({ type: "error" })`. Tinybird outage never blocks email/webhook (all three run in `Promise.all`).
+- Whitelabeling/rebranding: email sender normalized, BIMI SVG fixed, favicon rounded. All deployed.
+- Email avatar: wide-net free setup done (Gravatar + Google Account + BIMI).
+- Production URL `dealroom.open-mic.co.za` aliased to `omp-papermark-5k8fcebc1-open-mic-productions.vercel.app` (Ready).
 
 ## Open threads / TODOs
 
-- None outstanding. Tinybird fully migrated & deployed; degradation logging in place.
+- **Email avatar (wide-net, free)** — DONE:
+  - Gravatar: custom logo confirmed for `dealroom@open-mic.co.za` (256 unique colors)
+  - Google Account: profile picture set up (user confirmed)
+  - BIMI: self-asserted, works for Yahoo/Fastmail/AOL/Zoho
+  - Coverage: Gmail (Google Account), Yahoo/Fastmail/AOL/Zoho (BIMI), Thunderbird/Airmail/Postbox (Gravatar)
+- **Dataroom loading performance** — DONE (commit 8794ffe72): preload hints, next/image priority, parallel fetches.
+- **Papermark remnants**: `PapermarkSparkle`, `year-in-review-papermark.tsx`, localStorage/redis keys, `X-Papermark-Signature` header, `papermark.dev` middleware, "cannot contain papermark" guards, EE `schedule-call-modal.tsx` Cal.com embed.
 
 ## Decisions & rationale
 
