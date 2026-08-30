@@ -102,9 +102,8 @@ export default function DocumentView({
   const didMount = useRef<boolean>(false);
   const [submitted, setSubmitted] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(false);
-  const [isCheckingAuth, setIsCheckingAuth] = useState<boolean>(
-    !!token || !!previewToken,
-  );
+  // Always start checking auth when protected - prevents access form flash
+  const [isCheckingAuth, setIsCheckingAuth] = useState<boolean>(isProtected);
   const [viewData, setViewData] = useState<DEFAULT_DOCUMENT_VIEW_TYPE>({
     viewId: "",
   });

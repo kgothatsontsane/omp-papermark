@@ -33,6 +33,10 @@ const ExcelViewer = dynamic(
   () => import("@/components/view/viewer/excel-viewer"),
   { ssr: false },
 );
+const DynamicPDFViewer = dynamic(
+  () => import("@/components/view/viewer/pdf-default-viewer"),
+  { ssr: false },
+);
 
 export type TViewDocumentData = Document & {
   versions: DocumentVersion[];
@@ -185,7 +189,7 @@ export default function ViewData({
       navData={navData}
     />
   ) : (
-    <PDFViewer
+    <DynamicPDFViewer
       file={viewData.file}
       name={document.name}
       versionNumber={document.versions[0].versionNumber}

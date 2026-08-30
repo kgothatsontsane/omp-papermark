@@ -277,7 +277,6 @@ export async function generateDataroomIndex(
           cell.value = {
             text: entry.onlineUrl,
             hyperlink: entry.onlineUrl,
-            tooltip: `Open ${entry.name} in browser`,
           };
           cell.font = {
             color: { argb: "0563C1" },

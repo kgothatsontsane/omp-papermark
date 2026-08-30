@@ -23,7 +23,6 @@ import { verifyWebhookSignature } from "@/lib/webhook/signature";
 
 export const config = {
   // in order to enable `waitUntil` function
-  supportsResponseStreaming: true,
   maxDuration: 120,
 };
 
