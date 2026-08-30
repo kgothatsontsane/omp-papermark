@@ -21,7 +21,7 @@ import { BRAND_NAME } from "@/lib/branding";
 import { Button } from "../../ui/button";
 import { ConversationSidebar } from "../conversations/sidebar";
 
-const DEFAULT_BANNER_IMAGE = "/_static/open-mic/omp_banner_w.jpg";
+const DEFAULT_BANNER_IMAGE = "/_static/open-mic/omp_banner_cropped.webp";
 
 export default function DataroomNav({
   allowDownload,

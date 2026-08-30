@@ -1,7 +1,6 @@
 import { Document, DocumentVersion, Domain, Link, View } from "@prisma/client";
 
 import prisma from "@/lib/prisma";
-import { decryptEncrpytedPassword } from "@/lib/utils";
 
 import { DocumentError, TeamError } from "../errorHandler";
 
@@ -78,8 +77,7 @@ export async function getTeamWithUsersAndDocument({
   if (document && document?.links) {
     document?.links?.forEach((res: Link) => {
       if (res?.password != null) {
-        let decryptedPassword: string = decryptEncrpytedPassword(res?.password);
-        res["password"] = decryptedPassword;
+        res["password"] = null;
       }
     });
   }

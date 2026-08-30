@@ -89,9 +89,11 @@ async function verifyDataroomSession(
 
     const ipAddressValue = ipAddress(request) ?? LOCALHOST_IP;
 
+    // Soft IP check: log mismatch but don't delete session (mobile/corp users change IPs)
     if (ipAddressValue !== sessionData.ipAddress) {
-      await redis.del(`dataroom_session:${sessionToken}`);
-      return null;
+      console.warn(
+        `[Security] Dataroom session IP mismatch: expected=${sessionData.ipAddress}, got=${ipAddressValue}, linkId=${linkId}`,
+      );
     }
 
     // Check if the session is for the correct link and dataroom
@@ -139,9 +141,11 @@ export async function verifyDataroomSessionInPagesRouter(
     // Get IP address from request
     const ipAddressValue = getIpAddress(req.headers) ?? LOCALHOST_IP;
 
+    // Soft IP check: log mismatch but don't delete session (mobile/corp users change IPs)
     if (ipAddressValue !== sessionData.ipAddress) {
-      await redis.del(`dataroom_session:${sessionToken}`);
-      return null;
+      console.warn(
+        `[Security] Dataroom session IP mismatch: expected=${sessionData.ipAddress}, got=${ipAddressValue}, linkId=${linkId}`,
+      );
     }
 
     // Check if the session is for the correct link and dataroom
