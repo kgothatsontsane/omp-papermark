@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import React from "react";
+import Head from "next/head";
 
-import "@/public/vendor/handsontable/handsontable.full.min.css";
 import { Brand, DataroomBrand } from "@prisma/client";
 
 import { useSafePageViewTracker } from "@/lib/tracking/safe-page-view-tracker";
@@ -284,6 +284,12 @@ export default function ExcelViewer({
 
   return (
     <>
+      <Head>
+        <link
+          rel="stylesheet"
+          href="/vendor/handsontable/handsontable.full.min.css"
+        />
+      </Head>
       <Nav type="sheet" navData={navData} />
       <div
         style={{ height: "calc(100dvh - 64px)" }}

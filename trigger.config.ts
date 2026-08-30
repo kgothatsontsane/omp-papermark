@@ -50,7 +50,6 @@ export default defineConfig({
       aptGet({ packages: ["libreoffice"] }),
       libredwgExtension,
       prismaExtension({
-        mode: "legacy",
         schema: "prisma/schema/schema.prisma",
       }),
       ffmpeg(),

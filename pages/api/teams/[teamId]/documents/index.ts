@@ -15,7 +15,6 @@ import { supportsAdvancedExcelMode } from "@/lib/utils/get-content-type";
 
 export const config = {
   // in order to enable `waitUntil` function
-  supportsResponseStreaming: true,
 };
 
 export default async function handle(

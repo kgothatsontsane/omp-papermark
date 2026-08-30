@@ -8,10 +8,10 @@ import { supportsAdvancedExcelMode } from "@/lib/utils/get-content-type";
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } },
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const linkId = params.id;
+    const { id: linkId } = await params;
     const body = await request.json();
     const { documentData, dataroomId, folderId } = body as {
       documentData: DocumentData;
