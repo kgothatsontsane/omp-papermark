@@ -3,6 +3,7 @@ import { NextApiRequest, NextApiResponse } from "next";
 import { GetObjectCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl as getCloudfrontSignedUrl } from "@aws-sdk/cloudfront-signer";
 import { getSignedUrl as getS3SignedUrl } from "@aws-sdk/s3-request-presigner";
+import crypto from "crypto";
 
 import { ONE_HOUR, ONE_SECOND } from "@/lib/constants";
 import { getTeamS3ClientAndConfig } from "@/lib/files/aws-client";
@@ -27,7 +28,7 @@ export default async function handler(
     return res.status(401).json({ message: "Unauthorized" });
   }
 
-  // Check if the API Key matches
+  // Check if the API Key matches (timing-safe comparison)
   if (!process.env.INTERNAL_API_KEY) {
     log({
       message: "INTERNAL_API_KEY environment variable is not set",
@@ -35,7 +36,9 @@ export default async function handler(
     });
     return res.status(500).json({ message: "Server configuration error" });
   }
-  if (token !== process.env.INTERNAL_API_KEY) {
+  const a = Buffer.from(token);
+  const b = Buffer.from(process.env.INTERNAL_API_KEY);
+  if (a.length !== b.length || !crypto.timingSafeEqual(a, b)) {
     return res.status(401).json({ message: "Unauthorized" });
   }
 

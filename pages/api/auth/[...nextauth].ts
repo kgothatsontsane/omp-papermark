@@ -37,7 +37,7 @@ export const authOptions: NextAuthOptions = {
     GoogleProvider({
       clientId: process.env.GOOGLE_CLIENT_ID as string,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET as string,
-      allowDangerousEmailAccountLinking: true,
+      allowDangerousEmailAccountLinking: false,
     }),
     LinkedInProvider({
       clientId: process.env.LINKEDIN_CLIENT_ID as string,
@@ -57,7 +57,7 @@ export const authOptions: NextAuthOptions = {
           image: profile.picture ?? defaultImage,
         };
       },
-      allowDangerousEmailAccountLinking: true,
+      allowDangerousEmailAccountLinking: false,
     }),
     EmailProvider({
       async sendVerificationRequest({ identifier, url }) {
@@ -87,7 +87,10 @@ export const authOptions: NextAuthOptions = {
             : getMainDomainUrl();
 
           const verificationUrl = `${baseUrl}/verify?${verificationUrlParams}`;
-          console.log("[Login URL]", verificationUrl);
+          // Only log in local development (not on Vercel)
+          if (process.env.NODE_ENV === "development" && !process.env.VERCEL) {
+            console.log("[Login URL]", verificationUrl);
+          }
           return;
         } else {
           await sendVerificationRequestEmail({

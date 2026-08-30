@@ -3,6 +3,9 @@ import { NextApiRequest, NextApiResponse } from "next";
 import { authOptions } from "@/pages/api/auth/[...nextauth]";
 import { getServerSession } from "next-auth/next";
 
+import prisma from "@/lib/prisma";
+import { CustomUser } from "@/lib/types";
+
 export default async function handler(
     req: NextApiRequest,
     res: NextApiResponse,
@@ -20,6 +23,22 @@ export default async function handler(
 
     if (!key) {
         return res.status(400).json({ message: "Key is required" });
+    }
+
+    // Verify the user has access to this team's files
+    const keyParts = key.split("/");
+    const keyTeamId = keyParts[0];
+
+    // Check if user belongs to the team that owns this file
+    const userTeam = await prisma.userTeam.findFirst({
+        where: {
+            userId: (session.user as CustomUser).id,
+            teamId: keyTeamId,
+        },
+    });
+
+    if (!userTeam) {
+        return res.status(403).json({ error: "Access denied" });
     }
 
     try {
