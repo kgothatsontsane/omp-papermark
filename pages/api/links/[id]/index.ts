@@ -6,10 +6,7 @@ import { getServerSession } from "next-auth/next";
 import { getLinkViewData } from "@/lib/api/links/link-data";
 import prisma from "@/lib/prisma";
 import { CustomUser } from "@/lib/types";
-import {
-  decryptEncrpytedPassword,
-  generateEncrpytedPassword,
-} from "@/lib/utils";
+import { generateEncrpytedPassword } from "@/lib/utils";
 
 import { DomainObject } from "..";
 import { authOptions } from "../../auth/[...nextauth]";
@@ -301,9 +298,9 @@ export default async function handle(
       `${process.env.NEXTAUTH_URL}/api/revalidate?secret=${process.env.REVALIDATE_TOKEN}&linkId=${id}&hasDomain=${updatedLink.domainId ? "true" : "false"}`,
     );
 
-    // Decrypt the password for the updated link
+    // Remove password from response - client does not need it
     if (updatedLink.password !== null) {
-      updatedLink.password = decryptEncrpytedPassword(updatedLink.password);
+      updatedLink.password = null;
     }
 
     return res.status(200).json(updatedLink);

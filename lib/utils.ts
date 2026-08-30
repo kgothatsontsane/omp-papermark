@@ -580,6 +580,8 @@ export const generateGravatarHash = (email: string | null): string => {
   return hash;
 };
 
+import bcrypt from "bcryptjs";
+
 export async function generateEncrpytedPassword(
   password: string,
 ): Promise<string> {
@@ -590,36 +592,38 @@ export async function generateEncrpytedPassword(
   if (textParts.length === 2) {
     return password;
   }
-  // Otherwise, encrypt the password
-  const encryptedKey: string = crypto
-    .createHash("sha256")
-    .update(String(process.env.NEXT_PRIVATE_DOCUMENT_PASSWORD_KEY))
-    .digest("base64")
-    .substring(0, 32);
-  const IV: Buffer = crypto.randomBytes(16);
-  const cipher = crypto.createCipheriv("aes-256-ctr", encryptedKey, IV);
-  let encryptedText: string = cipher.update(password, "utf8", "hex");
-  encryptedText += cipher.final("hex");
-  return IV.toString("hex") + ":" + encryptedText;
+  // Use bcrypt for new passwords (irreversible hash)
+  const hashedPassword = await bcrypt.hash(password, 10);
+  return hashedPassword;
 }
 
-export function decryptEncrpytedPassword(password: string): string {
-  if (!password) return "";
+export async function decryptEncrpytedPassword(
+  password: string,
+  storedPassword: string,
+): Promise<boolean> {
+  if (!password || !storedPassword) return false;
+
+  // Check if stored password is a bcrypt hash
+  if (storedPassword.startsWith("$2a$") || storedPassword.startsWith("$2b$")) {
+    return bcrypt.compare(password, storedPassword);
+  }
+
+  // Legacy: decrypt AES-256-CTR encrypted password
   const encryptedKey: string = crypto
     .createHash("sha256")
     .update(String(process.env.NEXT_PRIVATE_DOCUMENT_PASSWORD_KEY))
     .digest("base64")
     .substring(0, 32);
-  const textParts: string[] = password.split(":");
+  const textParts: string[] = storedPassword.split(":");
   if (!textParts || textParts.length !== 2) {
-    return password;
+    return false;
   }
   const IV: Buffer = Buffer.from(textParts[0], "hex");
   const encryptedText: string = textParts[1];
   const decipher = crypto.createDecipheriv("aes-256-ctr", encryptedKey, IV);
   let decrypted: string = decipher.update(encryptedText, "hex", "utf8");
   decrypted += decipher.final("utf8");
-  return decrypted;
+  return password === decrypted;
 }
 
 type FilterMode = "email" | "domain" | "both";

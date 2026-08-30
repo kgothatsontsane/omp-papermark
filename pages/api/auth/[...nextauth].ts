@@ -11,6 +11,7 @@ import { sendVerificationRequestEmail } from "@/lib/emails/send-verification-req
 import { sendWelcomeEmail } from "@/lib/emails/send-welcome";
 import hanko from "@/lib/hanko";
 import prisma from "@/lib/prisma";
+import { rateLimit } from "@/lib/rate-limit";
 import { CreateUserEmailProps, CustomUser } from "@/lib/types";
 import { subscribe } from "@/lib/unsend";
 import { generateChecksum } from "@/lib/utils/generate-checksum";
@@ -60,7 +61,14 @@ export const authOptions: NextAuthOptions = {
       allowDangerousEmailAccountLinking: false,
     }),
     EmailProvider({
-      async sendVerificationRequest({ identifier, url }) {
+      async sendVerificationRequest({ identifier, url, provider }) {
+        // Rate limit: max 3 requests per email per 10 minutes
+        const emailLimit = rateLimit(`auth:email:${identifier}`, 3, 10 * 60 * 1000);
+        if (!emailLimit.success) {
+          console.warn(`[Rate Limit] Auth email limit exceeded for: ${identifier}`);
+          throw new Error("Too many requests. Please try again later.");
+        }
+
         const hasValidNextAuthUrl = !!process.env.NEXTAUTH_URL;
         let finalUrl = url;
 

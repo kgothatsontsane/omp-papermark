@@ -6,7 +6,7 @@ import { getServerSession } from "next-auth/next";
 import { errorhandler } from "@/lib/errorHandler";
 import prisma from "@/lib/prisma";
 import { CustomUser, LinkWithViews } from "@/lib/types";
-import { decryptEncrpytedPassword, log } from "@/lib/utils";
+import { log } from "@/lib/utils";
 
 export default async function handle(
   req: NextApiRequest,
@@ -79,9 +79,9 @@ export default async function handle(
       if (extendedLinks && extendedLinks.length > 0) {
         extendedLinks = await Promise.all(
           extendedLinks.map(async (link) => {
-            // Decrypt the password if it exists
+            // Remove password from response - client does not need it
             if (link.password !== null) {
-              link.password = decryptEncrpytedPassword(link.password);
+              link.password = null;
             }
             // Get the upload folder name if it exists
             if (link.enableUpload && link.uploadFolderId !== null) {

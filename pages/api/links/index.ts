@@ -7,10 +7,7 @@ import { getServerSession } from "next-auth/next";
 import { errorhandler } from "@/lib/errorHandler";
 import prisma from "@/lib/prisma";
 import { CustomUser } from "@/lib/types";
-import {
-  decryptEncrpytedPassword,
-  generateEncrpytedPassword,
-} from "@/lib/utils";
+import { generateEncrpytedPassword } from "@/lib/utils";
 import { sendLinkCreatedWebhook } from "@/lib/webhook/triggers/link-created";
 
 import { authOptions } from "../auth/[...nextauth]";
@@ -251,9 +248,9 @@ export default async function handler(
         }),
       );
 
-      // Decrypt the password for the new link
+      // Remove password from response - client does not need it
       if (linkWithView.password !== null) {
-        linkWithView.password = decryptEncrpytedPassword(linkWithView.password);
+        linkWithView.password = null;
       }
 
       return res.status(200).json(linkWithView);

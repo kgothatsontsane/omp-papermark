@@ -21,7 +21,6 @@ import { parseSheet } from "@/lib/sheet";
 import { recordLinkView } from "@/lib/tracking/record-link-view";
 import { CustomUser, WatermarkConfigSchema } from "@/lib/types";
 import { decryptEncrpytedPassword, log } from "@/lib/utils";
-import { checkPassword } from "@/lib/auth/passwords";
 import { isEmailMatched } from "@/lib/utils/email-domain";
 import { generateOTP } from "@/lib/utils/generate-otp";
 import { LOCALHOST_IP } from "@/lib/utils/geo";
@@ -190,14 +189,10 @@ export async function POST(request: NextRequest) {
           );
         }
 
-        let isPasswordValid: boolean = false;
-        const textParts: string[] = link.password.split(":");
-        if (!textParts || textParts.length !== 2) {
-          isPasswordValid = await checkPassword(password, link.password);
-        } else {
-          const decryptedPassword = decryptEncrpytedPassword(link.password);
-          isPasswordValid = decryptedPassword === password;
-        }
+        const isPasswordValid: boolean = await decryptEncrpytedPassword(
+          password,
+          link.password,
+        );
 
         if (!isPasswordValid) {
           return NextResponse.json(

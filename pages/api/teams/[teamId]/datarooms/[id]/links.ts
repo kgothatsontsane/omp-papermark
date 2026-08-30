@@ -7,7 +7,7 @@ import { errorhandler } from "@/lib/errorHandler";
 import prisma from "@/lib/prisma";
 import { getTeamWithUsersAndDocument } from "@/lib/team/helper";
 import { CustomUser, LinkWithViews } from "@/lib/types";
-import { decryptEncrpytedPassword, log } from "@/lib/utils";
+import { log } from "@/lib/utils";
 
 import { authOptions } from "../../../../auth/[...nextauth]";
 
@@ -76,9 +76,9 @@ export default async function handle(
       if (extendedLinks && extendedLinks.length > 0) {
         extendedLinks = await Promise.all(
           extendedLinks.map(async (link) => {
-            // Decrypt the password if it exists
+            // Remove password from response - client does not need it
             if (link.password !== null) {
-              link.password = decryptEncrpytedPassword(link.password);
+              link.password = null;
             }
             if (link.enableUpload && link.uploadFolderId !== null) {
               const folder = await prisma.dataroomFolder.findUnique({
