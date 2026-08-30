@@ -22,3 +22,30 @@ export const createWebhookSignature = async (secret: string, body: any) => {
 
   return hexSignature;
 };
+
+export const verifyWebhookSignature = (
+  secret: string,
+  body: any,
+  signature: string,
+): boolean => {
+  if (!secret || !signature) return false;
+
+  const expected = createWebhookSignatureSync(secret, body);
+  const a = Buffer.from(expected);
+  const b = Buffer.from(signature);
+  if (a.length !== b.length) return false;
+  // Timing-safe comparison
+  let result = 0;
+  for (let i = 0; i < a.length; i++) {
+    result |= a[i] ^ b[i];
+  }
+  return result === 0;
+};
+
+const createWebhookSignatureSync = (secret: string, body: any): string => {
+  const crypto = require("crypto");
+  return crypto
+    .createHmac("sha256", secret)
+    .update(JSON.stringify(body))
+    .digest("hex");
+};
