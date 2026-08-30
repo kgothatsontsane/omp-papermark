@@ -202,6 +202,9 @@ export default function DataroomView({
       setIsCheckingAuth(false);
       setIsLoading(false);
     }
+      setIsCheckingAuth(false);
+      setIsLoading(false);
+    }
   };
 
   const handleSubmit: React.FormEventHandler<HTMLFormElement> = async (
