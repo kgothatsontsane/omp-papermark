@@ -91,6 +91,9 @@ export default function DataroomView({
   const didMount = useRef<boolean>(false);
   const [submitted, setSubmitted] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [isCheckingAuth, setIsCheckingAuth] = useState<boolean>(
+    !!token || !!preview || !!previewToken,
+  );
   const [viewData, setViewData] = useState<DEFAULT_DATAROOM_VIEW_TYPE>({
     viewId: "",
   });
@@ -196,6 +199,7 @@ export default function DataroomView({
         setCode(null);
         setIsInvalidCode(true);
       }
+      setIsCheckingAuth(false);
       setIsLoading(false);
     }
   };
@@ -214,6 +218,8 @@ export default function DataroomView({
       if ((!submitted && !isProtected) || token || preview || previewToken) {
         handleSubmission();
         didMount.current = true;
+      } else {
+        setIsCheckingAuth(false);
       }
     }
   }, [submitted, isProtected, token, preview, previewToken]);
@@ -235,6 +241,14 @@ export default function DataroomView({
 
   // If link is not submitted and does not have email / password protection, show the access form
   if (!submitted && isProtected) {
+    // Show loading spinner while checking authentication (token verification in flight)
+    if (isCheckingAuth) {
+      return (
+        <div className="flex h-screen items-center justify-center bg-black">
+          <LoadingSpinner className="h-20 w-20" />
+        </div>
+      );
+    }
     return (
       <AccessForm
         data={data}

@@ -102,6 +102,9 @@ export default function DocumentView({
   const didMount = useRef<boolean>(false);
   const [submitted, setSubmitted] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [isCheckingAuth, setIsCheckingAuth] = useState<boolean>(
+    !!token || !!previewToken,
+  );
   const [viewData, setViewData] = useState<DEFAULT_DOCUMENT_VIEW_TYPE>({
     viewId: "",
   });
@@ -211,6 +214,7 @@ export default function DocumentView({
         setCode(null);
         setIsInvalidCode(true);
       }
+      setIsCheckingAuth(false);
       setIsLoading(false);
     }
   };
@@ -228,6 +232,8 @@ export default function DocumentView({
     if (!didMount.current) {
       if ((!submitted && !isProtected) || token || previewToken) {
         handleSubmission();
+      } else {
+        setIsCheckingAuth(false);
       }
       didMount.current = true;
     }
@@ -250,6 +256,14 @@ export default function DocumentView({
 
   // If link is not submitted and does not have email / password protection, show the access form
   if (!submitted && isProtected) {
+    // Show loading spinner while checking authentication (token verification in flight)
+    if (isCheckingAuth) {
+      return (
+        <div className="flex h-screen items-center justify-center bg-black">
+          <LoadingSpinner className="h-20 w-20" />
+        </div>
+      );
+    }
     return (
       <AccessForm
         data={data}
