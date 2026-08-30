@@ -16,10 +16,10 @@ export default async function handler(
     return res.status(401).end();
   }
 
-  // Set the cookie for the other domain
+  // Set the cookie (host-only, no Domain attribute — prevents cross-subdomain leakage)
   res.setHeader(
     "Set-Cookie",
-    `${VERCEL_DEPLOYMENT ? "__Secure-" : ""}next-auth.session-token=${req.cookies[`${VERCEL_DEPLOYMENT ? "__Secure-" : ""}next-auth.session-token`]}; HttpOnly; Path=/; SameSite=Lax; ${VERCEL_DEPLOYMENT ? "Secure; " : ""}Domain=.${BRAND_DOMAIN}; Max-Age=${30 * 24 * 60 * 60}`,
+    `${VERCEL_DEPLOYMENT ? "__Secure-" : ""}next-auth.session-token=${req.cookies[`${VERCEL_DEPLOYMENT ? "__Secure-" : ""}next-auth.session-token`]}; HttpOnly; Path=/; SameSite=Lax; ${VERCEL_DEPLOYMENT ? "Secure; " : ""}Max-Age=${30 * 24 * 60 * 60}`,
   );
 
   res.status(200).end();
