@@ -6,26 +6,6 @@ from git log + AGENTS.md.
 
 Last updated: 2026-08-30
 
-## Security audit (2026-08-30) — 23 findings
-
-### Fixed (commit 750a92de2)
-- **C-1**: Timing-unsafe token comparison → `crypto.timingSafeEqual`
-- **C-2**: SSRF via presigned URL proxy → team membership check
-- **C-3**: No rate limiting on auth endpoints → (requires Upstash/infra, deferred)
-- **C-4**: Cookie domain too broad → removed `Domain` attribute
-- **H-1**: CSP report-only → added HSTS, X-Content-Type-Options, Permissions-Policy
-- **H-4**: Document passwords encrypted → (requires migration, deferred)
-- **H-8**: OAuth dangerous account linking → set to `false`
-- **M-2**: Email verification URL logged → only in local dev
-- **M-7**: TUS upload auth bypass → added `await`
-
-### Remaining (deferred)
-- Rate limiting on auth endpoints (requires Upstash/infra)
-- Document password hashing (requires migration)
-- IP-based session binding (UX trade-off)
-- Webhook signature verification on incoming webhooks
-- npm audit: 80 vulnerabilities (requires dependency upgrades)
-
 ## Branch protection (2026-08-30) — PRODUCTION STABILITY
 
 - **`main` (production)**: Protected — requires 1 PR review, no force push, no deletions, enforce admins
