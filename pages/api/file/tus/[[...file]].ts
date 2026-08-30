@@ -64,7 +64,7 @@ const tusServer = new Server({
     if (!teamId) {
       throw { status_code: 400, body: "Missing teamId in upload metadata" };
     }
-    const session = await getServerSession(req, res, authOptions);
+    const session = await getServerSession(req, authOptions);
     if (!session) {
       throw { status_code: 401, body: "Unauthorized" };
     }
@@ -75,9 +75,9 @@ const tusServer = new Server({
       },
     });
     if (!userTeam) {
-      throw { status_code: 403, body: "Access denied to this team" };
+      throw { status_code: 403, body: "Access denied to this team" }
     }
-    return res;
+    return;
   },
   onResponseError(req, res, err) {
     log({
