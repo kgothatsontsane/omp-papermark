@@ -257,11 +257,13 @@ export default function ViewPage({
 }) {
   const router = useRouter();
   const { data: session, status } = useSession();
+  const slug = router.query.slug as string | undefined;
   const [storedToken, setStoredToken] = useState<string | undefined>(() => {
     if (typeof window === "undefined") return undefined;
+    const id = slug || window.location.pathname.split("/")[2];
     return (
       Cookies.get("pm_vft") ||
-      Cookies.get(`pm_drs_flag_${router.query.slug}`)
+      (id ? Cookies.get(`pm_drs_flag_${id}`) : undefined)
     );
   });
   const [storedEmail, setStoredEmail] = useState<string | undefined>(() => {
@@ -271,10 +273,10 @@ export default function ViewPage({
   });
 
   useEffect(() => {
-    // Re-retrieve in case cookie was set after initial render
+    // Re-retrieve once router.query is populated
     const cookieToken =
       Cookies.get("pm_vft") ||
-      Cookies.get(`pm_drs_flag_${router.query.slug}`);
+      (slug ? Cookies.get(`pm_drs_flag_${slug}`) : undefined);
     const storedEmail = window.localStorage.getItem("papermark.email");
     if (cookieToken && cookieToken !== storedToken) {
       setStoredToken(cookieToken);
@@ -282,7 +284,7 @@ export default function ViewPage({
     if (storedEmail?.toLowerCase() !== storedEmail) {
       setStoredEmail(storedEmail?.toLowerCase());
     }
-  }, [router.query.slug]);
+  }, [slug]);
 
   if (router.isFallback) {
     return (
