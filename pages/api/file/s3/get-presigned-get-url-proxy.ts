@@ -21,7 +21,7 @@ export default async function handler(
 
     const { key } = req.body as { key: string };
 
-    if (!key) {
+    if (typeof key !== "string" || !key) {
         return res.status(400).json({ message: "Key is required" });
     }
 

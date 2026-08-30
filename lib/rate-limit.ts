@@ -11,12 +11,14 @@ export function rateLimit(
   windowMs: number,
 ): { success: boolean; remaining: number; resetTime: number } {
   const now = Date.now();
-  const entry = rateLimitStore.get(identifier);
+  // Normalize identifier to prevent bypass via casing/whitespace
+  const normalizedIdentifier = identifier.trim().toLowerCase();
+  const entry = rateLimitStore.get(normalizedIdentifier);
 
   if (!entry || now >= entry.resetTime) {
     // New window
     const resetTime = now + windowMs;
-    rateLimitStore.set(identifier, { count: 1, resetTime });
+    rateLimitStore.set(normalizedIdentifier, { count: 1, resetTime });
     // Cleanup old entries periodically
     if (rateLimitStore.size > 10000) {
       for (const [key, val] of rateLimitStore) {

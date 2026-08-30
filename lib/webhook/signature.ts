@@ -31,15 +31,18 @@ export const verifyWebhookSignature = (
   if (!secret || !signature) return false;
 
   const expected = createWebhookSignatureSync(secret, body);
-  const a = Buffer.from(expected);
-  const b = Buffer.from(signature);
-  if (a.length !== b.length) return false;
-  // Timing-safe comparison
-  let result = 0;
-  for (let i = 0; i < a.length; i++) {
-    result |= a[i] ^ b[i];
+  // Validate hex encoding and equal length before timing-safe comparison
+  if (
+    !/^[0-9a-fA-F]+$/.test(expected) ||
+    !/^[0-9a-fA-F]+$/.test(signature) ||
+    expected.length !== signature.length
+  ) {
+    return false;
   }
-  return result === 0;
+  const crypto = require("crypto");
+  const a = Buffer.from(expected, "hex");
+  const b = Buffer.from(signature, "hex");
+  return crypto.timingSafeEqual(a, b);
 };
 
 const createWebhookSignatureSync = (secret: string, body: any): string => {
