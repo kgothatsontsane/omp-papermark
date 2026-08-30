@@ -91,9 +91,8 @@ export default function DataroomView({
   const didMount = useRef<boolean>(false);
   const [submitted, setSubmitted] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(false);
-  const [isCheckingAuth, setIsCheckingAuth] = useState<boolean>(
-    !!token || !!preview || !!previewToken,
-  );
+  // Always start checking auth when protected - prevents access form flash
+  const [isCheckingAuth, setIsCheckingAuth] = useState<boolean>(isProtected);
   const [viewData, setViewData] = useState<DEFAULT_DATAROOM_VIEW_TYPE>({
     viewId: "",
   });
@@ -222,6 +221,7 @@ export default function DataroomView({
         handleSubmission();
         didMount.current = true;
       } else {
+        // No token available, show access form immediately
         setIsCheckingAuth(false);
       }
     }
