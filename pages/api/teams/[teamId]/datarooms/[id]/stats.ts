@@ -68,8 +68,11 @@ export default async function handle(
         where: {
           id: dataroomId,
         },
-        include: {
-          views: true,
+        select: {
+          id: true,
+          name: true,
+          teamId: true,
+          allowBulkDownload: true,
         },
       });
 
@@ -86,7 +89,24 @@ export default async function handle(
         },
       });
 
-      const views = dataroom?.views;
+      // Fetch views with a limit to prevent memory issues
+      const views = await prisma.view.findMany({
+        where: {
+          dataroomId,
+          isArchived: false,
+        },
+        select: {
+          id: true,
+          documentId: true,
+          viewType: true,
+          viewerEmail: true,
+          viewedAt: true,
+        },
+        orderBy: {
+          viewedAt: "desc",
+        },
+        take: 1000,
+      });
 
       // if there are no views, return an empty array
       if (!views) {
@@ -106,7 +126,7 @@ export default async function handle(
       );
 
       // exclude views from the team's members
-      let excludedViews: View[] = [];
+      let excludedViews: typeof views = [];
       if (excludeTeamMembers) {
         excludedViews = documentViews.filter((view) => {
           return users.some((user) => user.email === view.viewerEmail);
