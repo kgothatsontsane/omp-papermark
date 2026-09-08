@@ -3,6 +3,8 @@ import { prismaExtension } from "@trigger.dev/build/extensions/prisma";
 import { BuildContext } from "@trigger.dev/core/v3/build";
 import { defineConfig, timeout } from "@trigger.dev/sdk/v3";
 
+const databaseUrl = process.env.DATABASE_URL || process.env.POSTGRES_PRISMA_URL || process.env.POSTGRES_PRISMA_URL_NON_POOLING;
+
 const libredwgExtension = {
   name: "libredwg",
   onBuildStart(context: BuildContext) {
@@ -33,8 +35,8 @@ const libredwgExtension = {
 
 export default defineConfig({
   project: "proj_palqkhramjxoleaduwuu",
-  dirs: ["./lib/trigger"],
-  maxDuration: timeout.None, // no max duration
+  dirs: ["./lib/trigger", "./prisma"],
+  maxDuration: timeout.None,
   retries: {
     enabledInDev: false,
     default: {
@@ -50,7 +52,8 @@ export default defineConfig({
       aptGet({ packages: ["libreoffice"] }),
       libredwgExtension,
       prismaExtension({
-        schema: "prisma/schema/schema.prisma",
+        schema: "prisma/schema.prisma",
+        databaseUrl: databaseUrl,
       }),
       ffmpeg(),
     ],

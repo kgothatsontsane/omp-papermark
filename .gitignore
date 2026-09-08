@@ -10,7 +10,6 @@
 
 
 # nvm
-.npmrc
 .nvmrc
 
 # next.js
