@@ -172,8 +172,5 @@
     "@trigger.dev/sdk": {
       "ai": "2.2.37"
     }
-  },
-  "prisma": {
-    "schema": "prisma/schema/schema.prisma"
   }
 }
