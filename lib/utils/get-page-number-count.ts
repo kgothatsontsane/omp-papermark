@@ -1,16 +1,15 @@
-import { pdfjs } from "react-pdf";
-import * as XLSX from "xlsx";
-
-// Default to CDN worker URL
-const cdnWorkerUrl = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.js`;
-pdfjs.GlobalWorkerOptions.workerSrc = cdnWorkerUrl;
-
+// ponytail: react-pdf (pdfjs) touches browser globals (DOMMatrix) at import
+// time and crashed Next 16 build-time page-data collection. Lazy-import it so
+// this module is safe to include in server bundles.
 export const getPagesCount = async (arrayBuffer: ArrayBuffer) => {
   try {
+    const { pdfjs } = await import("react-pdf");
+    pdfjs.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.js`;
+
     // Only in browser context
     if (typeof window !== "undefined") {
       try {
-        // First attempt with the current worker configuration
+        // First attempt with the CDN worker configuration
         const pdf = await pdfjs.getDocument({ data: arrayBuffer }).promise;
         return pdf.numPages;
       } catch (workerError) {
@@ -39,7 +38,8 @@ export const getPagesCount = async (arrayBuffer: ArrayBuffer) => {
   }
 };
 
-export const getSheetsCount = (arrayBuffer: ArrayBuffer) => {
+export const getSheetsCount = async (arrayBuffer: ArrayBuffer) => {
+  const XLSX = await import("xlsx");
   const data = new Uint8Array(arrayBuffer);
   const workbook = XLSX.read(data, { type: "array" });
   return workbook.SheetNames.length ?? 1;

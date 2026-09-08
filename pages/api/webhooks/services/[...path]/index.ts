@@ -5,21 +5,17 @@ import { waitUntil } from "@vercel/functions";
 import { z } from "zod";
 
 import { hashToken } from "@/lib/api/auth/token";
+import { generateEncrpytedPassword } from "@/lib/auth/passwords";
 import { createDocument } from "@/lib/documents/create-document";
+import { uploadBrandingFile } from "@/lib/files/aws-client";
 import { putFileServer } from "@/lib/files/put-file-server";
 import { extractTeamId, isValidWebhookId } from "@/lib/incoming-webhooks";
-import { uploadBrandingFile } from "@/lib/files/aws-client";
 import prisma from "@/lib/prisma";
 import { ratelimit } from "@/lib/redis";
-import {
-  convertDataUrlToBuffer,
-  generateEncrpytedPassword,
-  isDataUrl,
-  uploadImage,
-} from "@/lib/utils";
+import { convertDataUrlToBuffer, isDataUrl, uploadImage } from "@/lib/utils";
 import { getSupportedContentType } from "@/lib/utils/get-content-type";
-import { sendLinkCreatedWebhook } from "@/lib/webhook/triggers/link-created";
 import { verifyWebhookSignature } from "@/lib/webhook/signature";
+import { sendLinkCreatedWebhook } from "@/lib/webhook/triggers/link-created";
 
 export const config = {
   // in order to enable `waitUntil` function

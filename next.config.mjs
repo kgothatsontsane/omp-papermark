@@ -2,6 +2,9 @@
 const nextConfig = {
   reactStrictMode: true,
   pageExtensions: ["js", "jsx", "ts", "tsx", "mdx"],
+  // react-pdf (pdfjs) touches browser globals (DOMMatrix) at import time —
+  // keep it out of server bundling so page-data collection never executes it.
+  serverExternalPackages: ["react-pdf", "pdfjs-dist"],
   images: {
     minimumCacheTTL: 2592000, // 30 days
     remotePatterns: prepareRemotePatterns(),
@@ -99,7 +102,7 @@ const nextConfig = {
               `img-src 'self' data: blob: https: ${isDev ? "http:" : ""}; ` +
               `font-src 'self' data: https: ${isDev ? "http:" : ""}; ` +
               `frame-ancestors 'none'; ` +
-              `connect-src 'self' https: ${isDev ? "http: ws: wss:" : ""}; ` + // Add WebSocket for hot reload
+              `connect-src 'self' https: wss: ${isDev ? "http: ws:" : ""}; ` + // Add WebSocket for hot reload
               `${isDev ? "" : "upgrade-insecure-requests;"} ` +
               "report-to csp-endpoint;",
           },
@@ -112,7 +115,7 @@ const nextConfig = {
               `img-src 'self' data: blob: https:; ` +
               `font-src 'self' data: https:; ` +
               `frame-ancestors 'none'; ` +
-              `connect-src 'self' https:; ` +
+              `connect-src 'self' https: wss:; ` +
               `object-src 'none'; ` +
               `base-uri 'self'; ` +
               `${isDev ? "" : "upgrade-insecure-requests;"}`,
@@ -141,7 +144,7 @@ const nextConfig = {
               `img-src 'self' data: blob: https: ${isDev ? "http:" : ""}; ` +
               `font-src 'self' data: https: ${isDev ? "http:" : ""}; ` +
               "frame-ancestors *; " + // This allows iframe embedding
-              `connect-src 'self' https: ${isDev ? "http: ws: wss:" : ""}; ` + // Add WebSocket for hot reload
+              `connect-src 'self' https: wss: ${isDev ? "http: ws:" : ""}; ` + // Add WebSocket for hot reload
               `${isDev ? "" : "upgrade-insecure-requests;"}`,
           },
           {

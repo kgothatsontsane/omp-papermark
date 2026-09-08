@@ -13,17 +13,18 @@ import {
   createDataroomSession,
 } from "@/lib/auth/dataroom-auth";
 import { verifyDataroomSession } from "@/lib/auth/dataroom-auth";
+import { decryptEncrpytedPassword } from "@/lib/auth/passwords";
 import { PreviewSession, verifyPreviewSession } from "@/lib/auth/preview-auth";
 import { sendOtpVerificationEmail } from "@/lib/emails/send-email-otp-verification";
 import { getFile } from "@/lib/files/get-file";
-import { isSelfHostedMode } from "@/lib/self-hosted";
 import { newId } from "@/lib/id-helper";
 import prisma from "@/lib/prisma";
 import { ratelimit } from "@/lib/redis";
+import { isSelfHostedMode } from "@/lib/self-hosted";
 import { parseSheet } from "@/lib/sheet";
 import { recordLinkView } from "@/lib/tracking/record-link-view";
 import { CustomUser, WatermarkConfigSchema } from "@/lib/types";
-import { decryptEncrpytedPassword, log } from "@/lib/utils";
+import { log } from "@/lib/utils";
 import { extractEmailDomain, isEmailMatched } from "@/lib/utils/email-domain";
 import { generateOTP } from "@/lib/utils/generate-otp";
 import { LOCALHOST_IP } from "@/lib/utils/geo";
@@ -782,7 +783,8 @@ export async function POST(request: NextRequest) {
             file: true,
             storageType: true,
             pageNumber: true,
-            embeddedLinks: isSelfHostedMode() || !link.team?.plan.includes("free"),
+            embeddedLinks:
+              isSelfHostedMode() || !link.team?.plan.includes("free"),
             pageLinks: isSelfHostedMode() || !link.team?.plan.includes("free"),
             metadata: true,
           },
