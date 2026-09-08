@@ -4,10 +4,10 @@ import { LinkAudienceType, Tag } from "@prisma/client";
 import { waitUntil } from "@vercel/functions";
 import { getServerSession } from "next-auth/next";
 
+import { generateEncrpytedPassword } from "@/lib/auth/passwords";
 import { errorhandler } from "@/lib/errorHandler";
 import prisma from "@/lib/prisma";
 import { CustomUser } from "@/lib/types";
-import { generateEncrpytedPassword } from "@/lib/utils";
 import { sendLinkCreatedWebhook } from "@/lib/webhook/triggers/link-created";
 
 import { authOptions } from "../auth/[...nextauth]";

@@ -30,11 +30,12 @@ export const convertPdfToImageRoute = task({
       },
     });
 
-    // if documentVersion is null, log error and return
+    // if documentVersion is null, fail loudly so trigger.dev retries and the
+    // UI shows FAILED instead of cycling "preparing preview" forever
     if (!documentVersion) {
-      logger.error("File not found", { payload });
+      logger.error("Document version not found", { payload });
       updateStatus({ progress: 0, text: "Document not found" });
-      return;
+      throw new Error(`Document version ${documentVersionId} not found`);
     }
 
     logger.info("Document version", { documentVersion });
@@ -51,7 +52,7 @@ export const convertPdfToImageRoute = task({
     if (!signedUrl) {
       logger.error("Failed to get signed url", { payload });
       updateStatus({ progress: 0, text: "Failed to retrieve document" });
-      return;
+      throw new Error("Failed to get signed url for document version");
     }
 
     let numPages = documentVersion.numPages;
@@ -88,9 +89,12 @@ export const convertPdfToImageRoute = task({
       logger.info("Received number of pages", { numPagesResult });
 
       if (numPagesResult < 1) {
-        logger.error("Failed to get number of pages", { payload });
+        logger.error("Invalid page count returned", {
+          payload,
+          numPagesResult,
+        });
         updateStatus({ progress: 0, text: "Failed to get number of pages" });
-        return;
+        throw new Error(`Invalid page count: ${numPagesResult}`);
       }
 
       numPages = numPagesResult;

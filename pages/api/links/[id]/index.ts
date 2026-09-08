@@ -4,9 +4,9 @@ import { LinkAudienceType } from "@prisma/client";
 import { getServerSession } from "next-auth/next";
 
 import { getLinkViewData } from "@/lib/api/links/link-data";
+import { generateEncrpytedPassword } from "@/lib/auth/passwords";
 import prisma from "@/lib/prisma";
 import { CustomUser } from "@/lib/types";
-import { generateEncrpytedPassword } from "@/lib/utils";
 
 import { DomainObject } from "..";
 import { authOptions } from "../../auth/[...nextauth]";

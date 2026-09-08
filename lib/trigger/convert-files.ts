@@ -1,4 +1,9 @@
 import { logger, task } from "@trigger.dev/sdk/v3";
+import { execFile } from "node:child_process";
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
+import { promisify } from "node:util";
 
 import { getFile } from "@/lib/files/get-file";
 import { putFileServer } from "@/lib/files/put-file-server";
@@ -6,11 +11,6 @@ import prisma from "@/lib/prisma";
 
 import { updateStatus } from "../utils/generate-trigger-status";
 import { convertPdfToImageRoute } from "./pdf-to-image-route";
-import { execFile } from "node:child_process";
-import { promisify } from "node:util";
-import fs from "node:fs";
-import os from "node:os";
-import path from "node:path";
 
 const execFileAsync = promisify(execFile);
 
@@ -37,7 +37,7 @@ export const convertFilesToPdfTask = task({
 
     if (!team) {
       logger.error("Team not found", { teamId: payload.teamId });
-      return;
+      throw new Error(`Team ${payload.teamId} not found`);
     }
 
     const document = await prisma.document.findUnique({
@@ -73,7 +73,7 @@ export const convertFilesToPdfTask = task({
         documentVersionId: payload.documentVersionId,
         teamId: payload.teamId,
       });
-      return;
+      throw new Error("Document not found");
     }
 
     updateStatus({ progress: 10, text: "Retrieving file..." });
@@ -99,7 +99,10 @@ export const convertFilesToPdfTask = task({
           `Failed to download file: ${fileResponse.status} ${fileResponse.statusText}`,
         );
       }
-      fs.writeFileSync(inputPath, Buffer.from(await fileResponse.arrayBuffer()));
+      fs.writeFileSync(
+        inputPath,
+        Buffer.from(await fileResponse.arrayBuffer()),
+      );
       fs.mkdirSync(outDir, { recursive: true });
 
       await execFileAsync(
@@ -142,7 +145,7 @@ export const convertFilesToPdfTask = task({
           teamId: payload.teamId,
           docId: docId,
         });
-        return;
+        throw new Error("Failed to save converted file to database");
       }
 
       console.log("data from conversion", data);
@@ -210,7 +213,7 @@ export const convertCadToPdfTask = task({
 
     if (!team) {
       logger.error("Team not found", { teamId: payload.teamId });
-      return;
+      throw new Error(`Team ${payload.teamId} not found`);
     }
 
     const document = await prisma.document.findUnique({
@@ -244,7 +247,7 @@ export const convertCadToPdfTask = task({
         documentVersionId: payload.documentVersionId,
         teamId: payload.teamId,
       });
-      return;
+      throw new Error("Document not found");
     }
 
     const fileUrl = await getFile({
@@ -267,7 +270,10 @@ export const convertCadToPdfTask = task({
           `Failed to download file: ${fileResponse.status} ${fileResponse.statusText}`,
         );
       }
-      fs.writeFileSync(inputPath, Buffer.from(await fileResponse.arrayBuffer()));
+      fs.writeFileSync(
+        inputPath,
+        Buffer.from(await fileResponse.arrayBuffer()),
+      );
       fs.mkdirSync(outDir, { recursive: true });
 
       let libreOfficeInput = inputPath;
@@ -285,7 +291,14 @@ export const convertCadToPdfTask = task({
 
       await execFileAsync(
         "libreoffice",
-        ["--headless", "--convert-to", "pdf", "--outdir", outDir, libreOfficeInput],
+        [
+          "--headless",
+          "--convert-to",
+          "pdf",
+          "--outdir",
+          outDir,
+          libreOfficeInput,
+        ],
         { timeout: 120_000 },
       );
 
@@ -302,61 +315,61 @@ export const convertCadToPdfTask = task({
       const docId = match ? match[1] : undefined;
 
       // Save the converted file to the database
-    const { type: storageType, data } = await putFileServer({
-      file: {
-        name: `${document.name}.pdf`,
-        type: "application/pdf",
-        buffer: conversionBuffer,
-      },
-      teamId: payload.teamId,
-      docId: docId,
-    });
+      const { type: storageType, data } = await putFileServer({
+        file: {
+          name: `${document.name}.pdf`,
+          type: "application/pdf",
+          buffer: conversionBuffer,
+        },
+        teamId: payload.teamId,
+        docId: docId,
+      });
 
-    if (!data || !storageType) {
-      logger.error("Failed to save converted file to database", {
+      if (!data || !storageType) {
+        logger.error("Failed to save converted file to database", {
+          documentId: payload.documentId,
+          documentVersionId: payload.documentVersionId,
+          teamId: payload.teamId,
+          docId: docId,
+        });
+        throw new Error("Failed to save converted file to database");
+      }
+
+      console.log("data from conversion", data);
+      console.log("storageType from conversion", storageType);
+
+      await prisma.documentVersion.update({
+        where: { id: payload.documentVersionId },
+        data: {
+          file: data,
+          type: "pdf",
+          storageType: storageType,
+        },
+      });
+
+      await convertPdfToImageRoute.trigger(
+        {
+          documentId: payload.documentId,
+          documentVersionId: payload.documentVersionId,
+          teamId: payload.teamId,
+        },
+        {
+          idempotencyKey: `${payload.teamId}-${payload.documentVersionId}`,
+          tags: [
+            `team_${payload.teamId}`,
+            `document_${payload.documentId}`,
+            `version:${payload.documentVersionId}`,
+          ],
+        },
+      );
+
+      logger.info("Document converted", {
         documentId: payload.documentId,
         documentVersionId: payload.documentVersionId,
         teamId: payload.teamId,
         docId: docId,
       });
       return;
-    }
-
-    console.log("data from conversion", data);
-    console.log("storageType from conversion", storageType);
-
-    await prisma.documentVersion.update({
-      where: { id: payload.documentVersionId },
-      data: {
-        file: data,
-        type: "pdf",
-        storageType: storageType,
-      },
-    });
-
-    await convertPdfToImageRoute.trigger(
-      {
-        documentId: payload.documentId,
-        documentVersionId: payload.documentVersionId,
-        teamId: payload.teamId,
-      },
-      {
-        idempotencyKey: `${payload.teamId}-${payload.documentVersionId}`,
-        tags: [
-          `team_${payload.teamId}`,
-          `document_${payload.documentId}`,
-          `version:${payload.documentVersionId}`,
-        ],
-      },
-    );
-
-    logger.info("Document converted", {
-      documentId: payload.documentId,
-      documentVersionId: payload.documentVersionId,
-      teamId: payload.teamId,
-      docId: docId,
-    });
-    return;
     } catch (error) {
       fs.rmSync(tmpDir, { recursive: true, force: true });
       logger.error("CAD conversion failed", {
