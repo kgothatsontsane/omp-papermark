@@ -47,6 +47,46 @@ export const processDocument = async ({
   // Get passed type property or alternatively, the file extension and save it as the type
   const type = supportedFileType || getExtension(name);
 
+  // ponytail: fail fast on truncated/corrupt uploads BEFORE creating rows, so
+  // the UI shows a clear error instead of a document stuck "preparing preview"
+  // (graceful failure, per user request)
+  if (type === "pdf") {
+    try {
+      const presignRes = await fetch(
+        `${process.env.NEXT_PUBLIC_BASE_URL}/api/file/s3/get-presigned-get-url`,
+        {
+          method: "POST",
+          body: JSON.stringify({ key }),
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${process.env.INTERNAL_API_KEY}`,
+          },
+        },
+      );
+      if (!presignRes.ok) throw new Error("presign failed");
+      const { url: presignedUrl } = (await presignRes.json()) as { url: string };
+
+      const pagesRes = await fetch(
+        `${process.env.NEXT_PUBLIC_BASE_URL}/api/mupdf/get-pages`,
+        {
+          method: "POST",
+          body: JSON.stringify({ url: presignedUrl }),
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${process.env.INTERNAL_API_KEY}`,
+          },
+        },
+      );
+      if (!pagesRes.ok) throw new Error("get-pages failed");
+      const { numPages: parsed } = (await pagesRes.json()) as { numPages: number };
+      if (!parsed || parsed < 1) throw new Error("no pages");
+    } catch {
+      throw new Error(
+        "Uploaded file appears corrupted or incomplete. Please re-upload it.",
+      );
+    }
+  }
+
   // Check whether the Notion page is publically accessible or not
   if (type === "notion") {
     try {

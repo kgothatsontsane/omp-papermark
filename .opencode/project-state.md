@@ -414,3 +414,9 @@ Files in `lib/tinybird/endpoints/`.
 - Run error visibility: realtime API with tag + initialRecords replay works; runs list error field is null; GET /runs/{id} is HTML.
 - Pending final check: one user upload through production UI to confirm app-created run (tags team_*/version:*) + progress-token 200.
 - Trigger.dev decision: KEPT (multi-minute conversions cannot run inside serverless request; queue is required; all failure causes fixed + proven). Do NOT rip it out.
+
+## 2026-09-09 (final) — THE actual "no runs registered" root cause
+- **PR #24 (db0754977)**: `conversionQueue()` returned `{name: "..."}` but trigger.dev v4 SDK `tasks.trigger` expects `queue` as a plain STRING → API validation error "Expected string, received object at options.queue.name" → EVERY app-side trigger failed → caught only in graceful-degradation logs (`vercel logs <deploy>` is essential). Fixed: returns string; all 9 call sites pass it as options.queue.
+- **Deployed**: Vercel prod = https://omp-papermark-5br1n0hea-open-mic-productions.vercel.app, ALIASED to dealroom.open-mic.co.za (alias manually after EVERY deploy).
+- Partial-conversion lesson: task sets hasPages=true when ≥1 page succeeds; a run overlapping a deploy can leave N/A pages missing. Top-up: list missing pageNumbers from DB, presign file key, loop POST /api/mupdf/convert-page (idempotent). Used for DJ Call me v2 (29 restored → 49/49).
+- Verified conversions today: 7 documents. Remaining: user to upload ONE file through UI to prove app-created run (tags team_*/version:*).
