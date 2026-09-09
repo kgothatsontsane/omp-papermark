@@ -6,7 +6,7 @@ export const getPagesCount = async (arrayBuffer: ArrayBuffer) => {
     const { pdfjs } = await import("react-pdf");
     // ponytail: pdfjs-dist 5.x ships the worker as .mjs; self-hosted from
     // public/ (cdnjs only hosts .js for older versions → 404)
-    pdfjs.GlobalWorkerOptions.workerSrc = `/pdf.worker.min.mjs`;
+    pdfjs.GlobalWorkerOptions.workerSrc = `/vendor/pdf.worker.min.mjs`;
 
     // Only in browser context
     if (typeof window !== "undefined") {
