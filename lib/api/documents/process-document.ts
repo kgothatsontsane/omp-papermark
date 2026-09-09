@@ -185,8 +185,6 @@ export const processDocument = async ({
             `document_${document.id}`,
             `version:${document.versions[0].id}`,
           ],
-          queue: conversionQueue(teamPlan),
-          concurrencyKey: teamId,
         },
       );
     } catch (error) {
@@ -212,8 +210,6 @@ export const processDocument = async ({
             `document_${document.id}`,
             `version:${document.versions[0].id}`,
           ],
-          queue: conversionQueue(teamPlan),
-          concurrencyKey: teamId,
         },
       );
     } catch (error) {
@@ -241,8 +237,6 @@ export const processDocument = async ({
             `document_${document.id}`,
             `version:${document.versions[0].id}`,
           ],
-          queue: conversionQueue(teamPlan),
-          concurrencyKey: teamId,
         },
       );
     } catch (error) {
@@ -269,8 +263,6 @@ export const processDocument = async ({
             `document_${document.id}`,
             `version:${document.versions[0].id}`,
           ],
-          queue: conversionQueue(teamPlan),
-          concurrencyKey: teamId,
         },
       );
     } catch (error) {

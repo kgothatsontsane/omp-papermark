@@ -117,8 +117,6 @@ export default async function handle(
                 `document_${documentId}`,
                 `version:${version.id}`,
               ],
-              queue: conversionQueue(team.plan),
-              concurrencyKey: teamId,
             },
           );
         } catch (error) {
@@ -146,8 +144,6 @@ export default async function handle(
                 `document_${documentId}`,
                 `version:${version.id}`,
               ],
-              queue: conversionQueue(team.plan),
-              concurrencyKey: teamId,
             },
           );
         } catch (error) {
@@ -176,8 +172,6 @@ export default async function handle(
                 `document_${documentId}`,
                 `version:${version.id}`,
               ],
-              queue: conversionQueue(team.plan),
-              concurrencyKey: teamId,
             },
           );
         } catch (error) {
