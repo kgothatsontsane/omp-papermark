@@ -13,6 +13,10 @@ type ConvertPdfToImagePayload = {
 
 export const convertPdfToImageRoute = task({
   id: "convert-pdf-to-image-route",
+  // ponytail: DB has max_connections=25 shared with Vercel; cap concurrent
+  // conversions so N parallel runs can't exhaust connections. Raise together
+  // with connection_limit if the DB tier grows.
+  queue: { concurrencyLimit: 2 },
   run: async (payload: ConvertPdfToImagePayload) => {
     const { documentVersionId, teamId, documentId, versionNumber } = payload;
 
