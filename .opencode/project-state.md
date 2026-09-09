@@ -420,3 +420,10 @@ Files in `lib/tinybird/endpoints/`.
 - **Deployed**: Vercel prod = https://omp-papermark-5br1n0hea-open-mic-productions.vercel.app, ALIASED to dealroom.open-mic.co.za (alias manually after EVERY deploy).
 - Partial-conversion lesson: task sets hasPages=true when ≥1 page succeeds; a run overlapping a deploy can leave N/A pages missing. Top-up: list missing pageNumbers from DB, presign file key, loop POST /api/mupdf/convert-page (idempotent). Used for DJ Call me v2 (29 restored → 49/49).
 - Verified conversions today: 7 documents. Remaining: user to upload ONE file through UI to prove app-created run (tags team_*/version:*).
+
+## 2026-09-09 (close-out) — SHUFFLE + deploy timeline
+- SHUFFLE upload at 11:52 local landed seconds BEFORE the queue-string fix deploy finished → hit old code → no run (expected). Converted manually after: 24/24 hasPages=true.
+- Dataroom upload flow confirmed: UI uploads via POST /api/teams/{teamId}/documents (processDocument → triggers conversion) THEN links via POST /api/teams/{teamId}/datarooms/{id}/documents (which only links + schedules the 10-min change-notification — its DELAYED status is BY DESIGN, not an error).
+- PR #25 (649fdebbd) merged + deployed: processDocument validates PDFs via get-pages BEFORE creating rows (corrupt upload → clear error, no stuck doc); conversion task throws on ANY missing page (retries fill gaps, idempotent) instead of silently marking partial previews done.
+- Vercel prod now: https://omp-papermark-gp9aysyfx-open-mic-productions.vercel.app aliased to dealroom.open-mic.co.za.
+- Awaiting: ONE user upload post-deploy → app-created conversion run (team_*/version:* tags) → auto-convert → E2E closed.
