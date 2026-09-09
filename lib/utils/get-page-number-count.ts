@@ -4,29 +4,14 @@
 export const getPagesCount = async (arrayBuffer: ArrayBuffer) => {
   try {
     const { pdfjs } = await import("react-pdf");
-    pdfjs.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.js`;
+    // ponytail: pdfjs-dist 5.x ships the worker as .mjs; self-hosted from
+    // public/ (cdnjs only hosts .js for older versions → 404)
+    pdfjs.GlobalWorkerOptions.workerSrc = `/pdf.worker.min.mjs`;
 
     // Only in browser context
     if (typeof window !== "undefined") {
-      try {
-        // First attempt with the CDN worker configuration
-        const pdf = await pdfjs.getDocument({ data: arrayBuffer }).promise;
-        return pdf.numPages;
-      } catch (workerError) {
-        console.warn("PDF worker error, trying fallback:", workerError);
-
-        // Fall back to local worker
-        pdfjs.GlobalWorkerOptions.workerSrc = `/pdf.worker.min.js`;
-
-        try {
-          // Try again with local worker
-          const pdf = await pdfjs.getDocument({ data: arrayBuffer }).promise;
-          return pdf.numPages;
-        } catch (fallbackError) {
-          console.warn("Both CDN and local worker failed:", fallbackError);
-          return 1; // Default to 1 page if both attempts fail
-        }
-      }
+      const pdf = await pdfjs.getDocument({ data: arrayBuffer }).promise;
+      return pdf.numPages;
     } else {
       // Server-side rendering case
       const pdf = await pdfjs.getDocument(arrayBuffer).promise;

@@ -427,3 +427,11 @@ Files in `lib/tinybird/endpoints/`.
 - PR #25 (649fdebbd) merged + deployed: processDocument validates PDFs via get-pages BEFORE creating rows (corrupt upload → clear error, no stuck doc); conversion task throws on ANY missing page (retries fill gaps, idempotent) instead of silently marking partial previews done.
 - Vercel prod now: https://omp-papermark-gp9aysyfx-open-mic-productions.vercel.app aliased to dealroom.open-mic.co.za.
 - Awaiting: ONE user upload post-deploy → app-created conversion run (team_*/version:* tags) → auto-convert → E2E closed.
+
+## 2026-09-09 (FINAL) — trigger-time queue was the REAL run-killer; all fixes deployed
+- **PR #28 (34669c5d9) = the decisive fix**: trigger-time `queue: conversion-*`/`concurrencyKey` options sent runs to PENDING_VERSION forever ("Run cannot execute until a version includes the task and queue" — v4 requires the queue to be part of the deployed version). Removed from all 9 call sites; runs now use the task's own queue (concurrencyLimit 2). PROVEN: LENNY redo run (no queue option) EXECUTED → COMPLETED 24/24 immediately after sitting PENDING_VERSION with the queue option.
+- **PR #27 (ff9fcffbe)**: processDocument rethrows trigger failures → uploads FAIL VISIBLY with the real error instead of silently creating stuck docs.
+- Local repro lesson: `tasks.trigger` from repo root with env vars from /tmp/new-trigger-key.txt is the fastest way to test the app's exact option payload (works: idempotencyKey + tags; kills: queue-name-at-trigger-time).
+- Final production state: Vercel eqsw5jqxl aliased to dealroom.open-mic.co.za (PRs #24-#28 all live), worker 20260909.5, DB pools capped (app limit=2 timeout=30, worker limit=2, task concurrency 2), presign 503 guard, upload PDF validation, partial-conversion retry-fill.
+- Verified conversions: 10 documents incl. LENNY 24/24 (hasPages=true).
+- Remaining known flakiness: Aiven DB "Can't reach database server" transient errors (free tier, 25 max connections, no pgbouncer) — mitigated by caps; if it recurs at scale, add a pooled endpoint (Aiven pgbouncer / Supavisor) as the durable fix.

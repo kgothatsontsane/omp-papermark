@@ -21,7 +21,7 @@ import Nav from "@/components/view/nav";
 
 import { AwayPoster } from "./away-poster";
 
-pdfjs.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.js`;
+pdfjs.GlobalWorkerOptions.workerSrc = `/pdf.worker.min.mjs`;
 
 export default function PDFViewer(props: any) {
   const { isPreview, linkId, documentId, viewId } = props.navData;
