@@ -178,14 +178,22 @@ export const convertPdfToImageRoute = task({
     }
 
     if (successCount < numPages) {
-      logger.warn(
-        "Some pages failed to convert; continuing with partial document",
-        { successCount, numPages, payload },
-      );
+      // ponytail: partial success used to silently mark hasPages=true leaving a
+      // broken preview. Page conversion is idempotent, so throwing makes the
+      // retry fill only the missing pages; after maxAttempts the run shows
+      // FAILED (graceful failure) instead of a half-rendered document.
+      logger.error("Some pages failed to convert; retrying to fill gaps", {
+        successCount,
+        numPages,
+        payload,
+      });
       updateStatus({
         progress: 80,
-        text: `Processed ${successCount}/${numPages} pages (some failed)`,
+        text: `${successCount}/${numPages} pages converted, retrying...`,
       });
+      throw new Error(
+        `Converted ${successCount}/${numPages} pages; retrying for the rest`,
+      );
     }
 
     // 5. after all pages are uploaded, update document version to hasPages = true
