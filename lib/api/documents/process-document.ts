@@ -275,9 +275,12 @@ export const processDocument = async ({
       );
     } catch (error) {
       log({
-        message: `Graceful degradation: failed to trigger PDF-to-image conversion for document ${document.id} (${document.versions[0].id}): ${error}`,
+        message: `Failed to trigger PDF-to-image conversion for document ${document.id} (${document.versions[0].id}): ${error}`,
         type: "error",
       });
+      // ponytail: rethrow so the upload visibly fails instead of creating a
+      // document stuck on "preparing preview" forever (graceful failure)
+      throw error;
     }
   }
 
