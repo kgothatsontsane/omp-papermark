@@ -33,17 +33,27 @@ export default async function handler(
     return res.status(401).end("Unauthorized");
   }
 
-  const team = await prisma.team.findUnique({
-    where: {
-      id: teamId,
-      users: {
-        some: {
-          userId: (session.user as CustomUser).id,
+  let team;
+  try {
+    team = await prisma.team.findUnique({
+      where: {
+        id: teamId,
+        users: {
+          some: {
+            userId: (session.user as CustomUser).id,
+          },
         },
       },
-    },
-    select: { id: true },
-  });
+      select: { id: true },
+    });
+  } catch {
+    // ponytail: DB pool can be briefly saturated (25 max connections shared
+    // with worker runs); return a clean retryable error instead of crashing
+    // the function (graceful failure, per user request)
+    return res
+      .status(503)
+      .json({ error: "Service is busy — please retry in a minute." });
+  }
 
   if (!team) {
     return res.status(403).end("Unauthorized to access this team");
