@@ -105,9 +105,16 @@ export const convertFilesToPdfTask = task({
       );
       fs.mkdirSync(outDir, { recursive: true });
 
+      // ponytail: wide spreadsheets paginate into 100+ A4 pages by default; SinglePageSheets
+      // renders each sheet as one wide page (viewer scales to width + zoom). Requires LO 7.4+.
+      const isSpreadsheet = /\.(xlsx|xls|csv|ods)$/i.test(fileName);
+      const convertTarget = isSpreadsheet
+        ? 'pdf:calc_pdf_Export:{"SinglePageSheets":{"type":"boolean","value":"true"}}'
+        : "pdf";
+
       await execFileAsync(
         "libreoffice",
-        ["--headless", "--convert-to", "pdf", "--outdir", outDir, inputPath],
+        ["--headless", "--convert-to", convertTarget, "--outdir", outDir, inputPath],
         { timeout: 120_000 },
       );
 
