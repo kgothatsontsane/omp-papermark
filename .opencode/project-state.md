@@ -4,62 +4,7 @@ Living document. Updated at the end of every task when anything changes.
 Source of truth for what is deployed, decided, verified. Missing/stale → rebuild
 from git log + AGENTS.md.
 
-Last updated: 2026-08-30
-
-## Branch protection (2026-08-30) — PRODUCTION STABILITY
-
-- **`main` (production)**: Protected — requires 1 PR review, no force push, no deletions, enforce admins
-- **`staging`**: Protected — requires 1 PR review, no force push, no deletions
-- **`develop`**: Open (feature work)
-- **Workflow**: `develop` → PR → `staging` (deploy & test) → PR → `main` (production)
-- **Vercel**: Each branch auto-deploys to its own environment (main=production, staging=preview, develop=dev)
-- **Rule**: Never commit directly to `main`. All changes flow through staging for verification first.
-
-## Remaining deep dive improvements (2026-08-30) — main 5a81800ad
-
-- **Dataroom stats**: Added `take: 1000` limit on views query, replaced `include: { views: true }` with targeted `findMany` (was loading ALL views into memory)
-- **Team detail API**: Added `take: 100` limit on documents query
-- **Error boundaries**: Created `components/error-boundary.tsx` (reusable ErrorBoundary) and `pages/_error.tsx` (global error page)
-- **Image optimization**: Converted logo PNG → WebP (391KB → 33KB, 91.5% savings), white logo (279KB → 33KB), created cropped banner (1384×1384 → 1920×320, proper aspect ratio), updated branding constants to use WebP
-
-## Access form flash FIXED (2026-08-30) — main e8b0f72a3
-
-- **Problem**: Email/password access form briefly appeared after authentication, then disappeared (race condition)
-- **Root cause**: Cookie token was retrieved in `useEffect` (AFTER first render), so `token` was `undefined` on first render, causing AccessForm to show. Once cookie was retrieved, token became available and form disappeared.
-- **Fix**:
-  - Made cookie token + email retrieval synchronous using `useState` initializer (available on first render)
-  - Added `isCheckingAuth` state to show loading spinner while token verification is in flight (no AccessForm flash)
-  - Applied to both dataroom and document view pages
-- **Security**: No compromise. Token is still verified server-side. Client-side only shows loading state instead of form.
-
-- **ISR revalidate**: Increased from 10s → 60s for branded pages (less server load, better cache hit rate)
-- **API caching headers**: Added `Cache-Control: private, s-maxage=30, stale-while-revalidate=300` to analytics, visits, dataroom stats endpoints
-- **Dashboard code splitting**: Converted DocumentsTable, LinksTable, ViewsTable, VisitorsTable to dynamic imports (loaded on tab click, not initial page load)
-- **Composite DB indexes**: Added `(teamId, viewedAt, isArchived, viewType)` and `(dataroomId, isArchived, viewType, viewedAt)` for analytics queries
-
-- **Problem**: After email verification, dataroom images (logo, banner) loaded slowly and visibly piece by piece. Caused by: plain `<img>` tags, no preload hints, sequential brand fetches, 400KB logo PNG.
-- **Fixes**:
-  - Added `<link rel="preload" as="image">` for logo and banner in `pages/_document.tsx`
-  - Converted logo to `next/image` with `priority` in nav-dataroom.tsx, nav.tsx, access-form/index.tsx
-  - Added `fetchPriority="high"` to banner `<img>`
-  - Parallelized dataroomBrand + teamBrand fetches in `lib/api/links/link-data.ts` (Promise.all)
-  - Added `width`/`height` to logo to prevent layout shift
-
-## IP capture FIXED (2026-08-19) — main bfb6693bd
-
-- **Root cause**: `pages/api/record_view.ts` — the `bodyValidation` zod schema did NOT include
-  `ip_address`. `bodyValidation.safeParse(pageViewObject)` (line ~168) strips unknown keys
-  (zod default), so `result.data` dropped `ip_address` before `publishPageView()` → Tinybird
-  stored null. IP extraction (x-real-ip/x-forwarded-for/x-vercel-forwarded-for) was always fine.
-- **Fix**: added `ip_address: z.string().nullable().optional()` to `bodyValidation`; removed debug
-  console.logs in record_view.ts.
-- **Verified**: POST /api/record_view → latest `page_views__v3` row has `ip_address: "197.184.82.29"`
-  (country ZA, city Johannesburg). Earlier rows still null (pre-fix).
-- **Cleanup**: deleted debug endpoints `pages/api/debug-headers.ts`, `pages/api/debug-ip.ts`,
-  `pages/api/test-ip.ts` (commit 63cd71b6d). `test-record-view.ts` never committed (created/discarded).
-- Deploy `dpl_Ckx4QKUeYvW793erwjrczbroRN2B` READY, domain re-aliased dealroom.open-mic.co.za.
-- Note: `package-lock.json` has unrelated unstaged change (react-email optional win32 binary from
-  an earlier npm install) — left unstaged, not committed.
+Last updated: 2026-08-15
 
 ## Machine tooling: Watch Skill (personal, not app) — 2026-08-15
 
@@ -80,38 +25,13 @@ Last updated: 2026-08-30
 - This machine's internet is ~50KB/s baseline (Cloudflare/Ubuntu mirrors
   measured) — downloads are slow; nothing fixes the pipe.
 
-## Favicon rounded (2026-08-30) — main 3af1556bc
-
-- Replaced `public/favicon.ico` with a rounded-corner version (128×128 RGBA, 24px radius, transparent corners).
-- Production URL was aliased to a 23-day-old deploy; `vercel --prod` timed out before re-aliasing, so the alias was set manually:
-  `vercel alias set omp-papermark-5k8fcebc1-open-mic-productions.vercel.app dealroom.open-mic.co.za` → success.
-- Production now serves the rounded favicon (corner alpha=0, center alpha=255 verified).
-
-## BIMI SVG fix (2026-08-30) — main 0bcd558c1
-
-- Root cause of "no avatar" in email: `bimi.svg` embedded the logo as a base64 `data:` URI inside `<image xlink:href="data:image/png;base64,...">`. BIMI validators/Gmail reject data URIs; require an external `href`.
-- Fix: rewrote `public/_static/open-mic/bimi.svg` to use `<image href="https://dealroom.open-mic.co.za/_static/open-mic/bimi-logo.png"/>`, extracted PNG as `public/_static/open-mic/bimi-logo.png` (10613 bytes, 180×180).
-- Both SVG and PNG serve correctly from production (`image/svg+xml` and `image/png` content-types).
-- BIMI DNS record: `v=BIMI1; l=https://dealroom.open-mic.co.za/_static/open-mic/bimi.svg;`. DMARC: `v=DMARC1;p=quarantine;...`. DKIM key exists at `default._domainkey.open-mic.co.za`. DNS managed by `webhosting4southafrica.co.za`.
-- Gmail requires a VMC (Verified Mark Certificate) for BIMI avatars; none obtained yet. An `a=default._domainkey.open-mic.co.za` anchor could be added to the BIMI record using the existing DKIM key — requires DNS provider access.
-
-## Email sender normalization (2026-08-30) — main f01d4f21a
-
-- Created `lib/email-from.ts` with pure `extractEmail()` + `buildFromAddress()` helpers (verified 6/6 test cases).
-- Updated `lib/resend.ts` to use `buildFromAddress` — all From addresses now normalize to `BRAND_NAME` display name with `open-mic.co.za` domain.
-- `RESEND_FROM_EMAIL` env updated to `dealroom@open-mic.co.za` on Production + Preview via Vercel CLI.
-
-## Admin dashboard hanging FIXED (2026-08-30) — main ef677eee9
-
-- **Root cause**: Analytics `overview` case in `pages/api/analytics/index.ts` fetched ALL view rows via `prisma.view.findMany()` into memory, then computed unique counts in JS. For teams with 1000+ views, this exceeded Vercel's 30s function limit → dashboard hung.
-- **Fix 1**: Replaced `findMany` with `prisma.view.groupBy()` for unique link/document/visitor counts — database aggregation instead of loading all rows.
-- **Fix 2**: Added `take: 100` limits to `links`, `documents`, `visitors`, `views` cases to prevent unbounded N+1 Tinybird queries.
-- **Fix 3**: Added 25-second `AbortController` timeout to `fetcher` in `lib/utils.ts` — hung API no longer blocks client indefinitely.
-- Email logo size increased from 160×56 to 240×84 for better visibility.
+## Current git state (2026-08-15)
 
 - Branches: `main` (production) / `staging` / `develop`.
-- HEAD: `3af1556bc` (fix: make favicon rounded with transparent corners). Pushed, origin/main in sync.
-- Recent: `0bcd558c1` (BIMI SVG external URL), `9f303caf9`/`2d1e539d1` (perf: in-process link view data), `918cb160e` (perf: Speculation Rules + preconnect), `f01d4f21a` (email sender normalization).
+- HEAD on all branches ~`19fde644` (docs commit). Production (main) live, domain aliased.
+- Upload fixes landed: duplicate-name rename/overwrite dialog (678c1519),
+  graceful degradation for background conversion triggers (9b54b1cf), same for
+  agreement uploads (3f2dfc5f).
 
 ## Upload failure ROOT CAUSE (2026-08-15) — FIXED + R2/worker verified E2E
 
@@ -151,63 +71,9 @@ Last updated: 2026-08-30
   (`NEXT_PRIVATE_CONVERSION_BASE_URL` + `NEXT_PRIVATE_INTERNAL_AUTH_TOKEN`), which is
   configured NOWHERE (not .env, not Vercel, not worker). PDF uploads work; docs/slides
   conversion will fail until a Gotenberg instance is provisioned and those vars set.
-   `REVALIDATE_TOKEN` also missing everywhere (non-blocking revalidate step).
+  `REVALIDATE_TOKEN` also missing everywhere (non-blocking revalidate step).
 
-## Conversion stuck in dataroom (2026-08-28) — ROOT CAUSE + PERMANENT FIX
-
-- SYMPTOM: dataroom uploads cycled "preparing preview / converting document / optimising
-  for viewing" then errored; docs stuck `hasPages=false`.
-- INVESTIGATION: direct prod call to `/api/mupdf/convert-page` WORKED (mupdf + R2 put fine),
-  so the API path was healthy. Root cause was the **trigger.dev worker**:
-  1. At ~18:25 a deploy/version-registration blip left the conversion run
-     `run_06g4j7m1etjsolqf33e8s97b01` in `PENDING_VERSION` (never executes → doc stuck forever).
-     Worker itself was healthy (other runs completed at version 20260818.21).
-  2. LATENT CODE BUG in `lib/trigger/pdf-to-image-route.ts`: on the first page error the
-     task did `return` (not throw) → run marked COMPLETED but `hasPages` stayed false.
-     Silent permanent failure; trigger.dev global retry (3x) never fired because the run
-     "succeeded".
-- PERMANENT FIX (commit `a1501f44f`, deployed as trigger.dev `20260828.3`, 12 tasks):
-  - `convertPdfToImageRoute` now continues past a single-page failure (graceful partial
-    success) and only THROWS if ZERO pages converted → global retry + visible failure.
-  - `trigger.config.ts` already sets `retries.default.maxAttempts: 3` (applies to all tasks).
-- RESOLUTION (manual, pre-fix): re-triggered conversions for the 3 stuck docs via trigger.dev
-  API. PDFs (`cmtd9fypa`, `cmtd75ovq`) fixed via `convert-pdf-to-image-route`; the `.docx`
-  (`cmtd70bel`, type `docs`) fixed via `convert-files-to-pdf` (LibreOffice docx→pdf, which
-  then triggers the image route). All three now `hasPages=true`; no other stuck docs in 7d.
-- CORRECTION (stale note above): docx/slides conversion does NOT use Gotenberg. `convert-files.ts`
-  converts locally with **LibreOffice** installed in the worker image via `aptGet` in
-  `trigger.config.ts` (`build.extensions`). It WORKED this session (doc3 → 10 pages). The
-  `NEXT_PRIVATE_CONVERSION_BASE_URL` / `NEXT_PRIVATE_INTERNAL_AUTH_TOKEN` vars are unused by
-  this path.
-- FAVICON (2026-08-28): replaced `public/favicon.ico` with the Open Mic logo PNG (180×180,
-  PNG-embedded ICO generated via node — sharp in this build only emits PNG, not ICO).
-  No link change needed (`pages/_app.tsx` already references `/favicon.ico`; App Router
-  auto-serves `public/favicon.ico` too).
-- AVATAR UPLOAD 500 (2026-08-29): `components/account/upload-avatar.tsx` → `uploadImage`
-  (`lib/utils.ts`) → `PATCH /api/account`. ROOT CAUSE: `uploadImage` returned a RELATIVE url
-  (`/api/file/s3/branding/...`) but `pages/api/account/index.ts` validates `image` with
-  `z.string().url()` (absolute only). The `parseAsync` throw is OUTSIDE the try/catch →
-  unhandled 500 on every avatar save. FIX (commit after this): `uploadImage` now returns an
-  absolute url via `NEXT_PUBLIC_BASE_URL` (fallback `window.location.origin`). This also
-  corrects OG/meta image urls for all other `uploadImage` callers (branding, link thumbnails,
-  favicons).   NOTE: `parseAsync` in `/api/account` is still outside try/catch — a non-url image
-  value would still 500 instead of 400; left as-is to keep the fix minimal.
-- BRANDING (2026-08-29): replaced the Papermark letter-mark `P` in the admin sidebar
-  collapsed icon (`components/sidebar/app-sidebar.tsx` — was `<Link>P</Link>`) with the
-  Open Mic favicon (`/favicon.ico`). Full-mode header already shows `BRAND_NAME`
-  ("Open Mic Productions") via `lib/branding.ts`. `lib/branding.ts` already points
-  `BRAND_LOGO` at `/_static/open-mic/omp_logo_b.svg`; the wide wordmark is NOT suitable
-  for the 24px collapsed icon, so the square favicon mark was used.
-- PERF (2026-08-29): implemented McMaster/mcmaster.com speed techniques from Wes Bos
-  video (youtube.com/watch?v=-Ln-8QM8KhQ). Added to `pages/_document.tsx` AND
-  `app/layout.tsx`: (1) `<script type="speculationrules">` with `prefetch` on `a:hover`,
-  `eagerness: "conservative"` — mirrors McMaster's hover-HTML-prefetch (no JS exec, HTML
-  only, safe for an app); (2) `<link rel="preconnect">` to Tinybird analytics
-  (`api.eu-west-1.aws.tinybird.co`) and Plausible (`plausible.io`). NOT changed: inlined
-  CSS (Next bundles/inlines critical CSS in prod already) and fixed image dims (use
-  next/image). Fonts already self-hosted via next/font (no external font origin).
-
- - Changes in `7a905c71`: F7 (self-host-aware view limits), F9 (whitelabel demo assets:
+- Changes in `7a905c71`: F7 (self-host-aware view limits), F9 (whitelabel demo assets:
   local `dataroom-demo.mp4` + `favicon.jpeg`, author-CDN refs removed), MCP-verification
   made mandatory in loop.
 
@@ -232,9 +98,9 @@ Last updated: 2026-08-30
 | `staging` | preview (auto) | https://omp-papermark-7wayqaw9w-open-mic-productions.vercel.app | LIVE @ bfa423de |
 | `develop` | preview (auto) | https://omp-papermark-4gvx03voh-open-mic-productions.vercel.app | LIVE @ bfa423de |
 
-- Latest production deploy: `5k8fcebc1` (Ready, 3m build), aliased to `dealroom.open-mic.co.za` (manually set after `vercel --prod` timed out).
-- Previous: `29796zn0t` (Ready, 3m build).
-- Note: `vercel --prod` timed out at 120s during this session — the deploy was triggered but the CLI hung before re-aliasing. Manual `vercel alias set` was required.
+- Latest production deploy (2026-08-15): commit `bfa423de`, URL
+  https://omp-papermark-8j2bl5bp8-open-mic-productions.vercel.app, READY. App serves
+  "Login | Open Mic Productions" (whitelabeled).
 - Note: the first push (`d0c3f5c9`) had a build error (`module_compilation_error` —
   trigger.dev v4 SDK's `skills.js` imports Node builtins into the client bundle).
   Fixed in `bfa423de` by importing `runMetadata` from `@trigger.dev/core/v3` in
@@ -279,7 +145,7 @@ The current state was reached in one long session. Timeline:
 ## Git
 
 - Branch `main`, remote `github.com:kgothatsontsane/omp-papermark.git`.
-- HEAD: `3af1556bc` — "fix: make favicon rounded with transparent corners" (pushed, origin/main in sync).
+- HEAD: `953b8fc6` — "fix: align Tinybird resources with Forward workspace and log degradation" (pushed, origin/main in sync).
 - Recent history style: `fix: handle NaN versionNumber and invalid documentId in thumbnail endpoint`, `fix: use Promise.allSettled in visits endpoint...`, `fix: handle Tinybuster 403 errors in all stats endpoints`.
 
 ## Tinybird deployment (live)
@@ -326,57 +192,13 @@ Files in `lib/tinybird/endpoints/`.
 
 ## Current work
 
-- All whitelabeling, performance, security, and stability work complete and deployed to production.
-- Production URL: https://dealroom.open-mic.co.za
-- Branch protection active on `main` and `staging`.
+- `lib/tracking/record-link-view.ts:106-115` — `recordTinybird()` wraps `recordLinkViewTB(clickData)`
+  in try/catch; on failure logs `Graceful degradation: Tinybird ingest failed for link ... (view ...)`
+  via `log({ type: "error" })`. Tinybird outage never blocks email/webhook (all three run in `Promise.all`).
 
 ## Open threads / TODOs
 
-- **Papermark remnants** (intentionally left): `PapermarkSparkle`, `year-in-review-papermark.tsx`, localStorage/redis "papermark" keys, `X-Papermark-Signature` header, `papermark.dev` middleware, "cannot contain papermark" guards, EE `schedule-call-modal.tsx` Cal.com embed.
-- **npm audit**: 37 remaining vulnerabilities (down from 80) — mostly transitive dependencies (ws, engine.io, socket.io, brace-expansion). Requires major version upgrades.
-- **CSP**: Report-only mode — move to enforcing mode when safe (requires nonce/hash implementation for inline scripts).
-
-## Completed this session (2026-08-30)
-
-### Whitelabeling
-- Email sender normalized to "Open Mic Productions" @open-mic.co.za
-- BIMI SVG fixed (external URL, no data URI)
-- Favicon rounded with transparent corners
-- Email avatar: Gravatar + Google Account + BIMI (wide-net, free)
-
-### Performance (20 upgrades)
-- Analytics findMany → groupBy aggregation
-- N+1 Tinybird queries capped with take limits
-- 25-second fetch timeout
-- Image preloads + next/image priority
-- Parallel brand fetches
-- Dataroom stats + team docs take limits
-- Error boundaries + global _error.tsx
-- Logo PNG → WebP (91% smaller)
-- Banner aspect ratio fix
-- ISR revalidate 10s → 60s
-- API cache headers
-- Dashboard code splitting
-- Composite DB indexes
-
-### Security
-- TUS upload auth bypass fixed (missing await)
-- SSRF via presigned URL proxy fixed (team membership check)
-- Timing-unsafe token comparison fixed (crypto.timingSafeEqual)
-- Cookie domain too broad fixed (removed Domain attribute)
-- OAuth dangerous account linking disabled
-- Security headers added (HSTS, X-Content-Type-Options, Permissions-Policy)
-- Rate limiting on auth endpoints (3/email/10min)
-- Document password hashing (bcrypt, backward compatible)
-- IP-based session binding softened (log only, don't delete)
-- npm audit: 80 → 37 vulnerabilities
-- Incoming webhook HMAC signature verification
-
-### Stability
-- Branch protection on main and staging (1 review required)
-- Staging-first workflow enforced
-- Access form race condition fixed (synchronous cookie auth check)
-- Admin dashboard hanging fixed
+- None outstanding. Tinybird fully migrated & deployed; degradation logging in place.
 
 ## Decisions & rationale
 
@@ -395,6 +217,8 @@ Files in `lib/tinybird/endpoints/`.
 - Worker deployed `20260816.4` (12 tasks). Vercel prod redeployed with NEW R2 secret (fixes presigned-URL 403 from old revoked secret).
 - **Verified end-to-end**: `ARTIST PRODUCER AGREEMENT.doc` → convert-files-to-pdf COMPLETED (6.9s) → convert-pdf-to-image-route COMPLETED (3 pages). Zero subscriptions, no external service.
 - Note: `.doc`/`.docx`/`.ppt`/`.pptx`/`.odt`/`.ods`/`.odp`/`.rtf`/`.txt` convert via LibreOffice. CAD (dwg/dxf) now converts locally too: DXF→PDF via LibreOffice Draw, DWG→DXF via `dwg2dxf` (libredwg 0.9.3 compiled into the worker image from GNU FTP tarball). Paid CloudConvert API (`NEXT_PRIVATE_CONVERT_API_URL`/`KEY`, engine `cadconverter`) fully removed. Worker `20260816.12`. DXF path verified e2e (COMPLETED 8.3s, 1 page); DWG binary compiled but not e2e-tested.
+<<<<<<< Updated upstream
+=======
 
 ## Worker Fleet Fix Runbook (2026-09-09) — RESOLVED
 - **Root cause chain of "new uploads stuck"**: (1) Vercel `TRIGGER_SECRET_KEY` was the revoked key → app-side `tasks.trigger()` failed silently (no run created) + realtime 401 in UI. Fixed by `vercel env rm/add TRIGGER_SECRET_KEY production` + `vercel redeploy` (1gu2o5ssv). (2) Worker runtime env lacks `DATABASE_URL` (stored trigger.dev prod envvars have POSTGRES_* instead) → CLI deploys bake a Prisma client with no URL → instant P2002-style crash (~1s). FIX: **export DATABASE_URL from local .env's POSTGRES_PRISMA_URL before `trigger deploy --env prod`** (the prismaExtension warning in deploy logs is misleading — .3 shows it yet works; the param bakes the URL). (3) Worker `INTERNAL_API_KEY` re-synced via PUT /api/v1/projects/proj_palqkhramjxoleaduwuu/envvars/INTERNAL_API_KEY body {name,value,environments:["prod"]}.
@@ -435,3 +259,17 @@ Files in `lib/tinybird/endpoints/`.
 - Final production state: Vercel eqsw5jqxl aliased to dealroom.open-mic.co.za (PRs #24-#28 all live), worker 20260909.5, DB pools capped (app limit=2 timeout=30, worker limit=2, task concurrency 2), presign 503 guard, upload PDF validation, partial-conversion retry-fill.
 - Verified conversions: 10 documents incl. LENNY 24/24 (hasPages=true).
 - Remaining known flakiness: Aiven DB "Can't reach database server" transient errors (free tier, 25 max connections, no pgbouncer) — mitigated by caps; if it recurs at scale, add a pooled endpoint (Aiven pgbouncer / Supavisor) as the durable fix.
+
+## 2026-09-09 (final, take-over session) — pdf.js worker fix verified, E2E closed
+- PR #29 (90a8d73b8): pdf.js v5 worker self-hosted — cdnjs `pdf.worker.min.js` 404s because v5 renamed the worker to `.mjs`. Added `public/pdf.worker.min.mjs`, viewer + page-count util point at it.
+- PR #30 (4c3295c6d): worker moved to `public/vendor/pdf.worker.min.mjs` — `/vendor` is a middleware-exempt path (root-level static was intercepted). Both viewer call sites reference `/vendor/pdf.worker.min.mjs`.
+- VERIFIED in production: `GET https://dealroom.open-mic.co.za/vendor/pdf.worker.min.mjs` → 200, sha256 `f99f5cb8…` byte-identical to local file (asset only exists since PR #30, so alias is serving latest deploy). HEAD of main = 4c3295c6d, in sync with origin/main.
+- HEAD is now `4c3295c6d` (PR #30) — supersedes `34669c5d9` note above; all PRs #23–#30 live in production.
+- Cleanup: deleted throwaway DB-check scripts `chk.mjs`, `measure.mjs`, `v.mjs` (untracked). `.playwright-mcp/` artifact dir left in place.
+- Residual user-side check: open one PDF link in a browser to visually confirm the viewer renders (server-side asset verified; visual confirmation needs a real link).
+
+## 2026-09-10 — USER UPLOAD E2E CLOSED + stale-cdnjs mystery explained
+- **E2E CLOSED**: user uploaded 2 PDFs through the production UI (dataroom cmtcz5bd40001js04mld1km76, folder litigation/charmza-de-dj-and-biblos-vs-master-kg-omp-africori), app-created conversion runs with PR #27/#28 code, both COMPLETE: "REQUEST FOR FURTHER DISCOVERY.pdf" (cmtu2i5nm0004l804po2w4bdg, 3/3) and "Notice for Further and Better Discovery 2.pdf" (cmtu2i5120001l804ai99a2q9, 3/3), hasPages=true. The "app-created run with team_*/version:* tags" open item from 2026-09-09 is now PROVEN via real user traffic.
+- **cdnjs pdf.worker request in browser log = STALE CLIENT BUNDLE, not a bug**: user's tab ran chunks with `?dpl=dpl_9mX6J8QDK5q59Qc2LWFoMm9D7jvA` (built Sep 9 12:24 SAST, pre-#29/#30; PRs #29/#30 merged 14:32/14:40 SAST). Old pre-fix code used `cdnjs.../pdf.js/${pdfjs.version}/pdf.worker.min.js` template — version matched pdfjs-dist 5.4.296. No cdnjs/pdf.worker reference exists in current source or node_modules. Fix: hard refresh the open tab.
+- Verification commands used: `vercel inspect dpl_9mX6J8QDK5q59Qc2LWFoMm9D7jvA` (target production, created 12:24 SAST); Prisma one-off script at repo root for version hasPages (module resolution requires the script to live inside the repo, not /tmp).
+>>>>>>> Stashed changes
