@@ -77,6 +77,7 @@ export default function SpreadsheetViewer({
   const containerRef = useRef<HTMLDivElement>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [zoomLevel, setZoomLevel] = useState(1);
 
   const { linkId, documentId, viewId, isPreview, dataroomId } = navData;
   const pageNumber = 1;
@@ -275,6 +276,16 @@ export default function SpreadsheetViewer({
     window.location.reload();
   }, []);
 
+  const setZoom = useCallback((z: number) => {
+    const next = Math.min(4, Math.max(0.25, Math.round(z * 10) / 10));
+    setZoomLevel(next);
+    try {
+      window.luckysheet?.setSheetZoom?.(next * 100);
+    } catch {
+      // zoom API unavailable before grid init
+    }
+  }, []);
+
   return (
     <>
       <Nav type="sheet" navData={navData} />
@@ -308,6 +319,35 @@ export default function SpreadsheetViewer({
             <p className="text-sm text-gray-500">Loading spreadsheet…</p>
           </div>
         ) : null}
+        <div className="absolute bottom-9 right-4 z-50 flex items-center gap-1 rounded-full bg-gray-950/90 px-2 py-1 text-white shadow-lg">
+          <button
+            type="button"
+            aria-label="Zoom out"
+            className="px-2 text-lg leading-none hover:text-gray-300"
+            onClick={() => setZoom(zoomLevel - 0.1)}
+          >
+            −
+          </button>
+          <span className="min-w-[3.5rem] text-center text-xs">
+            {Math.round(zoomLevel * 100)}%
+          </span>
+          <button
+            type="button"
+            aria-label="Zoom in"
+            className="px-2 text-lg leading-none hover:text-gray-300"
+            onClick={() => setZoom(zoomLevel + 0.1)}
+          >
+            +
+          </button>
+          <button
+            type="button"
+            aria-label="Reset zoom"
+            className="px-2 text-xs leading-none hover:text-gray-300"
+            onClick={() => setZoom(1)}
+          >
+            Reset
+          </button>
+        </div>
         <div
           className="absolute bottom-0 left-0 right-0 z-50 h-[26px] bg-gray-950"
           style={{
