@@ -151,7 +151,9 @@ export default function AdvancedExcelViewer({
       >
         <iframe
           className="h-full w-full"
-          src={`https://view.officeapps.live.com/op/embed.aspx?src=${file}&wdPrint=0&action=embedview&wdAllowInteractivity=False`}
+          src={`https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(
+            file,
+          )}&wdPrint=0&action=embedview&wdAllowInteractivity=False`}
         ></iframe>
         <div
           className="absolute bottom-0 left-0 right-0 z-50 h-[26px] bg-gray-950"
