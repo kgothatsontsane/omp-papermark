@@ -613,13 +613,9 @@ export async function POST(request: NextRequest) {
               documentVersion.file = `https://${storageConfig.advancedDistributionHost}/${documentVersion.file}`;
             }
           } else {
-            const fileUrl = await getFile({
-              data: documentVersion.file,
-              type: documentVersion.storageType,
-            });
-
-            const data = await parseSheet({ fileUrl });
-            sheetData = data;
+            // ponytail: server-side parseSheet crashed on Vercel bundles; the native
+            // Luckysheet viewer parses xlsx client-side — return the file only.
+            sheetData = undefined;
           }
         }
         console.timeEnd("get-file");
