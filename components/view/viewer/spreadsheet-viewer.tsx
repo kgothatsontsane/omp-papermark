@@ -286,18 +286,34 @@ export default function SpreadsheetViewer({
     }
   }, []);
 
-  // Mac trackpad pinch = ctrlKey + wheel; zoom the grid instead of the page
+  // Mac trackpad pinch = ctrlKey + wheel; zoom the grid instead of the page.
+  // ponytail: registered once (refs, not state deps) so normal scrolling stays on the
+  // compositor; pinch ticks coalesced via rAF to avoid re-render storms.
+  const zoomRef = useRef(1);
+  useEffect(() => {
+    zoomRef.current = zoomLevel;
+  }, [zoomLevel]);
+
   useEffect(() => {
     const el = containerRef.current;
     if (!el) return;
+    let raf = 0;
     const onWheel = (e: WheelEvent) => {
       if (!e.ctrlKey) return;
       e.preventDefault();
-      setZoom(zoomLevel + (e.deltaY < 0 ? 0.05 : -0.05));
+      if (raf) return;
+      raf = requestAnimationFrame(() => {
+        raf = 0;
+        const dir = e.deltaY < 0 ? 0.05 : -0.05;
+        setZoom(zoomRef.current + dir);
+      });
     };
     el.addEventListener("wheel", onWheel, { passive: false });
-    return () => el.removeEventListener("wheel", onWheel);
-  }, [zoomLevel, setZoom]);
+    return () => {
+      el.removeEventListener("wheel", onWheel);
+      cancelAnimationFrame(raf);
+    };
+  }, [setZoom]);
 
   return (
     <>
