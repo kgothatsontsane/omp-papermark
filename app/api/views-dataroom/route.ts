@@ -1009,7 +1009,7 @@ export async function POST(request: NextRequest) {
         mention: true,
       });
       return NextResponse.json(
-        { message: (error as Error).message },
+        { message: (error as Error).stack ?? (error as Error).message },
         { status: 500 },
       );
     }
