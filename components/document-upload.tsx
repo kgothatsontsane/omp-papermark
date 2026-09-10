@@ -26,9 +26,11 @@ import { getPagesCount } from "@/lib/utils/get-page-number-count";
 export default function DocumentUpload({
   currentFile,
   setCurrentFile,
+  onFilesDropped,
 }: {
   currentFile: File | null;
   setCurrentFile: React.Dispatch<React.SetStateAction<File | null>>;
+  onFilesDropped?: (files: File[]) => void;
 }) {
   const router = useRouter();
   const { theme, systemTheme } = useTheme();
@@ -59,12 +61,14 @@ export default function DocumentUpload({
         : isFree && !isTrial
           ? FREE_PLAN_ACCEPTED_FILE_TYPES
           : FULL_PLAN_ACCEPTED_FILE_TYPES,
-    multiple: false,
+    multiple: !!onFilesDropped,
     onDropAccepted: (acceptedFiles) => {
       if (acceptedFiles.length === 0) {
         return;
       }
-      const file = acceptedFiles[0];
+
+      if (!onFilesDropped) {
+        const file = acceptedFiles[0];
       const fileType = file.type;
       const fileSizeLimitMB = getFileSizeLimit(fileType, fileSizeLimits); // in MB
       const fileSizeLimit = fileSizeLimitMB * 1024 * 1024; // in bytes
@@ -107,7 +111,45 @@ export default function DocumentUpload({
           console.error("Error reading file:", error);
           toast.error("Failed to read the file");
         });
-    },
+      return;
+    }
+
+    void (async () => {
+      const valid: File[] = [];
+      for (const file of acceptedFiles) {
+        const fileSizeLimitMB = getFileSizeLimit(file.type, fileSizeLimits);
+        const fileSizeLimit = fileSizeLimitMB * 1024 * 1024;
+
+        if (file.size > fileSizeLimit) {
+          toast.error(
+            `${file.name}: File size too big (max. ${fileSizeLimitMB} MB)`,
+          );
+          continue;
+        }
+
+        if (file.type === "application/pdf") {
+          try {
+            const numPages = await getPagesCount(await file.arrayBuffer());
+            if (numPages > fileSizeLimits.maxPages) {
+              toast.error(
+                `${file.name}: File has too many pages (max. ${fileSizeLimits.maxPages})`,
+              );
+              continue;
+            }
+          } catch (error) {
+            console.error("Error reading file:", error);
+            toast.error(`${file.name}: Failed to read the file`);
+            continue;
+          }
+        }
+
+        valid.push(file);
+      }
+      if (valid.length > 0) {
+        onFilesDropped(valid);
+      }
+    })();
+  },
     onDropRejected: (fileRejections) => {
       const { errors, file } = fileRejections[0];
       let message;
