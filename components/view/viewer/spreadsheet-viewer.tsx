@@ -46,12 +46,20 @@ function loadScript(src: string): Promise<void> {
 }
 
 function loadStyles(): void {
-  const href = `https://cdn.jsdelivr.net/npm/luckysheet@${LUCKYSHEET_VERSION}/dist/plugins/plugins.css`;
-  if (!document.querySelector(`link[href="${href}"]`)) {
-    const link = document.createElement("link");
-    link.rel = "stylesheet";
-    link.href = href;
-    document.head.appendChild(link);
+  const base = `https://cdn.jsdelivr.net/npm/luckysheet@${LUCKYSHEET_VERSION}/dist`;
+  const hrefs = [
+    `${base}/plugins/css/pluginsCss.css`,
+    `${base}/plugins/plugins.css`,
+    `${base}/css/luckysheet.css`,
+    `${base}/assets/iconfont/iconfont.css`,
+  ];
+  for (const href of hrefs) {
+    if (!document.querySelector(`link[href="${href}"]`)) {
+      const link = document.createElement("link");
+      link.rel = "stylesheet";
+      link.href = href;
+      document.head.appendChild(link);
+    }
   }
 }
 
