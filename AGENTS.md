@@ -80,6 +80,11 @@ Vercel deployment, Tinybird for analytics events.
   at least 1 review approval. Both branches are protected (no force push,
   no deletions). Verify staging is stable before merging to production.
   Vercel maps each branch to its own environment.
+  **Branch sync (user mandate):** `develop` and `staging` must ALWAYS be kept
+  synced with `main` — at the start of every session and after every merge to
+  `main`, fast-forward them (`git checkout develop && git merge --ff-only main
+  && git push origin develop`, same for `staging`). They carry no unique
+  commits by design; if a ff-merge conflicts, stop and investigate.
 - **Always show verification links (MANDATORY):** after completing a task that has
   a viewable artifact (deployment, endpoint, PR, dashboard), output the relevant
   link(s) + a status list (production/staging/development/deployed/pending).
