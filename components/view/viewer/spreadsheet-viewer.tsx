@@ -319,7 +319,7 @@ export default function SpreadsheetViewer({
             <p className="text-sm text-gray-500">Loading spreadsheet…</p>
           </div>
         ) : null}
-        <div className="absolute bottom-8 right-4 z-50 flex items-center gap-1 rounded-full bg-gray-950/90 px-2 py-1 text-white shadow-lg">
+        <div className="absolute bottom-[30px] right-4 z-50 flex items-center gap-1 rounded-full bg-gray-950/90 px-2 py-1 text-white shadow-lg">
           <button
             type="button"
             aria-label="Zoom out"
