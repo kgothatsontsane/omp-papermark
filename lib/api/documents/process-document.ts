@@ -170,7 +170,12 @@ export const processDocument = async ({
   });
 
   // Trigger appropriate conversion tasks based on document type
-  if (type === "docs" || type === "slides" || type === "sheet") {
+  // ponytail: .xlsx renders natively (Luckysheet viewer) — only convert non-xlsx sheets to PDF
+  if (
+    type === "docs" ||
+    type === "slides" ||
+    (type === "sheet" && !name.toLowerCase().endsWith(".xlsx"))
+  ) {
     try {
       await convertFilesToPdfTask.trigger(
         {
