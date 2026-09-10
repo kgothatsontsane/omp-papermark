@@ -170,7 +170,7 @@ export const processDocument = async ({
   });
 
   // Trigger appropriate conversion tasks based on document type
-  if (type === "docs" || type === "slides") {
+  if (type === "docs" || type === "slides" || type === "sheet") {
     try {
       await convertFilesToPdfTask.trigger(
         {
