@@ -272,12 +272,25 @@ export default function SpreadsheetViewer({
     };
   }, [file, fileName]);
 
+  // Mac trackpad pinch = ctrlKey + wheel; zoom the grid instead of the page
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    const onWheel = (e: WheelEvent) => {
+      if (!e.ctrlKey) return;
+      e.preventDefault();
+      setZoom(zoomLevel + (e.deltaY < 0 ? 0.05 : -0.05));
+    };
+    el.addEventListener("wheel", onWheel, { passive: false });
+    return () => el.removeEventListener("wheel", onWheel);
+  }, [zoomLevel, setZoom]);
+
   const handleRetry = useCallback(() => {
     window.location.reload();
   }, []);
 
   const setZoom = useCallback((z: number) => {
-    const next = Math.min(4, Math.max(0.25, Math.round(z * 10) / 10));
+    const next = Math.min(4, Math.max(0.25, Math.round(z * 20) / 20));
     setZoomLevel(next);
     try {
       window.luckysheet?.setSheetZoom?.(next);
