@@ -73,8 +73,18 @@ export default async (req: NextApiRequest, res: NextApiResponse) => {
       });
     }
 
-    // Scale the document to 144 DPI
-    const scaleFactor = widthInPoints >= 1600 ? 2 : 3; // 2x for width >= 1600, 3x for width < 1600
+    // Scale the document to ~144 DPI
+    // ponytail: cap the render so giant pages (SinglePageSheets PDFs can be 20000+ pt wide)
+    // stay within mupdf/Vercel memory limits; longest rendered side <= 8192px.
+    const MAX_RENDER_DIM = 8192;
+    const baseScale = widthInPoints >= 1600 ? 2 : 3;
+    const scaleFactor = Math.max(
+      0.5,
+      Math.min(
+        baseScale,
+        MAX_RENDER_DIM / Math.max(widthInPoints, heightInPoints),
+      ),
+    );
     const doc_to_screen = mupdf.Matrix.scale(scaleFactor, scaleFactor);
 
     console.log("Scale factor:", scaleFactor);
