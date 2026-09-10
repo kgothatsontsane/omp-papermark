@@ -325,3 +325,18 @@ Files in `lib/tinybird/endpoints/`.
 - main = staging = develop = a8361b825 (PR #40). Production aliased to omp-papermark-fqr29p0lo. Worker 20260910.9 (SinglePageSheets).
 - Known cosmetic console noise (NOT bugs): attribution-reporting Permissions-Policy warning, speculation-rules predicate warning, preload-unused hints for banner/logo on viewer pages, adblocker-blocked plausible, Grammarly extension errors.
 - Excel E2E user-confirmation pending: open an .xlsx in the dataroom → styled Luckysheet grid with zoom.
+
+## 2026-09-10 (night) — E2E browser test PASSED + final fixes (PRs #42–#45)
+
+### Excel viewer E2E — VERIFIED IN PRODUCTION (real browser, Playwright)
+- Flow: view link (email-gated) → OTP flow (code read from VerificationToken table, identifier `otp:<linkId>:<email>`, 10-min expiry — codes from an old page-load EXPIRE, always resend+re-read) → viewer.
+- PR #42 (7e289abbf): skip PDF conversion for .xlsx uploads (worker rewrites type→pdf which shadowed the native viewer; live surgery restored Annexure 1 version: type back to "sheet", file=originalFile, pages cleared). xls/csv/ods still convert.
+- **PR #44 (9jdql5wfs): REMOVED server-side parseSheet** — it worked locally (Node 24) but threw "Cannot read properties of undefined (reading '0')" inside the Vercel bundle (xlsx internals). Server now only returns the presigned file; LuckyExcel parses client-side. DEBUG TIP: temporarily returning error.stack in the 500 response pinpointed it in minutes (chunk offsets s0/s2 = xlsx internals).
+- PR #45 (c9100b6b1): Luckysheet needs ALL FOUR stylesheets from dist (pluginsCss.css, plugins.css, css/luckysheet.css, assets/iconfont/iconfont.css) — loading only plugins.css left the toolbar unstyled.
+- RESULT (screenshot-verified): styled grid = navy/yellow/blue formatting, crisp data, full toolbar (undo, fonts, borders, freeze, ZOOM), sheet tabs, read-only. "Annexure 1 – Sound Recordings Schedule.xlsx" renders perfectly.
+
+### Final state
+- main = staging = develop = c9100b6b1 (PR #45). Production aliased to omp-papermark-kb9e7igfx. Worker 20260910.9.
+- Session PR tally: #31–#45 all merged. gitleaks clean throughout.
+- Test artifacts: excel-luckysheet-*.jpeg in repo root (untracked, can delete).
+- Access-control notes: dataroom links reject non-viewer emails with 403 (correct); viewer email used for tests: nvisionfactory@gmail.com.
