@@ -6,6 +6,7 @@ import { FormEvent, useEffect, useState } from "react";
 import { useTeam } from "@/context/team-context";
 import { PlanEnum } from "@/ee/stripe/constants";
 import { DefaultPermissionStrategy } from "@prisma/client";
+import { X } from "lucide-react";
 import { parsePageId } from "notion-utils";
 import { toast } from "sonner";
 import { mutate } from "swr";
@@ -24,6 +25,7 @@ import { getNotionPageIdFromSlug } from "@/lib/notion/utils";
 import { usePlan } from "@/lib/swr/use-billing";
 import { useDataroom } from "@/lib/swr/use-dataroom";
 import useLimits from "@/lib/swr/use-limits";
+import { bytesToSize } from "@/lib/utils";
 import { getSupportedContentType } from "@/lib/utils/get-content-type";
 
 import { SetUnifiedPermissionsModal } from "@/components/datarooms/groups/set-unified-permissions-modal";
@@ -76,6 +78,7 @@ export function AddDocumentModal({
   const [uploading, setUploading] = useState<boolean>(false);
   const [isOpen, setIsOpen] = useState<boolean | undefined>(undefined);
   const [currentFile, setCurrentFile] = useState<File | null>(null);
+  const [multiFiles, setMultiFiles] = useState<File[] | null>(null);
   const [notionLink, setNotionLink] = useState<string | null>(null);
   const [showGroupPermissions, setShowGroupPermissions] = useState(false);
   const [uploadedFiles, setUploadedFiles] = useState<
@@ -212,10 +215,30 @@ export function AddDocumentModal({
     // strategy === DefaultPermissionStrategy.HIDDEN_BY_DEFAULT - do nothing, documents remain hidden
   };
 
+  const handleFilesDropped = (files: File[]) => {
+    if (files.length === 1) {
+      setCurrentFile(files[0]);
+      return;
+    }
+    setMultiFiles(files);
+  };
+
+  const removeBatchFile = (target: File) => {
+    setMultiFiles((prev) => {
+      const next = prev?.filter((f) => f !== target) ?? null;
+      return next && next.length > 0 ? next : null;
+    });
+  };
+
   const handleFileUpload = async (
     event: FormEvent<HTMLFormElement>,
   ): Promise<void> => {
     event.preventDefault();
+
+    if (multiFiles && multiFiles.length > 0 && !newVersion) {
+      await handleBatchUpload();
+      return;
+    }
 
     // Check if the file is chosen
     if (!currentFile) {
@@ -405,6 +428,133 @@ export function AddDocumentModal({
         setAddDocumentModalOpen && setAddDocumentModalOpen(false);
       }
     }
+  };
+
+  const handleBatchUpload = async (): Promise<void> => {
+    if (!multiFiles || multiFiles.length === 0) return;
+
+    if (!canAddDocuments) {
+      toast.error("You have reached the maximum number of documents.");
+      return;
+    }
+
+    setUploading(true);
+    let succeeded = 0;
+    let failed = 0;
+
+    for (const file of multiFiles) {
+      try {
+        let contentType = file.type;
+        let supportedFileType = getSupportedContentType(contentType);
+
+        if (file.name.endsWith(".dwg") || file.name.endsWith(".dxf")) {
+          supportedFileType = "cad";
+          contentType = `image/vnd.${file.name.split(".").pop()}`;
+        }
+
+        if (file.name.endsWith(".xlsm")) {
+          supportedFileType = "sheet";
+          contentType = "application/vnd.ms-excel.sheet.macroEnabled.12";
+        }
+
+        if (!supportedFileType) {
+          failed++;
+          toast.error(`${file.name}: Unsupported file format.`);
+          continue;
+        }
+
+        const { type, data, numPages, fileSize } = await putFile({
+          file,
+          teamId,
+        });
+
+        const documentData: DocumentData = {
+          name: file.name,
+          key: data!,
+          storageType: type!,
+          contentType: contentType,
+          supportedFileType: supportedFileType,
+          fileSize: fileSize,
+        };
+
+        const response = await createDocument({
+          documentData,
+          teamId,
+          numPages,
+          folderPathName: currentFolderPath?.join("/"),
+        });
+        const document = await response.json();
+
+        if (isDataroom && dataroomId) {
+          const dataroomResponse = await addDocumentToDataroom({
+            documentId: document.id,
+            folderPathName: currentFolderPath?.join("/"),
+          });
+
+          if (dataroomResponse?.ok) {
+            const dataroomDocument =
+              (await dataroomResponse.json()) as DataroomDocument & {
+                dataroom: {
+                  _count: { viewerGroups: number; permissionGroups: number };
+                };
+              };
+
+            await applyUnifiedPermissionsToDocument(
+              document,
+              dataroomDocument,
+              currentFolderPath,
+            );
+          }
+        } else {
+          mutate(`/api/teams/${teamId}/documents`);
+        }
+
+        analytics.capture("Document Added", {
+          documentId: document.id,
+          name: document.name,
+          numPages: document.numPages,
+          path: router.asPath,
+          type: document.type,
+          contentType: document.contentType,
+          teamId: teamId,
+          bulkupload: true,
+          dataroomId: isDataroom ? dataroomId : undefined,
+          $set: {
+            teamId: teamId,
+            teamPlan: plan,
+          },
+        });
+
+        succeeded++;
+      } catch (error) {
+        failed++;
+        console.error(`Batch upload failed for ${file.name}:`, error);
+        if (
+          error instanceof DocumentUploadError &&
+          error.code === "DUPLICATE_DOCUMENT"
+        ) {
+          toast.error(
+            `${file.name}: A document with this name already exists in this folder. Rename it and upload separately.`,
+          );
+        } else {
+          const errorMessage =
+            error instanceof Error ? error.message : "Unknown error";
+          toast.error(`${file.name}: ${errorMessage}`);
+        }
+      }
+    }
+
+    setUploading(false);
+    setMultiFiles(null);
+    if (succeeded > 0) {
+      toast.success(
+        failed > 0
+          ? `${succeeded} document(s) uploaded, ${failed} failed.`
+          : `${succeeded} document(s) uploaded successfully! 🎉`,
+      );
+    }
+    setIsOpen(false);
+    setAddDocumentModalOpen && setAddDocumentModalOpen(false);
   };
 
   const handleRenameAndUpload = async () => {
@@ -712,6 +862,7 @@ export function AddDocumentModal({
   const clearModelStates = () => {
     currentFile !== null && setCurrentFile(null);
     notionLink !== null && setNotionLink(null);
+    setMultiFiles(null);
     setIsOpen(!isOpen);
     setAddDocumentModalOpen && setAddDocumentModalOpen(!isOpen);
   };
@@ -800,8 +951,41 @@ export function AddDocumentModal({
                         <DocumentUpload
                           currentFile={currentFile}
                           setCurrentFile={setCurrentFile}
+                          onFilesDropped={
+                            !newVersion ? handleFilesDropped : undefined
+                          }
                         />
                       </div>
+                      {multiFiles && multiFiles.length > 0 ? (
+                        <div className="mt-2 rounded-lg border border-gray-200 p-3 dark:border-gray-700">
+                          <p className="text-sm font-medium">
+                            {multiFiles.length} file(s) selected
+                          </p>
+                          <ul className="mt-1 max-h-40 space-y-1 overflow-y-auto">
+                            {multiFiles.map((file, i) => (
+                              <li
+                                key={`${file.name}-${i}`}
+                                className="flex items-center justify-between text-sm"
+                              >
+                                <span className="truncate">
+                                  {file.name}{" "}
+                                  <span className="text-gray-500">
+                                    ({bytesToSize(file.size)})
+                                  </span>
+                                </span>
+                                <button
+                                  type="button"
+                                  onClick={() => removeBatchFile(file)}
+                                  className="ml-2 shrink-0 text-gray-400 transition-colors hover:text-gray-900 dark:hover:text-gray-300"
+                                  aria-label={`Remove ${file.name}`}
+                                >
+                                  <X className="h-4 w-4" />
+                                </button>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      ) : null}
                     </div>
 
                     {!newVersion ? (
@@ -826,10 +1010,18 @@ export function AddDocumentModal({
                       <Button
                         type="submit"
                         className="w-full lg:w-1/2"
-                        disabled={uploading || !currentFile}
+                        disabled={
+                          uploading ||
+                          (!currentFile &&
+                            !(multiFiles && multiFiles.length > 0))
+                        }
                         loading={uploading}
                       >
-                        {uploading ? "Uploading..." : "Upload Document"}
+                        {uploading
+                          ? "Uploading..."
+                          : multiFiles && multiFiles.length > 1
+                            ? `Upload ${multiFiles.length} Documents`
+                            : "Upload Document"}
                       </Button>
                     </div>
                   </form>
