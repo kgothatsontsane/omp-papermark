@@ -272,19 +272,6 @@ export default function SpreadsheetViewer({
     };
   }, [file, fileName]);
 
-  // Mac trackpad pinch = ctrlKey + wheel; zoom the grid instead of the page
-  useEffect(() => {
-    const el = containerRef.current;
-    if (!el) return;
-    const onWheel = (e: WheelEvent) => {
-      if (!e.ctrlKey) return;
-      e.preventDefault();
-      setZoom(zoomLevel + (e.deltaY < 0 ? 0.05 : -0.05));
-    };
-    el.addEventListener("wheel", onWheel, { passive: false });
-    return () => el.removeEventListener("wheel", onWheel);
-  }, [zoomLevel, setZoom]);
-
   const handleRetry = useCallback(() => {
     window.location.reload();
   }, []);
@@ -298,6 +285,19 @@ export default function SpreadsheetViewer({
       // zoom API unavailable before grid init
     }
   }, []);
+
+  // Mac trackpad pinch = ctrlKey + wheel; zoom the grid instead of the page
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    const onWheel = (e: WheelEvent) => {
+      if (!e.ctrlKey) return;
+      e.preventDefault();
+      setZoom(zoomLevel + (e.deltaY < 0 ? 0.05 : -0.05));
+    };
+    el.addEventListener("wheel", onWheel, { passive: false });
+    return () => el.removeEventListener("wheel", onWheel);
+  }, [zoomLevel, setZoom]);
 
   return (
     <>
