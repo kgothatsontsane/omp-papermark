@@ -280,7 +280,7 @@ export default function SpreadsheetViewer({
     const next = Math.min(4, Math.max(0.25, Math.round(z * 10) / 10));
     setZoomLevel(next);
     try {
-      window.luckysheet?.setSheetZoom?.(next * 100);
+      window.luckysheet?.setSheetZoom?.(next);
     } catch {
       // zoom API unavailable before grid init
     }
