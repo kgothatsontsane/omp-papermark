@@ -171,6 +171,9 @@
     },
     "@trigger.dev/sdk": {
       "ai": "2.2.37"
+    },
+    "sanitize-html": {
+      "htmlparser2": "8.0.2"
     }
   }
 }
