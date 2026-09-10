@@ -123,6 +123,7 @@ const nextConfig = {
               `img-src 'self' data: blob: https:; ` +
               `font-src 'self' data: https:; ` +
               `frame-ancestors 'none'; ` +
+              `frame-src https://view.officeapps.live.com; ` +
               `connect-src 'self' https: wss:; ` +
               `object-src 'none'; ` +
               `base-uri 'self'; ` +
