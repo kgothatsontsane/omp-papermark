@@ -340,3 +340,9 @@ Files in `lib/tinybird/endpoints/`.
 - Session PR tally: #31–#45 all merged. gitleaks clean throughout.
 - Test artifacts: excel-luckysheet-*.jpeg in repo root (untracked, can delete).
 - Access-control notes: dataroom links reject non-viewer emails with 403 (correct); viewer email used for tests: nvisionfactory@gmail.com.
+
+## 2026-09-10 (final) — zoom controls live (PRs #47, #48)
+- PR #47 (ebdee0ac0): visible zoom pill (−/%/+/Reset, 25%–400%) bottom-right above the brand bar — Luckysheet's own zoom dropdown was hidden under it.
+- PR #48 (56a5e27e7): `luckysheet.setSheetZoom` expects a RATIO (0.1–4), NOT a percent — passing 110 threw "The zoom parameter is invalid". Now passes the ratio. VERIFIED in browser: grid scales at 110%, text stays crisp (canvas redraw).
+- Heads: main = staging = develop = a02f3b1b6 (#46 docs) + #48 merge → sync after. Production aliased to omp-papermark-b4hw3be98.
+- PR tally this day: #31–#48.
