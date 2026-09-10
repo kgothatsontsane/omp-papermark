@@ -28,6 +28,7 @@ import DownloadOnlyViewer from "./viewer/download-only-viewer";
 import ImageViewer from "./viewer/image-viewer";
 import PagesHorizontalViewer from "./viewer/pages-horizontal-viewer";
 import PagesVerticalViewer from "./viewer/pages-vertical-viewer";
+import SpreadsheetViewer from "./viewer/spreadsheet-viewer";
 import VideoViewer from "./viewer/video-viewer";
 
 const ExcelViewer = dynamic(
@@ -106,6 +107,9 @@ export default function ViewData({
 
   // Calculate allowDownload once for all components
 
+  // ponytail: LuckyExcel only parses .xlsx; xls/csv/ods fall through to the PDF-pages viewer
+  const isXlsxFile = document.name.toLowerCase().endsWith(".xlsx");
+
   return notionData?.recordMap ? (
     <NotionPage
       recordMap={notionData.recordMap}
@@ -118,6 +122,13 @@ export default function ViewData({
     <DownloadOnlyViewer
       versionNumber={document.versions[0].versionNumber}
       documentName={document.name}
+      navData={navData}
+    />
+  ) : viewData.fileType === "sheet" && viewData.file && isXlsxFile ? (
+    <SpreadsheetViewer
+      file={viewData.file}
+      fileName={document.name}
+      versionNumber={document.versions[0].versionNumber}
       navData={navData}
     />
   ) : viewData.fileType === "sheet" && viewData.sheetData ? (

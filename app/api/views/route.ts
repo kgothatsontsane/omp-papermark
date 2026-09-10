@@ -593,7 +593,8 @@ export async function POST(request: NextRequest) {
         if (
           documentVersion.type === "pdf" ||
           documentVersion.type === "image" ||
-          documentVersion.type === "video"
+          documentVersion.type === "video" ||
+          documentVersion.type === "sheet"
         ) {
           documentVersion.file = await getFile({
             data: documentVersion.file,
@@ -649,7 +650,8 @@ export async function POST(request: NextRequest) {
             (documentVersion.type === "pdf" ||
               documentVersion.type === "image" ||
               documentVersion.type === "zip" ||
-              documentVersion.type === "video")) ||
+              documentVersion.type === "video" ||
+              documentVersion.type === "sheet")) ||
           (documentVersion && canUseAdvancedExcel)
             ? documentVersion.file
             : undefined,
