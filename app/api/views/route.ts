@@ -534,6 +534,7 @@ export async function POST(request: NextRequest) {
       // otherwise, return file from document version
       let documentPages, documentVersion;
       let sheetData;
+      let canUseAdvancedExcel = false;
       // let documentPagesPromise, documentVersionPromise;
       if (hasPages) {
         const featureFlags = await getFeatureFlags({
@@ -601,12 +602,13 @@ export async function POST(request: NextRequest) {
         }
 
         if (documentVersion.type === "sheet") {
-          if (useAdvancedExcelViewer) {
+          const storageConfig = await getTeamStorageConfigById(link.teamId!);
+          canUseAdvancedExcel =
+            useAdvancedExcelViewer &&
+            !!storageConfig?.advancedDistributionHost;
+
+          if (canUseAdvancedExcel) {
             if (!documentVersion.file.includes("https://")) {
-              // Get team-specific storage config for advanced distribution host
-              const storageConfig = await getTeamStorageConfigById(
-                link.teamId!,
-              );
               documentVersion.file = `https://${storageConfig.advancedDistributionHost}/${documentVersion.file}`;
             }
           } else {
@@ -648,14 +650,14 @@ export async function POST(request: NextRequest) {
               documentVersion.type === "image" ||
               documentVersion.type === "zip" ||
               documentVersion.type === "video")) ||
-          (documentVersion && useAdvancedExcelViewer)
+          (documentVersion && canUseAdvancedExcel)
             ? documentVersion.file
             : undefined,
         pages: documentPages ? documentPages : undefined,
         sheetData:
           documentVersion &&
           documentVersion.type === "sheet" &&
-          !useAdvancedExcelViewer
+          !canUseAdvancedExcel
             ? sheetData
             : undefined,
         fileType: documentVersion

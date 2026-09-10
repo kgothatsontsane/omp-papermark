@@ -835,16 +835,14 @@ export async function POST(request: NextRequest) {
             where: { id: documentId },
             select: { advancedExcelEnabled: true },
           });
-          useAdvancedExcelViewer = document?.advancedExcelEnabled ?? false;
+          // ponytail: officeapps needs a public distribution host; without one, fall back to self-hosted sheet rendering
+          const storageConfig = await getTeamStorageConfigById(link.teamId!);
+          useAdvancedExcelViewer =
+            (document?.advancedExcelEnabled ?? false) &&
+            !!storageConfig?.advancedDistributionHost;
 
           if (useAdvancedExcelViewer) {
-            if (documentVersion.file.includes("https://")) {
-              documentVersion.file = documentVersion.file;
-            } else {
-              // Get team-specific storage config for advanced distribution host
-              const storageConfig = await getTeamStorageConfigById(
-                link.teamId!,
-              );
+            if (!documentVersion.file.includes("https://")) {
               documentVersion.file = `https://${storageConfig.advancedDistributionHost}/${documentVersion.file}`;
             }
           } else {
