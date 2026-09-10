@@ -725,7 +725,7 @@ export default function UploadZone({
             <div className="flex justify-center">
               <div className="inline-flex flex-col rounded-lg bg-background/95 px-6 py-4 text-center ring-1 ring-gray-900/5 dark:bg-gray-900/95 dark:ring-white/10">
                 <span className="font-medium text-foreground">
-                  Drop your file(s) here
+                  Drop files or folders here
                 </span>
                 <p className="mt-1 text-xs leading-5 text-muted-foreground">
                   {isFree && !isTrial
