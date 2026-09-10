@@ -217,8 +217,6 @@ Files in `lib/tinybird/endpoints/`.
 - Worker deployed `20260816.4` (12 tasks). Vercel prod redeployed with NEW R2 secret (fixes presigned-URL 403 from old revoked secret).
 - **Verified end-to-end**: `ARTIST PRODUCER AGREEMENT.doc` → convert-files-to-pdf COMPLETED (6.9s) → convert-pdf-to-image-route COMPLETED (3 pages). Zero subscriptions, no external service.
 - Note: `.doc`/`.docx`/`.ppt`/`.pptx`/`.odt`/`.ods`/`.odp`/`.rtf`/`.txt` convert via LibreOffice. CAD (dwg/dxf) now converts locally too: DXF→PDF via LibreOffice Draw, DWG→DXF via `dwg2dxf` (libredwg 0.9.3 compiled into the worker image from GNU FTP tarball). Paid CloudConvert API (`NEXT_PRIVATE_CONVERT_API_URL`/`KEY`, engine `cadconverter`) fully removed. Worker `20260816.12`. DXF path verified e2e (COMPLETED 8.3s, 1 page); DWG binary compiled but not e2e-tested.
-<<<<<<< Updated upstream
-=======
 
 ## Worker Fleet Fix Runbook (2026-09-09) — RESOLVED
 - **Root cause chain of "new uploads stuck"**: (1) Vercel `TRIGGER_SECRET_KEY` was the revoked key → app-side `tasks.trigger()` failed silently (no run created) + realtime 401 in UI. Fixed by `vercel env rm/add TRIGGER_SECRET_KEY production` + `vercel redeploy` (1gu2o5ssv). (2) Worker runtime env lacks `DATABASE_URL` (stored trigger.dev prod envvars have POSTGRES_* instead) → CLI deploys bake a Prisma client with no URL → instant P2002-style crash (~1s). FIX: **export DATABASE_URL from local .env's POSTGRES_PRISMA_URL before `trigger deploy --env prod`** (the prismaExtension warning in deploy logs is misleading — .3 shows it yet works; the param bakes the URL). (3) Worker `INTERNAL_API_KEY` re-synced via PUT /api/v1/projects/proj_palqkhramjxoleaduwuu/envvars/INTERNAL_API_KEY body {name,value,environments:["prod"]}.
@@ -305,4 +303,25 @@ Files in `lib/tinybird/endpoints/`.
   - Merge-commit PRs (not squash) keep staging/develop ff-able after merges.
   - Staging protection: no review requirement (direct sync pushes allowed); force/deletes off. Main: 1 review required, enforce admins, reviews temporarily nulled ONLY to merge the user's own PR (self-approval impossible; Sourcery pass doesn't satisfy branch protection).
   - Current heads: main = staging = develop = 81ff871a1. Production aliased to omp-papermark-olxfr95zp (fb3aa79da→81ff871a1 build).
->>>>>>> Stashed changes
+
+## 2026-09-10 (evening) — sanitize hotfix + Excel native viewer (PRs #36–#40)
+
+### Hotfix: conversations API 500 (PR #36, 831056b55) — FIXED + VERIFIED
+- Root cause: sanitize-html 2.17.7 (CJS) transitively requires htmlparser2 ^12 (ESM-only); Vercel's Next runtime require shim cannot load ESM → ERR_REQUIRE_ESM → 500 on every GET /api/conversations. Local Node 24 works (require(esm)) — Vercel doesn't; upstream sanitize-html has NO fixed release (2.17.7 latest, still ^12).
+- Fix: targeted npm override `sanitize-html → { htmlparser2: "8.0.2" }` (last CJS release). Verified prod: /api/conversations → 200.
+- LESSON: `vercel env pull` marks secret values as "[SENSITIVE]" placeholders — cannot extract TRIGGER_SECRET_KEY that way; use /tmp/new-trigger-key.txt (prod key) or the trigger CLI config.
+
+### Excel saga final architecture (PRs #37–#40)
+- PR #37 (731453c0e): type "sheet" now triggers convert-files-to-pdf (LibreOffice) — xls/csv/ods get PDF pages.
+- PR #38 (cffe84f56): worker 20260910.9 uses `pdf:calc_pdf_Export:{"SinglePageSheets":{"type":"boolean","value":"true"}}` for spreadsheets → ONE PDF page per sheet (a schedule xlsx previously paginated to 217 A4 pages!).
+- PR #39 (bd11c39b1): mupdf convert-page caps render scale so longest side ≤ 8192px (giant single-sheet pages were 4514×13575pt; fixed 2-3x scale = memory bomb "could not convert any of 1 pages").
+- PR #40 (a8361b825) = **primary xlsx viewer**: SpreadsheetViewer (components/view/viewer/spreadsheet-viewer.tsx) — LuckyExcel 1.0.1 parses the xlsx client-side (presigned URL), Luckysheet 2.1.13 renders the styled grid (bold/colors/merges/number formats/widths), read-only, built-in zoom + sheet tabs. Crisp at any zoom (no rasterization). Loaded from jsdelivr (CSP allows https:, same pattern as handsontable viewer). API routes return presigned file for sheet type. Legacy grid + PDF-pages branches retained as fallbacks (xls/csv/ods → PDF pages via conversion).
+- USER-DRIVEN pivot: PDF-raster zoom pixelates and giant single-sheet pages fit-width = unreadably tiny on load → native grid engine is the correct answer for spreadsheets; PDF render stays as fallback.
+- Backfill E2E: "Annexure 1 – Sound Recordings Schedule.xlsx" converted (1 page, hasPages=true, scale 0.60 → 2724×8192px within cap). Annexure-3 conversion COMPLETED_WITH_ERRORS — irrelevant now (native viewer parses xlsx client-side, no conversion needed).
+- STATE FILE CORRUPTION FIXED (this commit): stash-conflict markers from the 2026-09-10 branch-recovery mess had been committed through PRs #31–#34; markers resolved, no content lost.
+- Zoom for PDF page viewers pre-existed (Nav buttons + keyboard +/-/0 + transform) — user complaint was Excel-only; native viewer addresses it.
+
+### Production state (end of session 2026-09-10)
+- main = staging = develop = a8361b825 (PR #40). Production aliased to omp-papermark-fqr29p0lo. Worker 20260910.9 (SinglePageSheets).
+- Known cosmetic console noise (NOT bugs): attribution-reporting Permissions-Policy warning, speculation-rules predicate warning, preload-unused hints for banner/logo on viewer pages, adblocker-blocked plausible, Grammarly extension errors.
+- Excel E2E user-confirmation pending: open an .xlsx in the dataroom → styled Luckysheet grid with zoom.
