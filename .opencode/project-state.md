@@ -358,6 +358,28 @@ Files in `lib/tinybird/endpoints/`.
   `npx tsc --noEmit`: zero errors mentioning tinybird/pipes.
 - Branch: `develop` (uncommitted: publish.ts M + new datasources/pipes/bindings).
 
+## 2026-09-15 — Tinybird Phase-1 analytics LIVE (PRs #64, #65; worker 20260915.7)
+
+- 4 new datasources (access/download/email/security_flags, deploy #6/#7) + 13 pipes
+  (funnel, failures, latency, downloads x3, geo, device, over-time, dropoff, heatmap,
+  security incl. SQL impossible_travel, view timeline). Ingest tested per datasource,
+  synth rows deleted.
+- Instrumentation: 4 download routes (off-hours bulk flag), views + views-dataroom
+  (10 access events, Redis bruteforce/enumeration guards). Shared
+  lib/tracking/request-meta.ts (NextRequest + Pages-API meta, email hash, ingestSafely).
+- UI: document/dataroom insights (geo/device/series/dropoff/downloads/funnel/heatmap),
+  visitor timeline, Security tab, internal-list manager (Team.excludedEmails/
+  excludedLinkIds + migration 20260915000000 APPLIED to prod via db execute + resolve),
+  per-viewer dataroom progress, manual Remind button, activity-report task, weekly
+  digest (Mon 05:00 UTC = 07:00 SAST), Resend webhook route (svix dep added).
+- Prod: main synced, worker 20260915.7, Team columns verified (excludedEmails,
+  excludedLinkIds). USER ACTIONS: Resend dashboard webhook → /api/webhooks/resend;
+  set RESEND_WEBHOOK_SECRET in Vercel; confirm kgothatso@ mailbox.
+- GOTCHAS: Next rejects same-level dynamic slugs with different names (views/[id] vs
+  views/[viewId]) — remind.ts moved under [id]. `git add -A` sweeps strays (removed
+  zoom-pill jpeg). tsx scripts need dotenv import + must live in repo; npx tsx
+  re-downloads each run (no local tsx dep).
+
 ## 2026-09-15 — App rename to Dealroom + mic logo on viewer pages (PRs #60, #61 MERGED + LIVE)
 
 - `BRAND_NAME` = "Open Mic Productions Dealroom" (one-liner, ~65 app spots: titles,
