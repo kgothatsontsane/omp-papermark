@@ -13,7 +13,7 @@ import {
   Text,
 } from "@react-email/components";
 
-import { BRAND_NAME } from "@/lib/branding";
+import { BRAND_PLATFORM } from "@/lib/branding";
 import EmailLogo from "@/components/emails/email-logo";
 
 const Onboarding3Email = () => {
@@ -36,7 +36,7 @@ const Onboarding3Email = () => {
               You need to know who viewed your documents!
             </Text>
             <Text className="text-sm">
-              With {BRAND_NAME} you can track progress on each page of your
+              With {BRAND_PLATFORM} you can track progress on each page of your
               document and other analytics:
             </Text>
             <Text className="text-sm">

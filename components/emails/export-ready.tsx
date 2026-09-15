@@ -11,7 +11,7 @@ import {
   Text,
 } from "@react-email/components";
 
-import { BRAND_NAME } from "@/lib/branding";
+import { BRAND_NAME, BRAND_PLATFORM } from "@/lib/branding";
 import EmailLogo from "@/components/emails/email-logo";
 
 export default function ExportReady({
@@ -34,8 +34,7 @@ export default function ExportReady({
               <EmailLogo />
             </Text>
             <Text className="text-sm leading-6 text-black">
-              The export you requested is ready to download for your {BRAND_NAME}
-              account. Make sure you&apos;re signed into this account, and click
+              The export you requested is ready to download for your {BRAND_PLATFORM} account. Make sure you&apos;re signed into this account, and click
               below to download. The file will be available for the next three
               days.
             </Text>
@@ -72,7 +71,7 @@ export default function ExportReady({
                   className="text-gray-400 no-underline hover:text-gray-400"
                   target="_blank"
                 >
-                  {BRAND_NAME}, Inc.
+                  {BRAND_PLATFORM}, Inc.
                 </a>
               </Text>
               <Text className="text-xs">

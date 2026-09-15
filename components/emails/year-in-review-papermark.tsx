@@ -16,7 +16,7 @@ import {
   Text,
 } from "@react-email/components";
 
-import { BRAND_NAME } from "@/lib/branding";
+import { BRAND_NAME, BRAND_PLATFORM } from "@/lib/branding";
 import { UploadIcon } from "lucide-react";
 import EmailLogo from "@/components/emails/email-logo";
 
@@ -64,11 +64,11 @@ export default function PapermarkYearInReviewEmail({
                 {year} in review
               </Text>
               <Heading className="my-4 text-4xl font-medium leading-tight">
-                Your Year with {BRAND_NAME}
+                Your Year with {BRAND_PLATFORM}
               </Heading>
               <Text className="mb-8 text-lg leading-8">
                 What a year it&apos;s been! Let&apos;s take a look at how
-                you&apos;ve used {BRAND_NAME} to share your important documents.
+                you&apos;ve used {BRAND_PLATFORM} to share your important documents.
               </Text>
 
             </Section>
@@ -163,11 +163,11 @@ export default function PapermarkYearInReviewEmail({
                     {sharerPercentile}%
                   </Text>
                   <Text className="mb-4 text-xl font-medium text-gray-900">
-                    of sharers on {BRAND_NAME}
+                    of sharers on {BRAND_PLATFORM}
                   </Text>
                   <Text className="text-sm leading-5 text-gray-900">
                     You&apos;re one of our most active users. Thank you for
-                    sharing with {BRAND_NAME}!
+                    sharing with {BRAND_PLATFORM}!
                   </Text>
                 </>
               ) : (
@@ -235,7 +235,7 @@ export default function PapermarkYearInReviewEmail({
               </Text>
               <Text className="text-xs">
                 You received this Year in Review email because you have an
-                account with {BRAND_NAME} during 2024. If you have any feedback or
+                account with {BRAND_PLATFORM} during 2024. If you have any feedback or
                 questions about this email, simply reply to it. To unsubscribe
                 from future Year in Review emails,{" "}
                 <a

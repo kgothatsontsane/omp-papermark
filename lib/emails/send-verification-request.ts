@@ -20,7 +20,7 @@ export const sendVerificationRequestEmail = async (params: {
   try {
     await sendEmail({
       to: email as string,
-      subject: "Welcome to {BRAND_NAME}!",
+      subject: `Welcome to ${BRAND_PLATFORM}!`,
       react: emailTemplate,
       test: process.env.NODE_ENV === "development",
     });
@@ -29,4 +29,4 @@ export const sendVerificationRequestEmail = async (params: {
   }
 };
 
-import { BRAND_NAME } from "@/lib/branding";
+import { BRAND_PLATFORM } from "@/lib/branding";

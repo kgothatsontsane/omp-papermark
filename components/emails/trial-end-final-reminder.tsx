@@ -14,7 +14,7 @@ import {
   Text,
 } from "@react-email/components";
 
-import { BRAND_NAME } from "@/lib/branding";
+import { BRAND_PLATFORM } from "@/lib/branding";
 import EmailLogo from "@/components/emails/email-logo";
 
 interface TrialEndFinalReminderEmail {
@@ -22,7 +22,7 @@ interface TrialEndFinalReminderEmail {
 }
 
 const TrialEndFinalReminderEmail = ({ name }: TrialEndFinalReminderEmail) => {
-  const previewText = `Upgrade to {BRAND_NAME} Pro`;
+  const previewText = `Upgrade to ${BRAND_PLATFORM} Pro`;
 
   return (
     <Html>
@@ -41,7 +41,7 @@ const TrialEndFinalReminderEmail = ({ name }: TrialEndFinalReminderEmail) => {
               Hey{name && ` ${name}`}!
             </Text>
             <Text className="text-sm leading-6 text-black">
-              Your {BRAND_NAME} Pro trial expires in 24 hours.{" "}
+              Your {BRAND_PLATFORM} Pro trial expires in 24 hours.{" "}
               <Link href={`https://dealroom.open-mic.co.za/settings/billing`}>
                 Upgrade now
               </Link>{" "}

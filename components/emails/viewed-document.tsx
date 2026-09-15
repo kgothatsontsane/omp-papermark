@@ -13,7 +13,7 @@ import {
   Text,
 } from "@react-email/components";
 
-import { BRAND_NAME } from "@/lib/branding";
+import { BRAND_PLATFORM } from "@/lib/branding";
 import EmailLogo from "@/components/emails/email-logo";
 
 export default function ViewedDocument({
@@ -59,7 +59,7 @@ export default function ViewedDocument({
             </Text>
             <Text className="text-sm leading-6 text-black">
               You can get the detailed engagement insights like time-spent per
-              page and total duration for this document on {BRAND_NAME}.
+              page and total duration for this document on {BRAND_PLATFORM}.
             </Text>
             <Section className="my-8 text-center">
               <Button
@@ -71,7 +71,7 @@ export default function ViewedDocument({
               </Button>
             </Section>
             <Text className="text-sm leading-6 text-black">
-              Stay informed, stay ahead with {BRAND_NAME}.
+              Stay informed, stay ahead with {BRAND_PLATFORM}.
             </Text>
             <Hr />
             <Section className="mt-8 text-gray-400">

@@ -12,7 +12,7 @@ export const sendUpgradePlanEmail = async (
   try {
     await sendEmail({
       to: email as string,
-      subject: `Thank you for upgrading to {BRAND_NAME} ${planType}!`,
+      subject: `Thank you for upgrading to ${BRAND_PLATFORM} ${planType}!`,
       react: emailTemplate,
       test: process.env.NODE_ENV === "development",
     });
@@ -21,4 +21,4 @@ export const sendUpgradePlanEmail = async (
   }
 };
 
-import { BRAND_NAME } from "@/lib/branding";
+import { BRAND_PLATFORM } from "@/lib/branding";
