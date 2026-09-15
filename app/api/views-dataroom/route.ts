@@ -19,10 +19,16 @@ import { sendOtpVerificationEmail } from "@/lib/emails/send-email-otp-verificati
 import { getFile } from "@/lib/files/get-file";
 import { newId } from "@/lib/id-helper";
 import prisma from "@/lib/prisma";
-import { ratelimit } from "@/lib/redis";
+import { ratelimit, redis } from "@/lib/redis";
 import { isSelfHostedMode } from "@/lib/self-hosted";
 import { parseSheet } from "@/lib/sheet";
+import { recordAccessEvent, recordSecurityFlag } from "@/lib/tinybird/publish";
 import { recordLinkView } from "@/lib/tracking/record-link-view";
+import {
+  hashEmail,
+  ingestSafely,
+  metaFromNextRequest,
+} from "@/lib/tracking/request-meta";
 import { CustomUser, WatermarkConfigSchema } from "@/lib/types";
 import { log } from "@/lib/utils";
 import { extractEmailDomain, isEmailMatched } from "@/lib/utils/email-domain";
@@ -33,6 +39,7 @@ import { validateEmail } from "@/lib/utils/validate-email";
 
 export async function POST(request: NextRequest) {
   try {
+    const meta = metaFromNextRequest(request);
     const body = await request.json();
 
     const {
@@ -93,6 +100,50 @@ export async function POST(request: NextRequest) {
       code?: string;
       token?: string;
       verifiedEmail?: string;
+    };
+
+    const trackAccess = (
+      event_type:
+        | "email_submitted"
+        | "otp_sent"
+        | "otp_verified"
+        | "otp_failed"
+        | "otp_expired"
+        | "passcode_passed"
+        | "passcode_failed"
+        | "agreement_accepted"
+        | "view_created"
+        | "repeat_entry",
+      options?: {
+        auth_method?: string;
+        outcome?: string;
+        view_id?: string;
+        email?: string | null;
+      },
+    ) => {
+      if (meta.isBot) return;
+      void ingestSafely(
+        recordAccessEvent({
+          event_id: newId("linkView"),
+          timestamp: Date.now(),
+          link_id: linkId,
+          document_id: documentId,
+          dataroom_id: dataroomId,
+          event_type,
+          auth_method: options?.auth_method ?? "none",
+          outcome: options?.outcome ?? "ok",
+          email_hash: hashEmail(options?.email ?? email),
+          country: meta.country,
+          city: meta.city,
+          region: meta.region,
+          device: meta.device,
+          browser: meta.browser,
+          os: meta.os,
+          ua: meta.ua,
+          ip_address: meta.ip_address,
+        }),
+        `access:${event_type}`,
+      );
     };
 
     // Fetch the link to verify the settings
@@ -243,6 +294,12 @@ export async function POST(request: NextRequest) {
             { status: 400 },
           );
         }
+
+        if (email) {
+          trackAccess("email_submitted", {
+            auth_method: link.emailAuthenticated ? "email-otp" : "none",
+          });
+        }
       }
 
       // Check if password is required for visiting the link
@@ -260,11 +317,17 @@ export async function POST(request: NextRequest) {
         );
 
         if (!isPasswordValid) {
+          trackAccess("passcode_failed", {
+            auth_method: "passcode",
+            outcome: "fail",
+          });
           return NextResponse.json(
             { message: "Invalid password." },
             { status: 403 },
           );
         }
+
+        trackAccess("passcode_passed", { auth_method: "passcode" });
       }
 
       // Check if agreement is required for visiting the link
@@ -273,6 +336,10 @@ export async function POST(request: NextRequest) {
           { message: "Agreement to NDA is required." },
           { status: 400 },
         );
+      }
+
+      if (link.enableAgreement && hasConfirmedAgreement) {
+        trackAccess("agreement_accepted", { auth_method: "agreement" });
       }
 
       // Check global block list first - this overrides all other access controls
@@ -406,6 +473,30 @@ export async function POST(request: NextRequest) {
           },
         });
 
+        trackAccess("otp_sent", { auth_method: "email-otp" });
+        void ingestSafely(
+          (async () => {
+            if (meta.isBot) return;
+            const eh = hashEmail(email);
+            if (!eh) return;
+            const key = `otp_emails:${ipAddress(request) ?? "unknown"}`;
+            await redis.sadd(key, eh);
+            await redis.expire(key, 600);
+            if ((await redis.scard(key)) === 5) {
+              await recordSecurityFlag({
+                event_id: newId("webhookEvent"),
+                timestamp: Date.now(),
+                link_id: linkId,
+                flag_type: "email_enumeration",
+                severity: "high",
+                detail: "5 distinct OTP emails",
+                ip_address: meta.ip_address,
+              });
+            }
+          })(),
+          "access:email-enumeration",
+        );
+
         waitUntil(sendOtpVerificationEmail(email, otpCode, true, link.teamId!));
         return NextResponse.json(
           {
@@ -437,6 +528,30 @@ export async function POST(request: NextRequest) {
         });
 
         if (!verification) {
+          trackAccess("otp_failed", {
+            auth_method: "email-otp",
+            outcome: "fail",
+          });
+          void ingestSafely(
+            (async () => {
+              if (meta.isBot) return;
+              const key = `otp_fail:${ipAddress(request) ?? "unknown"}`;
+              const n = await redis.incr(key);
+              if (n === 1) await redis.expire(key, 600);
+              if (n === 5) {
+                await recordSecurityFlag({
+                  event_id: newId("webhookEvent"),
+                  timestamp: Date.now(),
+                  link_id: linkId,
+                  flag_type: "otp_bruteforce",
+                  severity: "high",
+                  detail: "5 failed OTP attempts",
+                  ip_address: meta.ip_address,
+                });
+              }
+            })(),
+            "access:otp-bruteforce",
+          );
           return NextResponse.json(
             {
               message: "Unauthorized access. Request new access.",
@@ -448,6 +563,10 @@ export async function POST(request: NextRequest) {
 
         // Check the OTP code's expiration date
         if (Date.now() > verification.expires.getTime()) {
+          trackAccess("otp_expired", {
+            auth_method: "email-otp",
+            outcome: "expired",
+          });
           await prisma.verificationToken.delete({
             where: {
               token: code,
@@ -482,6 +601,7 @@ export async function POST(request: NextRequest) {
           },
         });
 
+        trackAccess("otp_verified", { auth_method: "email-otp" });
         isEmailVerified = true;
       }
 
@@ -532,6 +652,7 @@ export async function POST(request: NextRequest) {
           );
         }
 
+        trackAccess("repeat_entry", { auth_method: "email-otp" });
         isEmailVerified = true;
       }
 
@@ -643,6 +764,17 @@ export async function POST(request: NextRequest) {
 
         // Send events in the background to avoid blocking the response
         if (newDataroomView) {
+          trackAccess("view_created", {
+            auth_method: link.emailAuthenticated
+              ? "email-otp"
+              : link.password
+                ? "passcode"
+                : link.enableAgreement
+                  ? "agreement"
+                  : "none",
+            view_id: newDataroomView.id,
+            email: viewer?.email ?? email,
+          });
           waitUntil(
             // Record link view in Tinybird
             recordLinkView({
@@ -766,6 +898,20 @@ export async function POST(request: NextRequest) {
           select: { id: true },
         });
         console.timeEnd("create-view");
+      }
+
+      if (newView) {
+        trackAccess("view_created", {
+          auth_method: link.emailAuthenticated
+            ? "email-otp"
+            : link.password
+              ? "passcode"
+              : link.enableAgreement
+                ? "agreement"
+                : "none",
+          view_id: newView.id,
+          email: viewer?.email ?? email,
+        });
       }
 
       // if document version has pages, then return pages

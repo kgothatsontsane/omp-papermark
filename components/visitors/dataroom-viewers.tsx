@@ -31,8 +31,10 @@ import { VisitorAvatar } from "./visitor-avatar";
 
 export default function DataroomViewersTable({
   dataroomId,
+  totalDocs,
 }: {
   dataroomId: string;
+  totalDocs?: number;
 }) {
   const { viewers } = useDataroomViewers({ dataroomId });
 
@@ -49,6 +51,7 @@ export default function DataroomViewersTable({
               {/* <TableHead>Visit Duration</TableHead> */}
               {/* <TableHead>Last Viewed Document</TableHead> */}
               <TableHead>Last Viewed</TableHead>
+              {totalDocs ? <TableHead>Progress</TableHead> : null}
               <TableHead className="text-center sm:text-right"></TableHead>
             </TableRow>
           </TableHeader>
@@ -139,6 +142,16 @@ export default function DataroomViewersTable({
                             : "-"}
                         </time>
                       </TableCell>
+                      {/* Progress */}
+                      {totalDocs ? (
+                        <TableCell className="text-sm text-muted-foreground">
+                          {new Set(
+                            (viewer.viewedDocumentIds as string[] | undefined) ??
+                              [],
+                          ).size}
+                          /{totalDocs}
+                        </TableCell>
+                      ) : null}
                       {/* Actions */}
                       <TableCell className="cursor-pointer p-0 text-center sm:text-right">
                         {viewer.views.length > 0 ? (

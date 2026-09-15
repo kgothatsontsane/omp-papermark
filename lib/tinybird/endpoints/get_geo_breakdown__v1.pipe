@@ -1,0 +1,20 @@
+VERSION 1
+
+DESCRIPTION >
+    View counts grouped by country and city for a link
+
+NODE endpoint
+SQL >
+    %
+    SELECT
+        country,
+        city,
+        count() AS view_count
+    FROM pm_click_events__v1
+    WHERE link_id = {{ String(link_id, required=True) }}
+        AND timestamp >= {{ Int64(since, required=True) }}
+    GROUP BY country, city
+    ORDER BY view_count DESC
+    LIMIT 50
+
+TYPE ENDPOINT

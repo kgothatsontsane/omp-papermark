@@ -105,11 +105,18 @@ export default function DocumentPage() {
 
             {/* Video Analytics */}
             {primaryVersion.type === "video" && (
-              <VideoAnalytics
-                documentId={prismaDocument.id}
-                primaryVersion={primaryVersion}
-                teamId={teamInfo?.currentTeam?.id!}
-              />
+              <>
+                <VideoAnalytics
+                  documentId={prismaDocument.id}
+                  primaryVersion={primaryVersion}
+                  teamId={teamInfo?.currentTeam?.id!}
+                />
+                <StatsComponent
+                  documentId={prismaDocument.id}
+                  numPages={primaryVersion.numPages ?? 0}
+                  isVideo
+                />
+              </>
             )}
 
             {/* Links */}

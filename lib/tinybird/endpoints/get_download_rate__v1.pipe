@@ -1,0 +1,13 @@
+VERSION 1
+
+DESCRIPTION >
+    Download count versus distinct viewer count for a link
+
+NODE endpoint
+SQL >
+    %
+    SELECT
+        (SELECT count() FROM download_events__v1 WHERE link_id = {{ String(link_id, required=True) }} AND timestamp >= {{ Int64(since, required=True) }}) AS downloads,
+        (SELECT countDistinct(view_id) FROM pm_click_events__v1 WHERE link_id = {{ String(link_id, required=True) }} AND timestamp >= {{ Int64(since, required=True) }}) AS viewers
+
+TYPE ENDPOINT

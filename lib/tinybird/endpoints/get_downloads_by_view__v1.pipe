@@ -1,0 +1,20 @@
+VERSION 1
+
+DESCRIPTION >
+    All download events for a specific view
+
+NODE endpoint
+SQL >
+    %
+    SELECT
+        timestamp,
+        document_id,
+        dataroom_id,
+        download_type,
+        file_count,
+        total_bytes
+    FROM download_events__v1
+    WHERE view_id = {{ String(view_id, required=True) }}
+    ORDER BY timestamp ASC
+
+TYPE ENDPOINT

@@ -1,0 +1,26 @@
+- generic [active] [ref=e1]:
+  - main [ref=e3]:
+    - region "Notifications alt+T"
+    - generic [ref=e81]:
+      - navigation [ref=e82]:
+        - generic [ref=e84]:
+          - generic [ref=e85]:
+            - img "Logo" [ref=e87]
+            - navigation "breadcrumb" [ref=e88]:
+              - list [ref=e89]:
+                - listitem [ref=e90]:
+                  - link "Home" [ref=e91] [cursor=pointer]:
+                    - /url: /view/cmtegyvfz0001l304mlb0bj5d
+          - generic [ref=e92]:
+            - button [ref=e93] [cursor=pointer]
+            - generic [ref=e94]:
+              - button [ref=e95] [cursor=pointer]
+              - button [ref=e96] [cursor=pointer]
+            - generic [ref=e97]:
+              - generic [ref=e98]: "1"
+              - generic [ref=e99]: /
+              - generic [ref=e100]: "1"
+            - button "Report abuse" [ref=e102] [cursor=pointer]
+      - generic [ref=e110]:
+        - img "Page 1"
+  - alert [ref=e19]

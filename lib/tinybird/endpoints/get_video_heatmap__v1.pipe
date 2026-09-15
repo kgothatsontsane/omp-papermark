@@ -1,0 +1,24 @@
+VERSION 1
+
+DESCRIPTION >
+    Per-second play counts for a document video
+
+NODE endpoint
+SQL >
+    %
+    SELECT
+        second,
+        count() AS play_count
+    FROM (
+        SELECT
+            arrayJoin(range(start_time, end_time + 1)) AS second
+        FROM video_views__v1
+        WHERE document_id = {{ String(document_id, required=True) }}
+            AND timestamp >= {{ Int64(since, required=True) }}
+            AND event_type = 'play'
+    )
+    GROUP BY second
+    ORDER BY second ASC
+    LIMIT 2000
+
+TYPE ENDPOINT

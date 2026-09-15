@@ -1,0 +1,64 @@
+- main [ref=f4e2]:
+  - region "Notifications alt+T"
+  - generic [ref=f4e4]:
+    - generic [ref=f4e6]:
+      - img "Open Mic Productions Logo" [ref=f4e8]
+      - paragraph [ref=f4e22]: Private Deal Room
+      - heading "Sign in to your deal room." [level=1] [ref=f4e23]: Sign in to yourdeal room.
+      - paragraph [ref=f4e24]: Private, role-based access to Open Mic Productions's deal room — only the documents you're cleared to see, with your activity protected and transparent.
+      - generic [ref=f4e25]:
+        - generic [ref=f4e26]: Email
+        - textbox "Email" [ref=f4e27]:
+          - /placeholder: name@open-mic.co.za
+        - generic [ref=f4e28]:
+          - button "Continue with Email" [disabled]
+      - generic [ref=f4e29]: or
+      - generic [ref=f4e33]:
+        - button "Continue with Google" [ref=f4e35] [cursor=pointer]
+        - button "Continue with LinkedIn" [ref=f4e38] [cursor=pointer]
+        - button "Continue with a passkey" [ref=f4e41] [cursor=pointer]
+      - paragraph [ref=f4e43]:
+        - text: By continuing, you acknowledge that you have read and agree to Open Mic Productions's
+        - link "Terms of Service" [ref=f4e44] [cursor=pointer]:
+          - /url: https://dealroom.open-mic.co.za/terms
+        - text: and
+        - link "Privacy Policy" [ref=f4e45] [cursor=pointer]:
+          - /url: https://dealroom.open-mic.co.za/privacy
+        - text: .
+    - generic [ref=f4e48]:
+      - paragraph [ref=f4e49]: Open Mic Productions
+      - heading "Your work deserves a quiet room." [level=2] [ref=f4e50]: Your work deservesa quiet room.
+      - paragraph [ref=f4e51]: A private deal room for the documents that move your business — shared on your terms, tracked page by page.
+      - list [ref=f4e52]:
+        - listitem [ref=f4e53]:
+          - generic [ref=f4e54]: Access
+          - generic [ref=f4e55]:
+            - generic [ref=f4e56]: Role-based access control
+            - generic [ref=f4e57]: You only ever see the folders and files you're cleared to see — nothing more.
+        - listitem [ref=f4e58]:
+          - generic [ref=f4e59]: Perms
+          - generic [ref=f4e60]:
+            - generic [ref=f4e61]: Per-viewer permissions
+            - generic [ref=f4e62]: View, download and share rights are set per role — granular and auditable.
+        - listitem [ref=f4e63]:
+          - generic [ref=f4e64]: Trace
+          - generic [ref=f4e65]:
+            - generic [ref=f4e66]: Session watermarks
+            - generic [ref=f4e67]: Your name, time and IP watermark every page you open — so activity is transparent.
+        - listitem [ref=f4e68]:
+          - generic [ref=f4e69]: Audit
+          - generic [ref=f4e70]:
+            - generic [ref=f4e71]: Full audit trail
+            - generic [ref=f4e72]: Who viewed what, when — recorded page by page, defensible on both sides.
+      - generic [ref=f4e73]:
+        - generic [ref=f4e74]: Need help?
+        - link "support@open-mic.co.za" [ref=f4e75] [cursor=pointer]:
+          - /url: mailto:support@open-mic.co.za
+      - generic [ref=f4e76]:
+        - paragraph [ref=f4e77]: Security & Compliance
+        - generic [ref=f4e78]:
+          - generic [ref=f4e79]: SOC 2 certified infra
+          - generic [ref=f4e80]: GDPR-ready
+          - generic [ref=f4e81]: AES-256 encryption
+          - generic [ref=f4e82]: TLS in transit
+        - paragraph [ref=f4e83]: Hosted on SOC 2 Type II certified infrastructure (Vercel and Cloudflare). Documents are encrypted at rest with AES-256 and in transit over TLS, with role-based access and a full audit trail on every view.

@@ -45,6 +45,9 @@ model Team {
 
   ignoredDomains  String[] // Domains that are ignored for the team
   globalBlockList String[] // Email and domains that are blocked for the team
+
+  excludedEmails  String[] // Internal emails excluded from analytics
+  excludedLinkIds String[] // Internal link ids excluded from analytics
 }
 
 enum Role {

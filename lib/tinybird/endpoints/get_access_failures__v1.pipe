@@ -1,0 +1,21 @@
+VERSION 1
+
+DESCRIPTION >
+    Top email and IP pairs by failed access outcomes for a link
+
+NODE endpoint
+SQL >
+    %
+    SELECT
+        email_hash,
+        ip_address,
+        count() AS fail_count
+    FROM access_events__v1
+    WHERE link_id = {{ String(link_id, required=True) }}
+        AND timestamp >= {{ Int64(since, required=True) }}
+        AND outcome = 'fail'
+    GROUP BY email_hash, ip_address
+    ORDER BY fail_count DESC
+    LIMIT 50
+
+TYPE ENDPOINT

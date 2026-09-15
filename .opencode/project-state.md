@@ -341,6 +341,23 @@ Files in `lib/tinybird/endpoints/`.
 - Test artifacts: excel-luckysheet-*.jpeg in repo root (untracked, can delete).
 - Access-control notes: dataroom links reject non-viewer emails with 403 (correct); viewer email used for tests: nvisionfactory@gmail.com.
 
+## 2026-09-15 — 13 new analytics pipes (deployment #7 LIVE)
+
+- New pipes in `lib/tinybird/endpoints/` + `tb.buildPipe` bindings in
+  `lib/tinybird/pipes.ts`: get_access_funnel, get_access_failures,
+  get_verify_latency (p50/p90 nullable), get_downloads_by_view,
+  get_downloads_by_document, get_download_rate (scalar subqueries),
+  get_geo_breakdown, get_device_breakdown, get_views_over_time
+  (toDate(toDateTime(toUInt32(ts/1000)))), get_dropoff_page (argMax),
+  get_video_heatmap (arrayJoin(range())), get_security_flags (UNION stored +
+  impossible-travel self-join), get_view_timeline (5-way UNION, limit 500).
+- Deploy: `tb --cloud deploy` from `lib/tinybird/` (stored cloud auth, no token
+  flags) → deployment #7 live, first attempt, no fixes needed.
+- Verified: all 13 return HTTP 200 with correct schema on synthetic ids
+  (empty data, except latency → {p50:null,p90:null} and rate → {0,0}).
+  `npx tsc --noEmit`: zero errors mentioning tinybird/pipes.
+- Branch: `develop` (uncommitted: publish.ts M + new datasources/pipes/bindings).
+
 ## 2026-09-15 — App rename to Dealroom + mic logo on viewer pages (PRs #60, #61 MERGED + LIVE)
 
 - `BRAND_NAME` = "Open Mic Productions Dealroom" (one-liner, ~65 app spots: titles,
@@ -412,3 +429,48 @@ Files in `lib/tinybird/endpoints/`.
 - PR #48 (56a5e27e7): `luckysheet.setSheetZoom` expects a RATIO (0.1–4), NOT a percent — passing 110 threw "The zoom parameter is invalid". Now passes the ratio. VERIFIED in browser: grid scales at 110%, text stays crisp (canvas redraw).
 - Heads: main = staging = develop = a02f3b1b6 (#46 docs) + #48 merge → sync after. Production aliased to omp-papermark-b4hw3be98.
 - PR tally this day: #31–#48.
+
+## 2026-09-15 — Phase-1 analytics dashboard UI (UNCOMMITTED on develop)
+
+- New Prisma fields `Team.excludedEmails` / `Team.excludedLinkIds` (String[]) +
+  migration `prisma/migrations/20260915000000_add_internal_lists/migration.sql`
+  (`ALTER TABLE "Team" ADD COLUMN ... TEXT[]`). Client regenerated (`npx prisma generate`).
+- New API: `internal-list` (GET/POST/DELETE), `documents/[id]/insights`
+  (geo/device/views-over-time/dropoff/downloads/rate/funnel/latency/failures/security/heatmap),
+  `datarooms/[id]/insights` (security flags, default first link), `views/[viewId]/timeline`.
+- New UI: `document-insights.tsx`, `visitor-timeline.tsx`, `security-flags-table.tsx`,
+  `internal-list-manager.tsx`; hooks in `lib/swr/use-insights.ts`.
+- Extended 4 stats routes with internal-list exclusion; dataroom viewers progress
+  (`viewedDocumentIds` groupBy + `totalDocs` prop); timeline in visitors-table;
+  security + manager on dataroom analytics page; StatsComponent mounted for video docs.
+- Verify: `npx tsc --noEmit` zero errors in touched files (27 pre-existing errors
+  remain in notion/view/trigger files). Gitleaks clean. NOT committed, NO migrate deploy.
+
+## 2026-09-15 (in progress, uncommitted on develop) — access-gate Tinybird tracking
+
+- `access_events__v1` + `security_flags__v1` datasources + `recordAccessEvent` /
+  `recordSecurityFlag` ingest endpoints + `lib/tracking/request-meta.ts`
+  (`metaFromNextRequest`, `hashEmail`, `ingestSafely`) exist as UNTRACKED /
+  uncommitted in-progress work (not mine — was already in working tree).
+- `app/api/views/route.ts` + `app/api/views-dataroom/route.ts` now instrumented
+  (uncommitted): per-request `metaFromNextRequest`, bot-skip, `trackAccess`
+  helper firing `recordAccessEvent` via `void ingestSafely(...)`; `otp_fail:<ip>`
+  incr + `otp_emails:<ip>` sadd/scard (10min TTL) raising `otp_bruteforce` /
+  `email_enumeration` high flags at count 5. Analytics never blocks view creation.
+- PRE-EXISTING (verified via stash @ baseline, not mine):
+  `lib/tracking/request-meta.ts(40,11)` TS2353 excess-prop `continent` error.
+
+## 2026-09-15 — Manual analytics actions (uncommitted on develop)
+
+- Remind: `pages/api/teams/[teamId]/views/[viewId]/remind.ts` (POST, team guard,
+  404 no viewerEmail, `ratelimit(5,"1 m")`, DataroomViewerInvitation for dataroom
+  views / VerificationLinkEmail for document views) + Remind buttons in
+  `visitors-table.tsx` (dropdown) and `dataroom-visitors-table.tsx` (row button).
+- Activity report: `lib/trigger/activity-report.ts` (task `activity-report`,
+  CSV to R2 + ExportReady email via jobStore job) + POST
+  `pages/api/teams/[teamId]/reports/activity.ts` + Export report buttons in
+  `document-header.tsx` (dropdown) and `dataroom-visitors-table.tsx` (header).
+- Weekly digest: `lib/trigger/weekly-digest.ts` (schedules.task, cron
+  `0 5 * * 1` = 07:00 SAST Monday, UTC) + `components/emails/weekly-digest.tsx`.
+  Bounce section omitted (email_events__v1 has no pipe). No opt-out flag.
+- `npx tsc --noEmit`: zero errors on touched files. NOT committed.

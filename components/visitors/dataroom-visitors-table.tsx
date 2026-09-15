@@ -53,19 +53,69 @@ export default function DataroomVisitorsTable({
   const { views } = useDataroomVisits({ dataroomId, groupId });
   const { dataroom } = useDataroom();
   const [exportModalOpen, setExportModalOpen] = useState(false);
+  const [remindingId, setRemindingId] = useState<string | null>(null);
 
   const exportVisitCounts = () => {
     setExportModalOpen(true);
+  };
+
+  const exportActivityReport = async () => {
+    try {
+      const response = await fetch(`/api/teams/${teamId}/reports/activity`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ dataroomId }),
+      });
+      if (!response.ok) {
+        toast.error("Failed to start activity report");
+        return;
+      }
+      toast.success("Activity report started. Check your email when ready.");
+    } catch {
+      toast.error("Failed to start activity report");
+    }
+  };
+
+  const handleRemindViewer = async (
+    viewId: string,
+    viewerEmail: string | null,
+  ) => {
+    if (!viewerEmail) {
+      toast.error("No viewer email on this view");
+      return;
+    }
+    setRemindingId(viewId);
+    try {
+      const response = await fetch(
+        `/api/teams/${teamId}/views/${viewId}/remind`,
+        { method: "POST" },
+      );
+      if (!response.ok) {
+        toast.error("Failed to send reminder");
+        return;
+      }
+      toast.success(`Reminder sent to ${viewerEmail}`);
+    } catch {
+      toast.error("Failed to send reminder");
+    } finally {
+      setRemindingId(null);
+    }
   };
 
   return (
     <div className="w-full">
       <div className="mb-2 flex items-center justify-between md:mb-4">
         <h2>All visitors</h2>
-        <Button variant="outline" size="sm" onClick={exportVisitCounts}>
-          <Download className="!size-4" />
-          Export visits
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" onClick={exportActivityReport}>
+            <Download className="!size-4" />
+            Export report
+          </Button>
+          <Button variant="outline" size="sm" onClick={exportVisitCounts}>
+            <Download className="!size-4" />
+            Export visits
+          </Button>
+        </div>
       </div>
       <div className="rounded-md border">
         <Table>
@@ -171,11 +221,27 @@ export default function DataroomVisitorsTable({
                       </TableCell>
                       {/* Actions */}
                       <TableCell className="cursor-pointer p-0 text-center sm:text-right">
-                        <CollapsibleTrigger asChild>
-                          <div className="flex justify-end space-x-1 p-5 [&[data-state=open]>svg.chevron]:rotate-180">
-                            <ChevronDown className="chevron h-4 w-4 shrink-0 transition-transform duration-200" />
-                          </div>
-                        </CollapsibleTrigger>
+                        <div className="flex items-center justify-end space-x-1 p-5">
+                          {view.viewerEmail ? (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              disabled={remindingId === view.id}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                e.preventDefault();
+                                handleRemindViewer(view.id, view.viewerEmail);
+                              }}
+                            >
+                              Remind
+                            </Button>
+                          ) : null}
+                          <CollapsibleTrigger asChild>
+                            <div className="flex justify-end space-x-1 [&[data-state=open]>svg.chevron]:rotate-180">
+                              <ChevronDown className="chevron h-4 w-4 shrink-0 transition-transform duration-200" />
+                            </div>
+                          </CollapsibleTrigger>
+                        </div>
                       </TableCell>
                     </TableRow>
 

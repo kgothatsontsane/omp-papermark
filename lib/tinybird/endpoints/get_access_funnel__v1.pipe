@@ -1,0 +1,18 @@
+VERSION 1
+
+DESCRIPTION >
+    Access funnel counts per event type for a link
+
+NODE endpoint
+SQL >
+    %
+    SELECT
+        event_type,
+        count() AS event_count
+    FROM access_events__v1
+    WHERE link_id = {{ String(link_id, required=True) }}
+        AND timestamp >= {{ Int64(since, required=True) }}
+    GROUP BY event_type
+    ORDER BY event_count DESC
+
+TYPE ENDPOINT

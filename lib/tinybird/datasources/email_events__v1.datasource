@@ -1,0 +1,17 @@
+DESCRIPTION >
+  Resend email delivery events: delivered, opened, clicked, bounced,
+  complained, delivery delayed. Ingested from the Resend webhook.
+
+SCHEMA >
+  `event_id` String `json:$.event_id`,
+  `timestamp` Int64 `json:$.timestamp`,
+  `email_id` String `json:$.email_id`,
+  `event_type` LowCardinality(String) `json:$.event_type`,
+  `recipient` String `json:$.recipient`,
+  `template` Nullable(String) `json:$.template`,
+  `link_id` Nullable(String) `json:$.link_id`,
+  `bounce_type` Nullable(String) `json:$.bounce_type`
+
+
+ENGINE "MergeTree"
+ENGINE_SORTING_KEY "recipient,timestamp,event_id"

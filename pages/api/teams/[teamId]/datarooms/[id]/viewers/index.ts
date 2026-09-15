@@ -92,6 +92,24 @@ export default async function handle(
         },
       });
 
+      const docViews = await prisma.view.groupBy({
+        by: ["viewerId", "documentId"],
+        where: {
+          dataroomId: dataroomId,
+          viewType: "DOCUMENT_VIEW",
+          viewerId: { not: null },
+          documentId: { not: null },
+        },
+      });
+
+      const docsByViewer = new Map<string, Set<string>>();
+      for (const row of docViews) {
+        if (!row.viewerId || !row.documentId) continue;
+        const set = docsByViewer.get(row.viewerId) ?? new Set<string>();
+        set.add(row.documentId);
+        docsByViewer.set(row.viewerId, set);
+      }
+
       const returnViews = viewers.map((viewer) => {
         return {
           ...viewer,
@@ -99,6 +117,7 @@ export default async function handle(
           lastViewedAt:
             viewer.views.length > 0 ? viewer.views[0].viewedAt : null,
           internal: users.some((user) => user.email === viewer.email), // set internal to true if view.viewerEmail is in the users list
+          viewedDocumentIds: [...(docsByViewer.get(viewer.id) ?? [])],
         };
       });
 

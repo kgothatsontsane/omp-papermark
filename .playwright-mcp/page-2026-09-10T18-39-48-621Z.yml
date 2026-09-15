@@ -1,0 +1,263 @@
+- generic [active] [ref=f3e1]:
+  - main [ref=f3e3]:
+    - region "Notifications alt+T"
+    - generic [ref=f3e20]:
+      - navigation [ref=f3e21]:
+        - generic [ref=f3e23]:
+          - generic [ref=f3e24]:
+            - img "Logo" [ref=f3e26]
+            - navigation "breadcrumb" [ref=f3e27]:
+              - list [ref=f3e28]:
+                - listitem [ref=f3e29]:
+                  - link "Home" [ref=f3e30] [cursor=pointer]:
+                    - /url: /view/cmtegyvfz0001l304mlb0bj5d
+          - generic [ref=f3e31]:
+            - button [ref=f3e32] [cursor=pointer]
+            - button "Report abuse" [ref=f3e34] [cursor=pointer]
+      - generic [ref=f3e37]:
+        - generic [ref=f3e38]:
+          - generic [ref=f3e39]:
+            - generic [aria-hidden] [ref=f3e41]: 
+            - generic "Annexure 1 – Sound Recordings Schedule.xlsx"
+            - textbox "Rename" [ref=f3e43] [cursor=pointer]: Annexure 1 – Sound Recordings Schedule.xlsx
+            - generic [ref=f3e44]: New opened
+            - generic [ref=f3e45]: Local cache restored
+          - generic [ref=f3e46]:
+            - button
+            - button
+            - button
+            - button
+            - button
+            - button
+            - button
+            - button "Automatic" [ref=f3e47] [cursor=pointer]
+            - button "Times New Roman" [ref=f3e51] [cursor=pointer]
+            - combobox "Font size" [ref=f3e59] [cursor=pointer]: "10"
+            - button
+            - button
+            - button
+            - button
+            - button
+            - button
+            - button
+            - button
+            - button
+            - button
+            - button
+            - button
+            - button
+            - button
+            - button
+            - button
+            - button
+            - button
+            - button
+            - button
+            - button
+            - button
+            - button
+            - button
+            - button
+            - button "SUM" [ref=f3e60] [cursor=pointer]
+            - button
+            - button "Freeze" [ref=f3e64] [cursor=pointer]
+            - button
+            - button
+            - button
+            - button
+            - button
+            - button
+            - button
+            - button
+            - button "More" [ref=f3e68] [cursor=pointer]
+          - text: 
+        - generic [ref=f3e72]:
+          - generic [ref=f3e73]:
+            - table [ref=f3e76]:
+              - rowgroup [ref=f3e77]:
+                - row [ref=f3e78]:
+                  - cell [ref=f3e79]
+                  - cell [ref=f3e81]:
+                    - generic [aria-hidden] [ref=f3e84]: 
+                - row [ref=f3e85]:
+                  - cell [ref=f3e86]
+                  - cell " 22 Back to the top" [ref=f3e91]:
+                    - generic [ref=f3e92]: 
+                    - generic [ref=f3e98]:
+                      - generic [ref=f3e99]: "22"
+                      - generic [ref=f3e103]:
+                        - text:      
+                        - textbox [ref=f3e105] [cursor=pointer]
+                      - button "Back to the top" [ref=f3e111] [cursor=pointer]
+            - generic [ref=f3e112]:
+              - generic [ref=f3e115]:
+                - text: Annexure 1 - Sound Recordings
+                - generic [ref=f3e116]: 
+              - generic [ref=f3e118]: 
+              - generic [ref=f3e120]: 
+          - generic [ref=f3e123]:
+            - generic [ref=f3e124]: 95%
+            - generic:
+              - generic "Normal"
+              - generic "Page Layout"
+              - generic "Page break preview"
+        - button
+  - alert [ref=f3e19]
+  - generic [ref=f3e129]:
+    - generic [ref=f3e130]: Copy
+    - generic [ref=f3e132]: Copy as
+    - generic [ref=f3e134]: Paste
+    - generic [ref=f3e136]:
+      - separator
+      - generic [ref=f3e137]: InsertRow
+      - generic [ref=f3e139]: InsertColumn
+      - generic [ref=f3e141]: Delete selected Row
+      - generic [ref=f3e143]: Delete selected Column
+      - generic [ref=f3e145]: Delete cell
+    - generic [ref=f3e147]:
+      - separator
+      - generic [ref=f3e149]:
+        - text: Towards Left Add
+        - textbox "Number" [ref=f3e150] [cursor=pointer]: "1"
+        - text: Column
+      - generic [ref=f3e152]:
+        - text: Towards Right Add
+        - textbox "Number" [ref=f3e153] [cursor=pointer]: "1"
+        - text: Column
+      - generic [ref=f3e154]: Delete selected Column
+      - generic [ref=f3e156]: Hide selected Column
+      - generic [ref=f3e158]: Show hidden Column
+      - generic [ref=f3e161]:
+        - text: Column Width
+        - spinbutton "Number" [ref=f3e162] [cursor=pointer]
+        - text: px
+    - generic [ref=f3e163]:
+      - separator
+      - generic [ref=f3e164]: A-Z order
+      - generic [ref=f3e166]: Z-A order
+    - generic [ref=f3e168]:
+      - separator
+      - generic [ref=f3e169]: Clear content
+      - generic [ref=f3e171]: Matrix operation
+      - generic [ref=f3e173]: Sort
+      - generic [ref=f3e175]: Filter
+      - generic [ref=f3e177]: Create chart
+      - generic [ref=f3e179]: Insert image
+      - generic [ref=f3e181]: Insert link
+      - generic [ref=f3e183]: Data verification
+      - generic [ref=f3e185]: Cell format config
+  - generic [ref=f3e187]:
+    - generic [ref=f3e188]: Json first line title
+    - generic [ref=f3e190]: Json untitled
+    - generic [ref=f3e192]: One-dimensional array
+    - generic [ref=f3e194]: Two-dimensional array
+    - generic [ref=f3e197]:
+      - text: Multidimensional Arrays
+      - spinbutton "Row" [ref=f3e198] [cursor=pointer]
+      - text: ×
+      - spinbutton "Column" [ref=f3e199] [cursor=pointer]
+    - separator
+    - generic [ref=f3e200]: Diagonal
+    - generic [ref=f3e202]: Anti-diagonal
+    - generic [ref=f3e205]:
+      - text: Diagonal offset
+      - spinbutton "Offset" [ref=f3e206] [cursor=pointer]: "1"
+      - text: Column
+    - generic [ref=f3e207]: Boolean
+  - generic [ref=f3e209]:
+    - generic [ref=f3e210]: Move left
+    - generic [ref=f3e212]: Move up
+  - generic [ref=f3e214]:
+    - generic [ref=f3e216]:
+      - text: Flip
+      - button "Up and down" [ref=f3e217] [cursor=pointer]
+      - button "Left and right" [ref=f3e218] [cursor=pointer]
+    - generic [ref=f3e220]:
+      - text: Flip
+      - button "Clockwise" [ref=f3e221] [cursor=pointer]
+      - button "Counterclockwise" [ref=f3e222] [cursor=pointer]
+    - generic [ref=f3e223]: Transpose
+    - separator
+    - generic [ref=f3e226]:
+      - generic [ref=f3e227]: Matrix calculation
+      - generic [ref=f3e228]:
+        - combobox [ref=f3e229] [cursor=pointer]:
+          - option "Plus" [selected]
+          - option "Minus"
+          - option "Multiply"
+          - option "Divided"
+          - option "Power"
+          - option "Root"
+          - option "Log"
+        - spinbutton "Number" [ref=f3e230] [cursor=pointer]: "2"
+    - generic [ref=f3e232]:
+      - text: Delete 0 values at both ends
+      - button "By row" [ref=f3e233] [cursor=pointer]
+      - button "By column" [ref=f3e234] [cursor=pointer]
+    - generic [ref=f3e236]:
+      - text: Remove duplicate values
+      - button "By row" [ref=f3e237] [cursor=pointer]
+      - button "By column" [ref=f3e238] [cursor=pointer]
+  - combobox [ref=f3e241]
+  - generic [ref=f3e242]:
+    - generic [ref=f3e243]: Sort A-Z
+    - generic [ref=f3e245]: Sort Z-A
+    - separator
+    - generic [ref=f3e248]: Filter by color
+    - separator
+    - generic [ref=f3e251]:
+      - generic [aria-hidden] [ref=f3e252]: 
+      - text: Filter by condition
+    - text: 
+    - separator
+    - generic [ref=f3e254]:
+      - generic [aria-hidden] [ref=f3e255]: 
+      - text: Filter by values
+    - generic [ref=f3e256]:
+      - generic [ref=f3e258]:
+        - text: Check all - Clear - Inverse
+        - generic [aria-hidden] [ref=f3e260]: 
+      - generic [ref=f3e262]:
+        - textbox "filter By Values" [ref=f3e263] [cursor=pointer]
+        - generic [aria-hidden] [ref=f3e265]: 
+    - separator
+    - generic [ref=f3e267]:
+      - generic [ref=f3e268]: Confirm
+      - generic [ref=f3e269]: Cancel
+      - generic [ref=f3e270]: Clear filter
+  - generic [ref=f3e271]:
+    - generic [ref=f3e272]: None
+    - generic [ref=f3e274]: Is empty
+    - generic [ref=f3e276]: Is not empty
+    - generic [ref=f3e278]: Text contains
+    - generic [ref=f3e280]: Text does not contain
+    - generic [ref=f3e282]: Text starts with
+    - generic [ref=f3e284]: Text ends with
+    - generic [ref=f3e286]: Text is exactly
+    - separator
+    - generic [ref=f3e288]: Date is
+    - generic [ref=f3e290]: Date is before
+    - generic [ref=f3e292]: Date is after
+    - separator
+    - generic [ref=f3e294]: Greater than
+    - generic [ref=f3e296]: Greater than or equal to
+    - generic [ref=f3e298]: Less than
+    - generic [ref=f3e300]: Less than or equal to
+    - generic [ref=f3e302]: Is equal to
+    - generic [ref=f3e304]: Is not equal to
+    - generic [ref=f3e306]: Is between
+    - generic [ref=f3e308]: Is not between
+  - generic [ref=f3e310]:
+    - generic [ref=f3e311]: Delete
+    - generic [ref=f3e313]: Copy
+    - generic [ref=f3e315]: Rename
+    - generic [ref=f3e317]: Change color
+    - separator
+    - generic [ref=f3e319]: Hide
+    - generic [ref=f3e321]: Unhide
+    - separator
+    - generic [ref=f3e323]: Move left
+    - generic [ref=f3e325]: Move right
+  - generic [ref=f3e327]:
+    - generic [ref=f3e328]: Reset color
+    - textbox [ref=f3e332] [cursor=pointer]

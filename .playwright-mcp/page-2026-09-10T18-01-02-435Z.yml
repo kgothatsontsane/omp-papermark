@@ -1,0 +1,15 @@
+- generic [active] [ref=e1]:
+  - main [ref=e3]:
+    - region "Notifications alt+T"
+    - generic [ref=e56]:
+      - heading "Verify your email address" [level=2] [ref=e57]
+      - paragraph [ref=e58]:
+        - text: Enter the six digit verification code sent to
+        - strong [ref=e59]: nvisionfactory@gmail.com
+      - generic [ref=e60]:
+        - textbox [ref=e61] [cursor=pointer]
+        - button "Continue" [disabled] [ref=e62] [cursor=pointer]
+      - generic [ref=e64]:
+        - paragraph [ref=e65]: Didn't receive the email?
+        - button "Resending code..." [disabled] [ref=e80] [cursor=pointer]
+  - alert [ref=e19]
