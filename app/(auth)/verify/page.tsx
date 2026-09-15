@@ -7,7 +7,7 @@ import { generateChecksum } from "@/lib/utils/generate-checksum";
 
 import { Button } from "@/components/ui/button";
 
-import { APP_URL, BRAND_NAME, BRAND_LOGO, SUPPORT_EMAIL } from "@/lib/branding";
+import { APP_URL, BRAND_COMPANY, BRAND_LOGO, BRAND_NAME, BRAND_PLATFORM, SUPPORT_EMAIL } from "@/lib/branding";
 
 const data = {
   description: `Verify login to ${BRAND_NAME}`,
@@ -120,7 +120,7 @@ export default function VerifyPage({
               Verify your login.
             </h1>
             <p className="mt-4 max-w-sm text-balance leading-relaxed text-gray-500">
-              {BRAND_NAME} Deal Room — confirm it&apos;s you to continue.
+              {BRAND_PLATFORM} — confirm it&apos;s you to continue.
             </p>
 
             <div className="mt-10 flex flex-col gap-4">
@@ -143,8 +143,8 @@ export default function VerifyPage({
             </div>
 
             <p className="mt-8 text-xs leading-relaxed text-gray-400">
-              By continuing, you acknowledge that you have read and agree to{" "}
-              {BRAND_NAME}&apos;s{" "}
+              By continuing, you acknowledge that you have               read and agree to{" "}
+              {BRAND_COMPANY}&apos;s{" "}
               <a
                 href={`${process.env.NEXT_PUBLIC_MARKETING_URL}/terms`}
                 target="_blank"
@@ -189,7 +189,7 @@ export default function VerifyPage({
               </h2>
               <p className="mt-5 max-w-md text-balance leading-relaxed text-gray-400">
                 We&apos;ve sent you a verification email. Confirm your identity
-                and continue to {BRAND_NAME} Deal Room — secure and
+                and continue to the {BRAND_PLATFORM} — secure and
                 confidential, always.
               </p>
 

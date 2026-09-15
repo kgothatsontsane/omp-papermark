@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
 
+import Image from "next/image";
+
 import { Button } from "@/components/ui/button";
 import {
   InputOTP,
@@ -9,6 +11,7 @@ import {
 import { DEFAULT_ACCESS_FORM_TYPE } from "@/components/view/access-form";
 
 import { useMediaQuery } from "@/lib/utils/use-media-query";
+import { BRAND_LOGO_WHITE_PNG } from "@/lib/branding";
 
 const REGEXP_ONLY_DIGITS = "^\\d+$";
 
@@ -48,6 +51,15 @@ export default function EmailVerificationMessage({
     <>
       <div className="flex h-screen flex-1 flex-col bg-black px-6 py-12 lg:px-8">
         <div className="sm:mx-auto sm:w-full sm:max-w-md">
+          <Image
+            src={BRAND_LOGO_WHITE_PNG}
+            alt="Open Mic Productions Dealroom"
+            width={144}
+            height={50}
+            className="object-contain"
+            priority
+            unoptimized
+          />
           <h2 className="mt-10 text-2xl font-bold leading-9 tracking-tight text-white">
             Verify your email address
           </h2>

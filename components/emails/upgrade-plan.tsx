@@ -13,7 +13,7 @@ import {
   Text,
 } from "@react-email/components";
 
-import { BRAND_NAME, BRAND_PLATFORM } from "@/lib/branding";
+import { BRAND_COMPANY, BRAND_PLATFORM } from "@/lib/branding";
 import EmailLogo from "@/components/emails/email-logo";
 
 interface UpgradePlanEmailProps {
@@ -108,7 +108,7 @@ const UpgradePlanEmail = ({
                 Let me know if you have any questions or feedback. I&apos;m
                 always happy to help!
               </Text>
-              <Text className="text-sm text-gray-400">Kgothatso from {BRAND_NAME}</Text>
+              <Text className="text-sm text-gray-400">Kgothatso from {BRAND_COMPANY}</Text>
             </Section>
             <Hr />
             <Section className="mt-8 text-gray-400">

@@ -232,9 +232,16 @@ export default function Nav({
                 <Link
                   href={`https://dealroom.open-mic.co.za/home?utm_campaign=navbar&utm_medium=navbar&utm_source=openmic-${linkId}`}
                   target="_blank"
-                  className="text-2xl font-bold tracking-tighter text-white"
                 >
-                  {BRAND_NAME}
+                  <Image
+                    className="object-contain"
+                    src={BRAND_LOGO_WHITE_PNG}
+                    alt="Open Mic Productions Dealroom"
+                    width={144}
+                    height={50}
+                    priority
+                    unoptimized
+                  />
                 </Link>
               )}
             </div>
@@ -451,4 +458,4 @@ export default function Nav({
   );
 }
 
-import { BRAND_NAME } from "@/lib/branding";
+import { BRAND_LOGO_WHITE_PNG } from "@/lib/branding";
