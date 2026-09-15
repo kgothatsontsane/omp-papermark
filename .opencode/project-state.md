@@ -375,6 +375,13 @@ Files in `lib/tinybird/endpoints/`.
 - Prod: main synced, worker 20260915.7, Team columns verified (excludedEmails,
   excludedLinkIds). USER ACTIONS: Resend dashboard webhook → /api/webhooks/resend;
   set RESEND_WEBHOOK_SECRET in Vercel; confirm kgothatso@ mailbox.
+- RESEND WEBHOOK LIVE (verified E2E 2026-09-15): secret set in Vercel prod
+  (preview still missing — CLI can't answer the branch prompt non-interactively;
+  add via dashboard if needed). Select events: delivered/opened/clicked/bounced/
+  complained/delivery_delayed. GOTCHAS: svix v2 verify() returns void (parse payload
+  separately); serverless freezes fire-and-forget fetches — AWAIT ingest in routes
+  that respond immediately (webhook route fixed PRs #68-71, signed test row landed
+  in email_events__v1 then deleted).
 - GOTCHAS: Next rejects same-level dynamic slugs with different names (views/[id] vs
   views/[viewId]) — remind.ts moved under [id]. `git add -A` sweeps strays (removed
   zoom-pill jpeg). tsx scripts need dotenv import + must live in repo; npx tsx
