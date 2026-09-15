@@ -1,0 +1,21 @@
+VERSION 1
+
+DESCRIPTION >
+    Most bookmarked documents in a dataroom by bookmark_add events
+
+NODE endpoint
+SQL >
+    %
+    SELECT
+        document_id,
+        count() AS bookmark_count
+    FROM dataroom_nav__v1
+    WHERE dataroom_id = {{ String(dataroom_id, required=True) }}
+        AND timestamp >= {{ Int64(since, required=True) }}
+        AND event_type = 'bookmark_add'
+        AND document_id IS NOT NULL
+    GROUP BY document_id
+    ORDER BY bookmark_count DESC
+    LIMIT 50
+
+TYPE ENDPOINT

@@ -8,6 +8,8 @@ import { getServerSession } from "next-auth/next";
 
 import { newId } from "@/lib/id-helper";
 import prisma from "@/lib/prisma";
+import { recordTeamActivity } from "@/lib/tinybird";
+import { ingestSafely } from "@/lib/tracking/request-meta";
 import { CustomUser } from "@/lib/types";
 
 export default async function handle(
@@ -143,6 +145,19 @@ export default async function handle(
         ...dataroom,
         _count: { documents: 0 },
       };
+
+      void ingestSafely(
+        recordTeamActivity({
+          event_id: `${teamId}-${Date.now()}`,
+          timestamp: Date.now(),
+          team_id: teamId,
+          actor_user_id: userId,
+          event_type: "dataroom_created",
+          dataroom_id: dataroom.id,
+          detail: dataroom.name,
+        }),
+        `team activity dataroom_created for dataroom ${dataroom.id}`,
+      );
 
       res.status(201).json({ dataroom: dataroomWithCount });
     } catch (error) {

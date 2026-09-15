@@ -489,6 +489,58 @@ Files in `lib/tinybird/endpoints/`.
 - PRE-EXISTING (verified via stash @ baseline, not mine):
   `lib/tracking/request-meta.ts(40,11)` TS2353 excess-prop `continent` error.
 
+## 2026-09-15 — Owner preview modal zoom + page jump (uncommitted on develop)
+
+- `components/documents/preview-viewers/preview-pages-viewer.tsx`: zoom pill
+  (−/%/+/Reset, 50–300% in 25% steps, keyboard +/-/0, ctrl/cmd+wheel via
+  non-passive listener) as CSS transform scale on img wrapper; both "Page X
+  of N" labels now editable numeric inputs (Enter/blur commits, clamp 1..N).
+- `components/documents/preview-viewers/preview-image-viewer.tsx`: same zoom
+  pill, no page input.
+- Verify: `npx tsc --noEmit` zero errors mentioning preview-viewers. NOT committed.
+
+## 2026-09-15 — Dataroom nav tracking: collect + query (UNCOMMITTED on develop)
+
+- Collect: `pages/api/links/nav-event.ts` (POST, view-existence check via
+  findUnique id+linkId → 404, metaFromApiRequest, bot-skip, AWAIT
+  ingestSafely(recordDataroomNav)) + `lib/tracking/track-nav.ts` (keepalive
+  fire-and-forget client helper). Hooks: folder-card (folder_open),
+  document-card (doc_switch, new optional dataroomId prop), dataroom-viewer
+  searchQuery effect (search). Preview mode never tracks.
+- Query: 4 pipes + buildPipe bindings (getNavFlow, getPopularDocs,
+  getTopSearches, getBookmarkLeaderboard). Deploy #9 live, all 4 return
+  HTTP 200 with correct schema on synthetic ids. tsc: zero errors on
+  touched files. NOT committed.
+- Gap: folder switches via tree sidebar / breadcrumbs untracked (only
+  FolderCard); bookmark/list events collected server-side but no client
+  hooks yet.
+
+## 2026-09-15 — Viewer bookmarks + custom lists (UNCOMMITTED on develop)
+
+- Prisma (`dataroom.prisma` + back-refs on View/Dataroom/Document):
+  `ViewerBookmark {viewId, dataroomId, documentId, @@unique([viewId, documentId])}`,
+  `ViewerList {viewId, dataroomId, name}`, `ViewerListItem {listId, documentId,
+  @@unique([listId, documentId])}`, all Cascade. Migration file
+  `prisma/migrations/20260915120000_viewer_lists/migration.sql` created only
+  (NOT applied). `npx prisma generate` + `validate` pass.
+- API (view-token authed, Pages API, auth mirrors
+  `download/dataroom-document.ts` view lookup): `pages/api/links/bookmark.ts`
+  (POST add/DELETE remove), `bookmarks.ts` (GET → bookmarks + lists w/ items),
+  `lists.ts` (POST create/rename via listId, DELETE), `list-items.ts`
+  (POST add idempotent upsert/DELETE remove, list-scoped to viewId).
+  Mutations AWAIT `ingestSafely(recordDataroomNav(...))` (bookmark_add/remove,
+  list_create, list_item_add/remove; link_id+dataroom_id+view_id always set).
+- UI: `DocumentCard` bookmark toggle (Bookmark icon, filled when active, only
+  when handler passed); `viewer-lists-panel.tsx` (My lists: create/rename w/
+  inline edit/delete w/ 2-click confirm/add-visible-docs/expand items w/ remove/
+  click-to-filter + Bookmarked pseudo-filter); `lib/swr/use-viewer-bookmarks.ts`;
+  `dataroom-viewer.tsx` wiring (hook, handlers, filter in mixedItems memo).
+- Verify: `npx tsc --noEmit` 29 errors, all pre-existing/parallel-session files,
+  zero in touched files. NOT committed, NO migrate deploy.
+- NOTE: parallel uncommitted workstream on develop adds client-side
+  `lib/tracking/track-nav.ts` (folder_open/doc_switch/search events) + dataroomId
+  prop — this work layers on top, untouched their logic.
+
 ## 2026-09-15 — Manual analytics actions (uncommitted on develop)
 
 - Remind: `pages/api/teams/[teamId]/views/[viewId]/remind.ts` (POST, team guard,
@@ -503,3 +555,20 @@ Files in `lib/tinybird/endpoints/`.
   `0 5 * * 1` = 07:00 SAST Monday, UTC) + `components/emails/weekly-digest.tsx`.
   Bounce section omitted (email_events__v1 has no pipe). No opt-out flag.
 - `npx tsc --noEmit`: zero errors on touched files. NOT committed.
+
+## 2026-09-15 — Team activity audit feed (uncommitted on develop, pipe LIVE deploy #10)
+
+- Collect (all `void ingestSafely(recordTeamActivity(...))`, fire-and-forget):
+  `process-document.ts` doc_uploaded (actor userId ?? teamId, detail=name),
+  versions/index.ts version_added (detail=vN), links/index.ts POST
+  link_created, links/[id]/archive.ts link_disabled (only when isArchived=true),
+  links/[id]/index.ts DELETE link_deleted, datarooms/index.ts POST
+  dataroom_created. event_id `${teamId}-${Date.now()}` everywhere (newId has no
+  fitting prefix, incl. dataroom route that imports it).
+- Query: `get_team_activity__v1.pipe` (team_id, since, limit default 100,
+  ORDER BY timestamp DESC) + `getTeamActivity` binding in pipes.ts.
+  Deploy #10 live; HTTP 200 verified with team_id=x&since=0 (correct schema).
+- Display: GET `pages/api/teams/[teamId]/activity.ts` (team-membership guard,
+  returns [] on TB error) + `TeamActivityFeed` (lucide icon per event_type +
+  detail + timeAgo, hidden when empty) mounted in `pages/settings/general.tsx`.
+- `npx tsc --noEmit`: zero errors mentioning touched files. NOT committed.

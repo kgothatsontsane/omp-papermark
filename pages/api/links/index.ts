@@ -7,6 +7,8 @@ import { getServerSession } from "next-auth/next";
 import { generateEncrpytedPassword } from "@/lib/auth/passwords";
 import { errorhandler } from "@/lib/errorHandler";
 import prisma from "@/lib/prisma";
+import { recordTeamActivity } from "@/lib/tinybird";
+import { ingestSafely } from "@/lib/tracking/request-meta";
 import { CustomUser } from "@/lib/types";
 import { sendLinkCreatedWebhook } from "@/lib/webhook/triggers/link-created";
 
@@ -245,6 +247,21 @@ export default async function handler(
             dataroom_id: linkWithView.dataroomId,
           },
         }),
+      );
+
+      void ingestSafely(
+        recordTeamActivity({
+          event_id: `${teamId}-${Date.now()}`,
+          timestamp: Date.now(),
+          team_id: teamId,
+          actor_user_id: userId,
+          event_type: "link_created",
+          document_id: linkWithView.documentId,
+          link_id: linkWithView.id,
+          dataroom_id: linkWithView.dataroomId,
+          detail: linkWithView.name ?? `link ${linkWithView.id}`,
+        }),
+        `team activity link_created for link ${linkWithView.id}`,
       );
 
       // Remove password from response - client does not need it

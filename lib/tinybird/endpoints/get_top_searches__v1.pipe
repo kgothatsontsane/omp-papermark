@@ -1,0 +1,22 @@
+VERSION 1
+
+DESCRIPTION >
+    Top search queries in a dataroom
+
+NODE endpoint
+SQL >
+    %
+    SELECT
+        query,
+        count() AS search_count
+    FROM dataroom_nav__v1
+    WHERE dataroom_id = {{ String(dataroom_id, required=True) }}
+        AND timestamp >= {{ Int64(since, required=True) }}
+        AND event_type = 'search'
+        AND query IS NOT NULL
+        AND query != ''
+    GROUP BY query
+    ORDER BY search_count DESC
+    LIMIT 50
+
+TYPE ENDPOINT

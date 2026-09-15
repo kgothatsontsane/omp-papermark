@@ -1,0 +1,21 @@
+VERSION 1
+
+DESCRIPTION >
+    Most opened documents in a dataroom by doc_switch events
+
+NODE endpoint
+SQL >
+    %
+    SELECT
+        document_id,
+        count() AS open_count
+    FROM dataroom_nav__v1
+    WHERE dataroom_id = {{ String(dataroom_id, required=True) }}
+        AND timestamp >= {{ Int64(since, required=True) }}
+        AND event_type = 'doc_switch'
+        AND document_id IS NOT NULL
+    GROUP BY document_id
+    ORDER BY open_count DESC
+    LIMIT 50
+
+TYPE ENDPOINT
