@@ -7,6 +7,9 @@ import slugify from "@sindresorhus/slugify";
 
 import { getLambdaClientForTeam } from "@/lib/files/aws-client";
 import prisma from "@/lib/prisma";
+import { recordDownloadEvent, recordSecurityFlag } from "@/lib/tinybird";
+import { ingestSafely, metaFromApiRequest } from "@/lib/tracking/request-meta";
+import { nanoid } from "@/lib/utils";
 import { getIpAddress } from "@/lib/utils/ip";
 
 export const config = {
@@ -331,6 +334,54 @@ export default async function handler(
 
     const parsed = JSON.parse(new TextDecoder().decode(response.Payload));
     const { downloadUrl } = JSON.parse(parsed.body);
+
+    const meta = metaFromApiRequest(req);
+    if (!meta.isBot) {
+      const fileCount = Math.max(fileKeys.length, 1);
+      void ingestSafely(
+        recordDownloadEvent({
+          event_id: nanoid(),
+          timestamp: Date.now(),
+          link_id: linkId,
+          view_id: viewId,
+          dataroom_id: dataroomId,
+          download_type: "folder",
+          file_count: fileCount,
+          total_bytes: 0,
+          country: meta.country,
+          city: meta.city,
+          region: meta.region,
+          device: meta.device,
+          browser: meta.browser,
+          os: meta.os,
+          ua: meta.ua,
+          ip_address: meta.ip_address,
+        }),
+        "downloadEvent folder",
+      );
+      const hour = Number(
+        new Intl.DateTimeFormat("en", {
+          timeZone: "Africa/Johannesburg",
+          hour: "numeric",
+          hour12: false,
+        }).format(new Date()),
+      );
+      if ((hour >= 22 || hour < 6) && fileCount >= 10) {
+        void ingestSafely(
+          recordSecurityFlag({
+            event_id: nanoid(),
+            timestamp: Date.now(),
+            link_id: linkId,
+            view_id: viewId,
+            flag_type: "off_hours_bulk_download",
+            severity: "medium",
+            detail: `off-hours folder download: ${fileCount} files`,
+            ip_address: meta.ip_address,
+          }),
+          "securityFlag off_hours_bulk_download",
+        );
+      }
+    }
 
     res.status(200).json({ downloadUrl });
   } catch (error) {

@@ -4,6 +4,7 @@ import { View } from "@prisma/client";
 import { getServerSession } from "next-auth/next";
 
 import { errorhandler } from "@/lib/errorHandler";
+import { getInternalExclusion } from "@/lib/api/internal-exclusion";
 import prisma from "@/lib/prisma";
 import {
   getTotalAvgPageDuration,
@@ -83,14 +84,24 @@ export default async function handle(
         });
       }
 
+      const { excludedEmails, excludedLinkIds } =
+        await getInternalExclusion(teamId);
+
       const activeViews = views.filter((view) => !view.isArchived);
       const archivedViews = views.filter((view) => view.isArchived);
 
       // exclude views from the team's members
       let internalViews: View[] = [];
       if (excludeTeamMembers) {
+        const exclusionEmails = [
+          ...users.map((user) => user.email),
+          ...excludedEmails,
+        ];
         internalViews = activeViews.filter((view) => {
-          return users.some((user) => user.email === view.viewerEmail);
+          return (
+            view.viewerEmail != null &&
+            exclusionEmails.includes(view.viewerEmail)
+          );
         });
       }
 
@@ -119,7 +130,7 @@ export default async function handle(
       try {
         duration = await getTotalAvgPageDuration({
           documentId: docId,
-          excludedLinkIds: "",
+          excludedLinkIds: excludedLinkIds.join(","),
           excludedViewIds: allExcludedViews.map((view) => view.id).join(","),
           since: 0,
         });
@@ -131,7 +142,7 @@ export default async function handle(
       try {
         totalDocumentDuration = await getTotalDocumentDuration({
           documentId: docId,
-          excludedLinkIds: "",
+          excludedLinkIds: excludedLinkIds.join(","),
           excludedViewIds: allExcludedViews.map((view) => view.id).join(","),
           since: 0,
         });

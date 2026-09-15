@@ -1,0 +1,24 @@
+VERSION 1
+
+DESCRIPTION >
+    Viewer counts grouped by last page viewed for a document
+
+NODE endpoint
+SQL >
+    %
+    SELECT
+        page_number,
+        count() AS viewer_count
+    FROM (
+        SELECT
+            viewId,
+            argMax(pageNumber, time) AS page_number
+        FROM page_views__v3
+        WHERE documentId = {{ String(document_id, required=True) }}
+            AND time >= {{ Int64(since, required=True) }}
+        GROUP BY viewId
+    )
+    GROUP BY page_number
+    ORDER BY viewer_count DESC
+
+TYPE ENDPOINT

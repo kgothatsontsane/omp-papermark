@@ -4,7 +4,9 @@ import { ItemType, ViewType } from "@prisma/client";
 
 import { getFile } from "@/lib/files/get-file";
 import prisma from "@/lib/prisma";
-import { getFileNameWithPdfExtension } from "@/lib/utils";
+import { recordDownloadEvent } from "@/lib/tinybird";
+import { ingestSafely, metaFromApiRequest } from "@/lib/tracking/request-meta";
+import { getFileNameWithPdfExtension, nanoid } from "@/lib/utils";
 import { getIpAddress } from "@/lib/utils/ip";
 
 export const config = {
@@ -164,6 +166,32 @@ export default async function handle(
           verified: view.verified,
         },
       });
+
+      const meta = metaFromApiRequest(req);
+      if (!meta.isBot) {
+        void ingestSafely(
+          recordDownloadEvent({
+            event_id: nanoid(),
+            timestamp: Date.now(),
+            link_id: linkId,
+            view_id: viewId,
+            document_id: documentId,
+            dataroom_id: view.dataroom!.id,
+            download_type: "dataroom_doc",
+            file_count: 1,
+            total_bytes: 0,
+            country: meta.country,
+            city: meta.city,
+            region: meta.region,
+            device: meta.device,
+            browser: meta.browser,
+            os: meta.os,
+            ua: meta.ua,
+            ip_address: meta.ip_address,
+          }),
+          "downloadEvent dataroom_doc",
+        );
+      }
 
       const file =
         view.link.enableWatermark &&

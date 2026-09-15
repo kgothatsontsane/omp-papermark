@@ -1,0 +1,26 @@
+DESCRIPTION >
+  File download events: single document, dataroom document, folder, bulk.
+  Hooked on all four download routes with graceful degradation.
+
+SCHEMA >
+  `event_id` String `json:$.event_id`,
+  `timestamp` Int64 `json:$.timestamp`,
+  `link_id` String `json:$.link_id`,
+  `view_id` Nullable(String) `json:$.view_id`,
+  `document_id` Nullable(String) `json:$.document_id`,
+  `dataroom_id` Nullable(String) `json:$.dataroom_id`,
+  `download_type` LowCardinality(String) `json:$.download_type`,
+  `file_count` UInt16 `json:$.file_count`,
+  `total_bytes` UInt64 `json:$.total_bytes`,
+  `country` String `json:$.country`,
+  `city` String `json:$.city`,
+  `region` String `json:$.region`,
+  `device` String `json:$.device`,
+  `browser` String `json:$.browser`,
+  `os` String `json:$.os`,
+  `ua` String `json:$.ua`,
+  `ip_address` Nullable(String) `json:$.ip_address`
+
+
+ENGINE "MergeTree"
+ENGINE_SORTING_KEY "link_id,timestamp,event_id"

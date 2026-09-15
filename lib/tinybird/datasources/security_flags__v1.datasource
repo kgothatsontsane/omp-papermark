@@ -1,0 +1,18 @@
+DESCRIPTION >
+  Security flags raised by access-pattern analysis: OTP bruteforce, email
+  enumeration, off-hours bulk download, impossible travel. Written by the
+  app when thresholds trip; read by the dashboard Security tab.
+
+SCHEMA >
+  `event_id` String `json:$.event_id`,
+  `timestamp` Int64 `json:$.timestamp`,
+  `link_id` String `json:$.link_id`,
+  `view_id` Nullable(String) `json:$.view_id`,
+  `flag_type` LowCardinality(String) `json:$.flag_type`,
+  `severity` LowCardinality(String) `json:$.severity`,
+  `detail` String `json:$.detail`,
+  `ip_address` Nullable(String) `json:$.ip_address`
+
+
+ENGINE "MergeTree"
+ENGINE_SORTING_KEY "link_id,timestamp,event_id"

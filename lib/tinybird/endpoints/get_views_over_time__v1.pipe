@@ -1,0 +1,18 @@
+VERSION 1
+
+DESCRIPTION >
+    View counts per day for a link
+
+NODE endpoint
+SQL >
+    %
+    SELECT
+        toDate(toDateTime(toUInt32(timestamp / 1000))) AS day,
+        count() AS view_count
+    FROM pm_click_events__v1
+    WHERE link_id = {{ String(link_id, required=True) }}
+        AND timestamp >= {{ Int64(since, required=True) }}
+    GROUP BY day
+    ORDER BY day ASC
+
+TYPE ENDPOINT

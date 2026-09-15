@@ -5,6 +5,7 @@ import { View } from "@prisma/client";
 import { getServerSession } from "next-auth/next";
 
 import { errorhandler } from "@/lib/errorHandler";
+import { getInternalExclusion } from "@/lib/api/internal-exclusion";
 import prisma from "@/lib/prisma";
 import {
   getTotalAvgPageDuration,
@@ -33,10 +34,12 @@ export default async function handle(
       teamId,
       id: dataroomId,
       documentId,
+      excludeTeamMembers,
     } = req.query as {
       teamId: string;
       id: string;
       documentId: string;
+      excludeTeamMembers?: string;
     };
 
     const userId = (session.user as CustomUser).id;
@@ -123,6 +126,25 @@ export default async function handle(
 
       // exclude views from the team's members if requested
       let internalViews: View[] = [];
+      if (excludeTeamMembers) {
+        const users = await prisma.user.findMany({
+          where: { teams: { some: { teamId } } },
+          select: { email: true },
+        });
+        const { excludedEmails } = await getInternalExclusion(teamId);
+        const exclusionEmails = [
+          ...users.map((user) => user.email),
+          ...excludedEmails,
+        ];
+        internalViews = activeViews.filter((view) => {
+          return (
+            view.viewerEmail != null &&
+            exclusionEmails.includes(view.viewerEmail)
+          );
+        });
+      }
+
+      const { excludedLinkIds } = await getInternalExclusion(teamId);
 
       // combined archived and internal and non-dataroom views
       const allExcludedViews = [
@@ -144,7 +166,7 @@ export default async function handle(
       try {
         duration = await getTotalAvgPageDuration({
           documentId: documentId,
-          excludedLinkIds: "",
+          excludedLinkIds: excludedLinkIds.join(","),
           excludedViewIds: allExcludedViews.map((view) => view.id).join(","),
           since: 0,
         });

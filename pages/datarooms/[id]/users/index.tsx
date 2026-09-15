@@ -1,4 +1,4 @@
-import { useDataroom } from "@/lib/swr/use-dataroom";
+import { useDataroom, useDataroomDocuments } from "@/lib/swr/use-dataroom";
 
 import { DataroomHeader } from "@/components/datarooms/dataroom-header";
 import { DataroomNavigation } from "@/components/datarooms/dataroom-navigation";
@@ -7,6 +7,7 @@ import DataroomViewersTable from "@/components/visitors/dataroom-viewers";
 
 export default function DataroomUsersPage() {
   const { dataroom } = useDataroom();
+  const { documents } = useDataroomDocuments();
 
   if (!dataroom) {
     return <div>Loading...</div>;
@@ -23,7 +24,10 @@ export default function DataroomUsersPage() {
 
         <div className="space-y-4">
           {/* Visitors */}
-          <DataroomViewersTable dataroomId={dataroom.id} />
+          <DataroomViewersTable
+            dataroomId={dataroom.id}
+            totalDocs={documents?.length}
+          />
         </div>
       </div>
     </AppLayout>

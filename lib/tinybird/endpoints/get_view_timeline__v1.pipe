@@ -1,0 +1,27 @@
+VERSION 1
+
+DESCRIPTION >
+    Unified chronological timeline of all events for a view
+
+NODE endpoint
+SQL >
+    %
+    SELECT
+        timestamp,
+        event_category,
+        detail
+    FROM (
+        SELECT time AS timestamp, 'page' AS event_category, toString(pageNumber) AS detail FROM page_views__v3 WHERE viewId = {{ String(view_id, required=True) }}
+        UNION ALL
+        SELECT timestamp, 'click' AS event_category, toString(href) AS detail FROM click_events__v1 WHERE view_id = {{ String(view_id, required=True) }}
+        UNION ALL
+        SELECT timestamp, 'download' AS event_category, toString(download_type) AS detail FROM download_events__v1 WHERE view_id = {{ String(view_id, required=True) }}
+        UNION ALL
+        SELECT timestamp, 'access' AS event_category, toString(event_type) AS detail FROM access_events__v1 WHERE view_id = {{ String(view_id, required=True) }}
+        UNION ALL
+        SELECT timestamp, 'video' AS event_category, toString(event_type) AS detail FROM video_views__v1 WHERE view_id = {{ String(view_id, required=True) }}
+    )
+    ORDER BY timestamp ASC
+    LIMIT 500
+
+TYPE ENDPOINT

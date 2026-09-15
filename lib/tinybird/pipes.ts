@@ -203,3 +203,172 @@ export const getClickEventsByView = tb.buildPipe({
     href: z.string(),
   }),
 });
+
+export const getAccessFunnel = tb.buildPipe({
+  pipe: "get_access_funnel__v1",
+  parameters: z.object({
+    link_id: z.string(),
+    since: z.number(),
+  }),
+  data: z.object({
+    event_type: z.string(),
+    event_count: z.number(),
+  }),
+});
+
+export const getAccessFailures = tb.buildPipe({
+  pipe: "get_access_failures__v1",
+  parameters: z.object({
+    link_id: z.string(),
+    since: z.number(),
+  }),
+  data: z.object({
+    email_hash: z.string().nullable(),
+    ip_address: z.string().nullable(),
+    fail_count: z.number(),
+  }),
+});
+
+export const getVerifyLatency = tb.buildPipe({
+  pipe: "get_verify_latency__v1",
+  parameters: z.object({
+    link_id: z.string(),
+    since: z.number(),
+  }),
+  data: z.object({
+    p50: z.number().nullable(),
+    p90: z.number().nullable(),
+  }),
+});
+
+export const getDownloadsByView = tb.buildPipe({
+  pipe: "get_downloads_by_view__v1",
+  parameters: z.object({
+    view_id: z.string(),
+  }),
+  data: z.object({
+    timestamp: z.string(),
+    document_id: z.string().nullable(),
+    dataroom_id: z.string().nullable(),
+    download_type: z.string(),
+    file_count: z.number(),
+    total_bytes: z.number(),
+  }),
+});
+
+export const getDownloadsByDocument = tb.buildPipe({
+  pipe: "get_downloads_by_document__v1",
+  parameters: z.object({
+    document_id: z.string(),
+    since: z.number(),
+  }),
+  data: z.object({
+    download_count: z.number(),
+    total_files: z.number(),
+    total_bytes: z.number(),
+    viewer_count: z.number(),
+  }),
+});
+
+export const getDownloadRate = tb.buildPipe({
+  pipe: "get_download_rate__v1",
+  parameters: z.object({
+    link_id: z.string(),
+    since: z.number(),
+  }),
+  data: z.object({
+    downloads: z.number(),
+    viewers: z.number(),
+  }),
+});
+
+export const getGeoBreakdown = tb.buildPipe({
+  pipe: "get_geo_breakdown__v1",
+  parameters: z.object({
+    link_id: z.string(),
+    since: z.number(),
+  }),
+  data: z.object({
+    country: z.string(),
+    city: z.string(),
+    view_count: z.number(),
+  }),
+});
+
+export const getDeviceBreakdown = tb.buildPipe({
+  pipe: "get_device_breakdown__v1",
+  parameters: z.object({
+    link_id: z.string(),
+    since: z.number(),
+  }),
+  data: z.object({
+    browser: z.string(),
+    os: z.string(),
+    device: z.string(),
+    view_count: z.number(),
+  }),
+});
+
+export const getViewsOverTime = tb.buildPipe({
+  pipe: "get_views_over_time__v1",
+  parameters: z.object({
+    link_id: z.string(),
+    since: z.number(),
+  }),
+  data: z.object({
+    day: z.string(),
+    view_count: z.number(),
+  }),
+});
+
+export const getDropoffPage = tb.buildPipe({
+  pipe: "get_dropoff_page__v1",
+  parameters: z.object({
+    document_id: z.string(),
+    since: z.number(),
+  }),
+  data: z.object({
+    page_number: z.string(),
+    viewer_count: z.number(),
+  }),
+});
+
+export const getVideoHeatmap = tb.buildPipe({
+  pipe: "get_video_heatmap__v1",
+  parameters: z.object({
+    document_id: z.string(),
+    since: z.number(),
+  }),
+  data: z.object({
+    second: z.number(),
+    play_count: z.number(),
+  }),
+});
+
+export const getSecurityFlags = tb.buildPipe({
+  pipe: "get_security_flags__v1",
+  parameters: z.object({
+    link_id: z.string(),
+    since: z.number(),
+  }),
+  data: z.object({
+    timestamp: z.string(),
+    flag_type: z.string(),
+    severity: z.string(),
+    detail: z.string(),
+    view_id: z.string().nullable(),
+    ip_address: z.string().nullable(),
+  }),
+});
+
+export const getViewTimeline = tb.buildPipe({
+  pipe: "get_view_timeline__v1",
+  parameters: z.object({
+    view_id: z.string(),
+  }),
+  data: z.object({
+    timestamp: z.string(),
+    event_category: z.string(),
+    detail: z.string(),
+  }),
+});

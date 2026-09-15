@@ -1,0 +1,30 @@
+DESCRIPTION >
+  Access-gate events: email submitted, OTP sent/verified/failed/expired,
+  passcode passed/failed, agreement accepted, view created, repeat entry.
+  Viewer email stored as SHA-256 hash only.
+
+SCHEMA >
+  `event_id` String `json:$.event_id`,
+  `timestamp` Int64 `json:$.timestamp`,
+  `link_id` String `json:$.link_id`,
+  `view_id` Nullable(String) `json:$.view_id`,
+  `document_id` Nullable(String) `json:$.document_id`,
+  `dataroom_id` Nullable(String) `json:$.dataroom_id`,
+  `event_type` LowCardinality(String) `json:$.event_type`,
+  `auth_method` LowCardinality(String) `json:$.auth_method`,
+  `outcome` LowCardinality(String) `json:$.outcome`,
+  `email_hash` Nullable(String) `json:$.email_hash`,
+  `latency_ms` Nullable(UInt32) `json:$.latency_ms`,
+  `attempt_count` UInt16 `json:$.attempt_count`,
+  `country` String `json:$.country`,
+  `city` String `json:$.city`,
+  `region` String `json:$.region`,
+  `device` String `json:$.device`,
+  `browser` String `json:$.browser`,
+  `os` String `json:$.os`,
+  `ua` String `json:$.ua`,
+  `ip_address` Nullable(String) `json:$.ip_address`
+
+
+ENGINE "MergeTree"
+ENGINE_SORTING_KEY "link_id,timestamp,event_id"

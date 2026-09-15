@@ -4,6 +4,7 @@ import { View } from "@prisma/client";
 import { getServerSession } from "next-auth/next";
 
 import { errorhandler } from "@/lib/errorHandler";
+import { getInternalExclusion } from "@/lib/api/internal-exclusion";
 import prisma from "@/lib/prisma";
 import { getTotalDataroomDuration } from "@/lib/tinybird";
 import { CustomUser } from "@/lib/types";
@@ -128,8 +129,16 @@ export default async function handle(
       // exclude views from the team's members
       let excludedViews: typeof views = [];
       if (excludeTeamMembers) {
+        const { excludedEmails } = await getInternalExclusion(teamId);
+        const exclusionEmails = [
+          ...users.map((user) => user.email),
+          ...excludedEmails,
+        ];
         excludedViews = documentViews.filter((view) => {
-          return users.some((user) => user.email === view.viewerEmail);
+          return (
+            view.viewerEmail != null &&
+            exclusionEmails.includes(view.viewerEmail)
+          );
         });
       }
 
@@ -139,9 +148,10 @@ export default async function handle(
 
       let durationData: { viewId: string; sum_duration: number }[] = [];
       try {
+        const { excludedLinkIds } = await getInternalExclusion(teamId);
         const duration = await getTotalDataroomDuration({
           dataroomId: dataroomId,
-          excludedLinkIds: [],
+          excludedLinkIds,
           excludedViewIds: excludedViews.map((view) => view.id),
           since: 0,
         });

@@ -4,7 +4,10 @@ import { isSelfHostedMode } from "@/lib/self-hosted";
 import { ChartNoAxesColumnIcon, LogsIcon } from "lucide-react";
 
 import { usePlan } from "@/lib/swr/use-billing";
-import { useDataroom } from "@/lib/swr/use-dataroom";
+import { useDataroom, useDataroomLinks } from "@/lib/swr/use-dataroom";
+
+import InternalListManager from "@/components/analytics/internal-list-manager";
+import { DataroomSecuritySection } from "@/components/analytics/security-flags-table";
 
 import DataroomAnalyticsOverview from "@/components/datarooms/analytics/analytics-overview";
 import DocumentAnalyticsTree from "@/components/datarooms/analytics/document-analytics-tree";
@@ -18,6 +21,7 @@ import DataroomVisitorsTable from "@/components/visitors/dataroom-visitors-table
 
 export default function DataroomAnalyticsPage() {
   const { dataroom } = useDataroom();
+  const { links } = useDataroomLinks();
   const { isDatarooms, isDataroomsPlus, isTrial } = usePlan();
 
   // State for the selected document
@@ -69,6 +73,10 @@ export default function DataroomAnalyticsPage() {
 
         <div className="space-y-8">
           <StatsCard />
+
+          <InternalListManager links={links ?? []} />
+
+          <DataroomSecuritySection dataroomId={dataroom.id} />
 
           <Tabs defaultValue={hasAnalyticsAccess ? "analytics" : "audit-log"} className="space-y-6">
             <TabsList>

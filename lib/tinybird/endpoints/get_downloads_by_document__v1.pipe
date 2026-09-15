@@ -1,0 +1,18 @@
+VERSION 1
+
+DESCRIPTION >
+    Download totals for a specific document
+
+NODE endpoint
+SQL >
+    %
+    SELECT
+        count() AS download_count,
+        sum(file_count) AS total_files,
+        sum(total_bytes) AS total_bytes,
+        countDistinct(view_id) AS viewer_count
+    FROM download_events__v1
+    WHERE document_id = {{ String(document_id, required=True) }}
+        AND timestamp >= {{ Int64(since, required=True) }}
+
+TYPE ENDPOINT
