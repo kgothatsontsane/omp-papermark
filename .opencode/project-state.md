@@ -358,6 +358,20 @@ Files in `lib/tinybird/endpoints/`.
   `npx tsc --noEmit`: zero errors mentioning tinybird/pipes.
 - Branch: `develop` (uncommitted: publish.ts M + new datasources/pipes/bindings).
 
+## 2026-09-15 — v9 Phase-2 LIVE (PRs #72, #73; tb deploys #8-#10)
+
+- Preview: zoom pill (50-300%, keys, ctrl+wheel, overflow-auto pan) + editable page
+  input in preview-pages-viewer; zoom in preview-image-viewer.
+- Viewer bookmarks + custom lists (server per viewId): ViewerBookmark/ViewerList/
+  ViewerListItem models + migration 20260915120000 APPLIED to prod; 4 API routes
+  (view-existence authed, no freshness lockout); toggle on doc cards, My-lists panel
+  with list filter; bookmark/list events fire dataroom_nav server-side.
+- Nav tracking: nav-event collect route + keepalive client helper (folder/doc/search
+  hooks; preview mode excluded); 4 pipes (flow, popular docs, top searches,
+  bookmark leaderboard).
+- Team audit: 6 lifecycle hooks, get_team_activity pipe, settings feed.
+- Heads: main = staging = develop = 923593814.
+
 ## 2026-09-15 — Tinybird Phase-1 analytics LIVE (PRs #64, #65; worker 20260915.7)
 
 - 4 new datasources (access/download/email/security_flags, deploy #6/#7) + 13 pipes
