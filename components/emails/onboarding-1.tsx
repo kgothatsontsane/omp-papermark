@@ -13,7 +13,7 @@ import {
   Text,
 } from "@react-email/components";
 
-import { BRAND_NAME } from "@/lib/branding";
+import { BRAND_PLATFORM } from "@/lib/branding";
 import EmailLogo from "@/components/emails/email-logo";
 
 const Onboarding1Email = () => {
@@ -36,7 +36,7 @@ const Onboarding1Email = () => {
               It all starts from sharing your first document!
             </Text>
             <Text className="text-sm">
-              With {BRAND_NAME} you can upload different kind of documents and turn
+              With {BRAND_PLATFORM} you can upload different kind of documents and turn
               them into shareable links:
             </Text>
             <Text className="text-sm">

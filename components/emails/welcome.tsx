@@ -14,7 +14,7 @@ import {
   Text,
 } from "@react-email/components";
 
-import { BRAND_NAME } from "@/lib/branding";
+import { BRAND_NAME, BRAND_PLATFORM } from "@/lib/branding";
 import EmailLogo from "@/components/emails/email-logo";
 
 interface WelcomeEmailProps {
@@ -39,9 +39,8 @@ const WelcomeEmail = ({ name }: WelcomeEmailProps) => {
               Thanks for signing up{name && `, ${name}`}!
             </Text>
             <Text className="text-sm">
-              My name is Marc, and I&apos;m the creator of {BRAND_NAME} – the
-              open-source DocSend alternative! I&apos;m excited to have you on
-              board!
+              My name is Kgothatso, and I&apos;m the maintainer of the{" "}
+              {BRAND_PLATFORM}. I&apos;m excited to have you on board!
             </Text>
             <Text className="text-sm">
               Here are a few things you can do to get started:
@@ -78,7 +77,7 @@ const WelcomeEmail = ({ name }: WelcomeEmailProps) => {
                       href="https://dealroom.open-mic.co.za"
                       target="_blank"
                     >
-                      Open Mic Productions
+                      {BRAND_PLATFORM}
                     </Link>
                   </li>
 
@@ -90,7 +89,7 @@ const WelcomeEmail = ({ name }: WelcomeEmailProps) => {
                 If you have any questions or feedback just respond to this
                 email. I&apos;m always happy to help!
               </Text>
-              <Text className="text-sm text-gray-400">Marc from {BRAND_NAME}</Text>
+              <Text className="text-sm text-gray-400">Kgothatso from {BRAND_NAME}</Text>
             </Section>
             <Hr />
             <Section className="mt-8 text-gray-400">
@@ -105,7 +104,7 @@ const WelcomeEmail = ({ name }: WelcomeEmailProps) => {
                 </a>
               </Text>
               <Text className="text-xs">
-                You will shortly receive the intro to {BRAND_NAME}. Stay tuned.
+                You will shortly receive the intro to {BRAND_PLATFORM}. Stay tuned.
               </Text>
             </Section>
           </Container>

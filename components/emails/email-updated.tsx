@@ -11,7 +11,7 @@ import {
   Text,
 } from "@react-email/components";
 
-import { BRAND_NAME } from "@/lib/branding";
+import { BRAND_PLATFORM } from "@/lib/branding";
 import EmailLogo from "@/components/emails/email-logo";
 
 export function EmailUpdated({
@@ -36,7 +36,7 @@ export function EmailUpdated({
               Your email address has been changed
             </Text>
             <Text className="text-sm leading-6 text-black">
-              The email address for your {BRAND_NAME} account has been changed from{" "}
+              The email address for your {BRAND_PLATFORM} account has been changed from{" "}
               <strong>{oldEmail}</strong> to <strong>{newEmail}</strong>.
             </Text>
             <Text className="text-sm leading-6 text-black">

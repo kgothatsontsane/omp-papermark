@@ -13,7 +13,7 @@ import {
   Text,
 } from "@react-email/components";
 
-import { BRAND_NAME } from "@/lib/branding";
+import { BRAND_PLATFORM } from "@/lib/branding";
 import EmailLogo from "@/components/emails/email-logo";
 
 const Onboarding4Email = () => {
@@ -35,7 +35,7 @@ const Onboarding4Email = () => {
             <Text className="text-sm">
               Look professional with custom branding!
             </Text>
-            <Text className="text-sm">With {BRAND_NAME} you can:</Text>
+            <Text className="text-sm">With {BRAND_PLATFORM} you can:</Text>
             <Text className="text-sm">
               <ul className="list-inside list-disc text-sm">
                 <li>
@@ -43,7 +43,7 @@ const Onboarding4Email = () => {
                   <strong>custom domain💫</strong>{" "}
                 </li>
 
-                <li>Remove &quot;powered by {BRAND_NAME}&quot;</li>
+                <li>Remove &quot;powered by {BRAND_PLATFORM}&quot;</li>
                 <li>Add logo and custom colors</li>
                 <li>Share data room with custom domain</li>
                 <li>Add banner and custom brand to data rooms</li>

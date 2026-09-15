@@ -7,14 +7,13 @@ import {
   Head,
   Hr,
   Html,
-  Link,
   Preview,
   Section,
   Tailwind,
   Text,
 } from "@react-email/components";
 
-import { BRAND_NAME } from "@/lib/branding";
+import { BRAND_NAME, BRAND_PLATFORM } from "@/lib/branding";
 import EmailLogo from "@/components/emails/email-logo";
 
 interface UpgradePlanEmailProps {
@@ -69,27 +68,15 @@ const UpgradePlanEmail = ({
               <EmailLogo />
             </Text>
             <Text className="font-seminbold mx-0 mb-8 mt-4 p-0 text-center text-xl">
-              Thanks for upgrading to {BRAND_NAME} {planType}!
+              Thanks for upgrading to {BRAND_PLATFORM} {planType}!
             </Text>
             <Text className="text-sm leading-6 text-black">
               Hey{name && ` ${name}`}!
             </Text>
             <Text className="text-sm">
-              My name is Marc, and I&apos;m the founder of {BRAND_NAME}. I wanted
-              to personally reach out to thank you for upgrading to {BRAND_NAME}{" "}
-              {planType}!
-            </Text>
-            <Text className="text-sm leading-6 text-black">
-              As you might already know, we are a bootstrapped and{" "}
-              <Link
-                href="https://dealroom.open-mic.co.za"
-                target="_blank"
-                className="font-medium text-emerald-500 no-underline"
-              >
-                open-source
-              </Link>{" "}
-              business. Your support means the world to us and helps us continue
-              to build and improve {BRAND_NAME}.
+              My name is Kgothatso, and I&apos;m the maintainer of the{" "}
+              {BRAND_PLATFORM}. I wanted to personally reach out to thank you
+              for upgrading to {BRAND_PLATFORM} {planType}!
             </Text>
             <Text className="text-sm leading-6 text-black">
               On the {planType} plan, you now have access to:
@@ -121,7 +108,7 @@ const UpgradePlanEmail = ({
                 Let me know if you have any questions or feedback. I&apos;m
                 always happy to help!
               </Text>
-              <Text className="text-sm text-gray-400">Marc from {BRAND_NAME}</Text>
+              <Text className="text-sm text-gray-400">Kgothatso from {BRAND_NAME}</Text>
             </Section>
             <Hr />
             <Section className="mt-8 text-gray-400">

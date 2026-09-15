@@ -13,7 +13,7 @@ import {
   Text,
 } from "@react-email/components";
 
-import { BRAND_NAME } from "@/lib/branding";
+import { BRAND_PLATFORM } from "@/lib/branding";
 import EmailLogo from "@/components/emails/email-logo";
 
 export default function DataroomViewerInvitation({
@@ -28,7 +28,7 @@ export default function DataroomViewerInvitation({
   return (
     <Html>
       <Head />
-      <Preview>View dataroom on {BRAND_NAME}</Preview>
+      <Preview>View dataroom on {BRAND_PLATFORM}</Preview>
       <Tailwind>
         <Body className="mx-auto my-auto bg-white font-sans">
           <Container className="mx-auto my-10 w-[465px] p-5">
@@ -42,7 +42,7 @@ export default function DataroomViewerInvitation({
             <Text className="text-sm leading-6 text-black">
               You have been invited to view the{" "}
               <span className="font-semibold">{dataroomName}</span> dataroom on{" "}
-              <span className="font-semibold">{BRAND_NAME}</span>.
+              <span className="font-semibold">{BRAND_PLATFORM}</span>.
               <br />
               The invitation was sent by{" "}
               <span className="font-semibold">{senderEmail}</span>.
@@ -60,7 +60,7 @@ export default function DataroomViewerInvitation({
               or copy and paste this URL into your browser: <br />
               {`${url}`}
             </Text>
-            <Text className="text-sm text-gray-400">{BRAND_NAME}</Text>
+            <Text className="text-sm text-gray-400">{BRAND_PLATFORM}</Text>
             <Hr />
             <Section className="mt-8 text-gray-400">
               <Text className="text-xs">

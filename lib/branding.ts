@@ -1,4 +1,5 @@
 export const BRAND_NAME = "Open Mic Productions";
+export const BRAND_PLATFORM = "Open Mic Productions Dealroom";
 export const BRAND_DOMAIN = "open-mic.co.za";
 export const APP_HOST = "dealroom.open-mic.co.za";
 export const APP_URL = process.env.NEXT_PUBLIC_BASE_URL || "https://dealroom.open-mic.co.za";

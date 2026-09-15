@@ -13,7 +13,7 @@ import {
   Text,
 } from "@react-email/components";
 
-import { BRAND_NAME } from "@/lib/branding";
+import { BRAND_PLATFORM } from "@/lib/branding";
 import EmailLogo from "@/components/emails/email-logo";
 
 export default function ViewedDataroom({
@@ -59,7 +59,7 @@ export default function ViewedDataroom({
             </Text>
             <Text className="text-sm leading-6 text-black">
               You can get the detailed engagement analytics like time-spent per
-              document page and total duration for this dataroom on {BRAND_NAME}.
+              document page and total duration for this dataroom on {BRAND_PLATFORM}.
             </Text>
             <Section className="my-8 text-center">
               <Button
@@ -71,7 +71,7 @@ export default function ViewedDataroom({
               </Button>
             </Section>
             <Text className="text-sm leading-6 text-black">
-              Stay informed, stay ahead with {BRAND_NAME}.
+              Stay informed, stay ahead with {BRAND_PLATFORM}.
             </Text>
             <Hr />
             <Section className="mt-8 text-gray-400">

@@ -13,7 +13,7 @@ import {
   Text,
 } from "@react-email/components";
 
-import { BRAND_NAME } from "@/lib/branding";
+import { BRAND_PLATFORM } from "@/lib/branding";
 import EmailLogo from "@/components/emails/email-logo";
 
 const Onboarding2Email = () => {
@@ -36,7 +36,7 @@ const Onboarding2Email = () => {
               There are many ways how you can protect your documents!
             </Text>
             <Text className="text-sm">
-              With {BRAND_NAME} you can use different link settings for shared
+              With {BRAND_PLATFORM} you can use different link settings for shared
               documents and data rooms:
             </Text>
             <Text className="text-sm">

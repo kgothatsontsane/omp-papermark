@@ -13,7 +13,7 @@ import {
   Text,
 } from "@react-email/components";
 
-import { BRAND_NAME } from "@/lib/branding";
+import { BRAND_PLATFORM } from "@/lib/branding";
 import EmailLogo from "@/components/emails/email-logo";
 
 const Onboarding3Email = () => {
@@ -33,7 +33,7 @@ const Onboarding3Email = () => {
               Virtual Data Rooms
             </Text>
             <Text className="text-sm">Unlimited branded data rooms!</Text>
-            <Text className="text-sm">With {BRAND_NAME} Data Rooms you can:</Text>
+            <Text className="text-sm">With {BRAND_PLATFORM} Data Rooms you can:</Text>
             <Text className="text-sm">
               <ul className="list-inside list-disc text-sm">
                 <li>Share data rooms with one link</li>
@@ -47,16 +47,6 @@ const Onboarding3Email = () => {
                 <li>Create full whitelabeling</li>
                 <li>Build self-hosted expereince</li>
               </ul>
-              <Text className="text-sm">
-                All about {BRAND_NAME}{" "}
-                <a
-                  href="https://dealroom.open-mic.co.za/data-room"
-                  className="text-blue-500 underline"
-                >
-                  Data Rooms
-                </a>{" "}
-                features and plans
-              </Text>
             </Text>
             {/* <Text className="text-sm">You can also use Bulk upload</Text> */}
             <Section className="mb-[32px] mt-[32px] text-center">
@@ -69,7 +59,7 @@ const Onboarding3Email = () => {
               </Button>
             </Section>
             <Text className="text-sm">
-              If you want to self-host {BRAND_NAME}, and build fully customizable
+              If you want to self-host {BRAND_PLATFORM}, and build fully customizable
               experience{" "}
               book a call{" "}
               with us.

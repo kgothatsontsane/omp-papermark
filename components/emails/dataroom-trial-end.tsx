@@ -14,7 +14,7 @@ import {
   Text,
 } from "@react-email/components";
 
-import { BRAND_NAME } from "@/lib/branding";
+import { BRAND_PLATFORM } from "@/lib/branding";
 import EmailLogo from "@/components/emails/email-logo";
 
 interface DataroomTrialEnd {
@@ -41,7 +41,7 @@ const DataroomTrialEnd = ({ name }: DataroomTrialEnd) => {
               Hey{name && ` ${name}`}!
             </Text>
             <Text className="text-sm leading-6 text-black">
-              Your {BRAND_NAME} dataroom trial has expired.{" "}
+              Your {BRAND_PLATFORM} dataroom trial has expired.{" "}
               <Link href={`https://dealroom.open-mic.co.za/settings/billing`}>
                 Upgrade now
               </Link>{" "}

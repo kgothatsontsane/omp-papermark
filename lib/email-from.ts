@@ -1,4 +1,4 @@
-import { BRAND_NAME } from "@/lib/branding";
+import { BRAND_PLATFORM } from "@/lib/branding";
 
 export const OPEN_MIC_DOMAIN = "open-mic.co.za";
 
@@ -27,7 +27,7 @@ export function buildFromAddress(opts: {
   const candidates: (string | null | undefined)[] = [
     from,
     envFromEmail,
-    marketing || scheduledAt ? "marc@open-mic.co.za" : null,
+    marketing || scheduledAt ? "kgothatso@open-mic.co.za" : null,
     system ? "system@open-mic.co.za" : null,
     verify ? "noreply@open-mic.co.za" : null,
     "noreply@open-mic.co.za",
@@ -42,5 +42,5 @@ export function buildFromAddress(opts: {
     }
   }
 
-  return `${BRAND_NAME} <${email}>`;
+  return `${BRAND_PLATFORM} <${email}>`;
 }

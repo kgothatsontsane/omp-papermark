@@ -13,7 +13,7 @@ import {
   Text,
 } from "@react-email/components";
 
-import { BRAND_NAME } from "@/lib/branding";
+import { BRAND_PLATFORM } from "@/lib/branding";
 import EmailLogo from "@/components/emails/email-logo";
 
 export default function DomainDeleted({
@@ -36,12 +36,12 @@ export default function DomainDeleted({
             </Text>
             <Text className="text-sm leading-6 text-black">
               Your domain <code className="text-purple-600">{domain}</code> for
-              your {BRAND_NAME} account has been invalid for 30 days. As a result,
-              it has been deleted from {BRAND_NAME}.
+              your {BRAND_PLATFORM} account has been invalid for 30 days. As a result,
+              it has been deleted from {BRAND_PLATFORM}.
             </Text>
             <Text className="text-sm leading-6 text-black">
               If you would like to restore the domain, you can easily create it
-              again on {BRAND_NAME} with the link below.
+              again on {BRAND_PLATFORM} with the link below.
             </Text>
             <Section className="my-8 text-center">
               <Button
@@ -53,7 +53,7 @@ export default function DomainDeleted({
               </Button>
             </Section>
             <Text className="text-sm leading-6 text-black">
-              If you did not want to keep using this domain on {BRAND_NAME} anyway,
+              If you did not want to keep using this domain on {BRAND_PLATFORM} anyway,
               you can simply ignore this email.
             </Text>
             <Hr />

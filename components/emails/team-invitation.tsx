@@ -13,7 +13,7 @@ import {
   Text,
 } from "@react-email/components";
 
-import { BRAND_NAME } from "@/lib/branding";
+import { BRAND_PLATFORM } from "@/lib/branding";
 import EmailLogo from "@/components/emails/email-logo";
 
 export default function TeamInvitation({
@@ -30,7 +30,7 @@ export default function TeamInvitation({
   return (
     <Html>
       <Head />
-      <Preview>Join the team on {BRAND_NAME}</Preview>
+      <Preview>Join the team on {BRAND_PLATFORM}</Preview>
       <Tailwind>
         <Body className="mx-auto my-auto bg-white font-sans">
           <Container className="mx-auto my-10 w-[465px] p-5">
@@ -38,14 +38,14 @@ export default function TeamInvitation({
               <EmailLogo />
             </Text>
             <Text className="font-seminbold mx-0 mb-8 mt-4 p-0 text-center text-xl">
-              {`Join ${teamName} on {BRAND_NAME}`}
+              {`Join ${teamName} on {BRAND_PLATFORM}`}
             </Text>
             <Text className="text-sm leading-6 text-black">Hey!</Text>
             <Text className="text-sm leading-6 text-black">
               <span className="font-semibold">{senderName}</span> ({senderEmail}
               ) has invited you to the{" "}
               <span className="font-semibold">{teamName}</span> team on{" "}
-              <span className="font-semibold">{BRAND_NAME}</span>.
+              <span className="font-semibold">{BRAND_PLATFORM}</span>.
             </Text>
             <Section className="my-8 text-center">
               <Button

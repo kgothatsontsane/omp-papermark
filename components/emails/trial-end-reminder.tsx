@@ -13,7 +13,7 @@ import {
   Text,
 } from "@react-email/components";
 
-import { BRAND_NAME } from "@/lib/branding";
+import { BRAND_NAME, BRAND_PLATFORM } from "@/lib/branding";
 import EmailLogo from "@/components/emails/email-logo";
 
 interface TrialEndReminderEmail {
@@ -21,7 +21,7 @@ interface TrialEndReminderEmail {
 }
 
 const TrialEndReminderEmail = ({ name }: TrialEndReminderEmail) => {
-  const previewText = `Upgrade to {BRAND_NAME} Pro`;
+  const previewText = `Upgrade to ${BRAND_PLATFORM} Pro`;
 
   return (
     <Html>
@@ -40,7 +40,7 @@ const TrialEndReminderEmail = ({ name }: TrialEndReminderEmail) => {
               Hey{name && ` ${name}`}!
             </Text>
             <Text className="text-sm leading-6 text-black">
-              Your {BRAND_NAME} Pro trial is almost over. If you want to continue
+              Your {BRAND_PLATFORM} Pro trial is almost over. If you want to continue
               enjoying the Pro features, please consider upgrading your plan.
             </Text>
             <Text className="text-sm leading-6 text-black">
@@ -72,7 +72,7 @@ const TrialEndReminderEmail = ({ name }: TrialEndReminderEmail) => {
               will be <span className="text-red-500 underline">disabled</span>{" "}
               after your trial.
             </Text>
-            <Text className="text-sm text-gray-400">Marc from {BRAND_NAME}</Text>
+            <Text className="text-sm text-gray-400">Kgothatso from {BRAND_NAME}</Text>
             <Hr />
             <Section className="mt-8 text-gray-400">
               <Text className="text-xs">
