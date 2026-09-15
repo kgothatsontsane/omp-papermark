@@ -12,7 +12,7 @@ import AcceptInvitationButton from "./AcceptInvitationButton";
 import InvitationStatusContent from "./InvitationStatusContent";
 import CleanUrlOnExpire from "./status/ClientRedirect";
 
-import { APP_URL, BRAND_NAME } from "@/lib/branding";
+import { APP_URL, BRAND_COMPANY, BRAND_NAME } from "@/lib/branding";
 
 const data = {
   description: `Accept your team invitation on ${BRAND_NAME}`,
@@ -149,7 +149,7 @@ export default async function VerifyInvitationPage({
                 </div>
                 <p className="mt-10 w-full max-w-md px-4 text-xs text-muted-foreground sm:px-16">
                   By accepting this invitation, you acknowledge that you have
-                  read and agree to {BRAND_NAME}&apos;s{" "}
+                  read and agree to {BRAND_COMPANY}&apos;s{" "}
                   <a
                     href={`${process.env.NEXT_PUBLIC_MARKETING_URL}/terms`}
                     target="_blank"
@@ -192,7 +192,7 @@ export default async function VerifyInvitationPage({
                   <blockquote className="text-l text-balance leading-8 text-gray-100 sm:text-xl sm:leading-9">
                     <p>
                       True builders listen to their users and build what they
-                      need. Thanks {BRAND_NAME} team for solving a big pain point.
+                      need. Thanks {BRAND_COMPANY} team for solving a big pain point.
                       DocSend monopoly will end soon!
                     </p>
                   </blockquote>

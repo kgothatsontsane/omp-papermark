@@ -38,7 +38,7 @@ export default function TeamInvitation({
               <EmailLogo />
             </Text>
             <Text className="font-seminbold mx-0 mb-8 mt-4 p-0 text-center text-xl">
-              {`Join ${teamName} on {BRAND_PLATFORM}`}
+              {`Join ${teamName} on ${BRAND_PLATFORM}`}
             </Text>
             <Text className="text-sm leading-6 text-black">Hey!</Text>
             <Text className="text-sm leading-6 text-black">

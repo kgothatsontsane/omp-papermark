@@ -13,7 +13,7 @@ import {
   Text,
 } from "@react-email/components";
 
-import { BRAND_NAME, BRAND_PLATFORM } from "@/lib/branding";
+import { BRAND_COMPANY, BRAND_PLATFORM } from "@/lib/branding";
 import EmailLogo from "@/components/emails/email-logo";
 
 interface TrialEndReminderEmail {
@@ -72,7 +72,7 @@ const TrialEndReminderEmail = ({ name }: TrialEndReminderEmail) => {
               will be <span className="text-red-500 underline">disabled</span>{" "}
               after your trial.
             </Text>
-            <Text className="text-sm text-gray-400">Kgothatso from {BRAND_NAME}</Text>
+            <Text className="text-sm text-gray-400">Kgothatso from {BRAND_COMPANY}</Text>
             <Hr />
             <Section className="mt-8 text-gray-400">
               <Text className="text-xs">

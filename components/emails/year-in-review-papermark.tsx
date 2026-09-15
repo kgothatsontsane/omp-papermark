@@ -16,7 +16,7 @@ import {
   Text,
 } from "@react-email/components";
 
-import { BRAND_NAME, BRAND_PLATFORM } from "@/lib/branding";
+import { BRAND_COMPANY, BRAND_PLATFORM } from "@/lib/branding";
 import { UploadIcon } from "lucide-react";
 import EmailLogo from "@/components/emails/email-logo";
 
@@ -210,7 +210,7 @@ export default function PapermarkYearInReviewEmail({
             <Section className="pb-6 text-center">
               <Text className="text-xl leading-8 text-gray-900">
                 We&apos;re excited to support you next year! <br />
-                Happy Holidays from the {BRAND_NAME} team :)
+                Happy Holidays from the {BRAND_COMPANY} team :)
               </Text>
 
               <Link
