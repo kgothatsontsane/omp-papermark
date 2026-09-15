@@ -1,0 +1,127 @@
+- generic [active] [ref=f4e1]:
+  - main [ref=f4e3]:
+    - region "Notifications alt+T"
+    - generic [ref=f4e20]:
+      - navigation [ref=f4e21]:
+        - generic [ref=f4e23]:
+          - generic [ref=f4e24]:
+            - img "Logo" [ref=f4e26]
+            - navigation "breadcrumb" [ref=f4e27]:
+              - list [ref=f4e28]:
+                - listitem [ref=f4e29]:
+                  - link "Home" [ref=f4e30] [cursor=pointer]:
+                    - /url: /view/cmtegyvfz0001l304mlb0bj5d
+          - generic [ref=f4e31]:
+            - button [ref=f4e32] [cursor=pointer]
+            - button "Report abuse" [ref=f4e34] [cursor=pointer]
+      - generic [ref=f4e37]:
+        - generic [ref=f4e38]:
+          - generic [ref=f4e39]:
+            - generic [aria-hidden] [ref=f4e41] [cursor=pointer]: 
+            - generic "Annexure 1 – Sound Recordings Schedule.xlsx" [ref=f4e42]
+            - textbox "Rename" [ref=f4e44] [cursor=pointer]: Annexure 1 – Sound Recordings Schedule.xlsx
+            - generic [ref=f4e45]: New opened
+            - generic [ref=f4e46]: Local cache restored
+          - generic [ref=f4e47]:
+            - button [ref=f4e49]:
+              - generic [aria-hidden] [ref=f4e53]: 
+            - button [ref=f4e54]:
+              - generic [aria-hidden] [ref=f4e58]: 
+            - button [ref=f4e59]:
+              - generic [aria-hidden] [ref=f4e63]: 
+            - button [ref=f4e65]:
+              - generic [aria-hidden] [ref=f4e69]: 
+            - button [ref=f4e70]:
+              - generic [aria-hidden] [ref=f4e74]: 
+            - button [ref=f4e75]:
+              - generic [aria-hidden] [ref=f4e79]: 
+            - button [ref=f4e80]:
+              - generic [aria-hidden] [ref=f4e84]: 
+            - button "Automatic " [ref=f4e85]:
+              - generic [ref=f4e87]:
+                - generic [ref=f4e88]: Automatic
+                - generic [ref=f4e89]: 
+            - button "Times New Roman " [ref=f4e91]:
+              - generic [ref=f4e93]:
+                - generic [ref=f4e94]: Times New Roman
+                - generic [ref=f4e95]: 
+            - generic [ref=f4e99]:
+              - combobox "Font size" [ref=f4e101] [cursor=pointer]: "10"
+              - generic [ref=f4e102]: 
+            - button [ref=f4e104]:
+              - generic [aria-hidden] [ref=f4e108]: 
+            - button [ref=f4e109]:
+              - generic [aria-hidden] [ref=f4e113]: 
+            - button [ref=f4e114]:
+              - generic [aria-hidden] [ref=f4e118]: 
+            - button [ref=f4e119]:
+              - generic [aria-hidden] [ref=f4e123]: 
+            - button [ref=f4e124]:
+              - generic [aria-hidden] [ref=f4e131]: 
+            - button "" [ref=f4e132]
+            - button [ref=f4e137]:
+              - generic [aria-hidden] [ref=f4e144]: 
+            - button "" [ref=f4e145]
+            - button [ref=f4e149]:
+              - generic [aria-hidden] [ref=f4e153]: 
+            - button "" [ref=f4e154]
+            - button [ref=f4e158]:
+              - generic [aria-hidden] [ref=f4e162]: 
+            - button "" [ref=f4e163]
+            - button [ref=f4e168]:
+              - generic [aria-hidden] [ref=f4e173]: 
+            - button "" [ref=f4e174]
+            - button [ref=f4e178]:
+              - generic [aria-hidden] [ref=f4e183]: 
+            - button "" [ref=f4e184]
+            - button [ref=f4e188]:
+              - generic [aria-hidden] [ref=f4e193]: 
+            - button "" [ref=f4e194]
+            - button [ref=f4e198]:
+              - generic [aria-hidden] [ref=f4e203]: 
+            - button "" [ref=f4e204]
+            - button "More " [ref=f4e209]:
+              - generic [ref=f4e211]:
+                - generic [ref=f4e212]: More
+                - generic [ref=f4e213]: 
+          - text:    
+        - generic [ref=f4e214]:
+          - generic [ref=f4e215]:
+            - table [ref=f4e217]:
+              - rowgroup [ref=f4e218]:
+                - row [ref=f4e219]:
+                  - cell [ref=f4e220]:
+                    - generic [ref=f4e221] [cursor=pointer]
+                  - cell [ref=f4e222]:
+                    - generic [ref=f4e223]: 
+                - row [ref=f4e228]:
+                  - cell [ref=f4e229]
+                  - cell "22 Back to the top" [ref=f4e234]:
+                    - text: 
+                    - generic [ref=f4e239]:
+                      - generic [ref=f4e240]: "22"
+                      - generic:      
+                      - button "Back to the top" [ref=f4e251] [cursor=pointer]
+            - generic [ref=f4e252]:
+              - generic [ref=f4e253] [cursor=pointer]: 
+              - generic [ref=f4e255] [cursor=pointer]: 
+              - generic [ref=f4e259]:
+                - text: Annexure 1 - Sound Recordings
+                - generic [ref=f4e260]: 
+              - text:  
+          - generic [ref=f4e263]:
+            - generic [ref=f4e264]:
+              - generic [ref=f4e265] [cursor=pointer]
+              - generic [ref=f4e269] [cursor=pointer]
+              - generic [ref=f4e271] [cursor=pointer]
+              - generic [ref=f4e273] [cursor=pointer]: 95%
+            - generic [ref=f4e274]:
+              - generic "Normal" [ref=f4e275]: 
+              - generic "Page Layout" [ref=f4e277] [cursor=pointer]: 
+              - generic "Page break preview" [ref=f4e279] [cursor=pointer]: 
+        - button
+  - alert [ref=f4e19]
+  - text:   
+  - generic [ref=f4e284]:
+    - combobox
+  - text:                             

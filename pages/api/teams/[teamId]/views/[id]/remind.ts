@@ -28,9 +28,9 @@ export default async function handle(
 
   const userId = (session.user as CustomUser).id;
   const senderEmail = (session.user as CustomUser).email;
-  const { teamId, viewId } = req.query as {
+  const { teamId, id: viewId } = req.query as {
     teamId: string;
-    viewId: string;
+    id: string;
   };
 
   try {

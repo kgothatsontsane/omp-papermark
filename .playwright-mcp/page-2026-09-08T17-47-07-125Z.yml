@@ -1,0 +1,10 @@
+- generic [active] [ref=e1]:
+  - link "Skip to content":
+    - /url: "#geist-skip-nav"
+  - main [ref=e3]:
+    - generic [ref=e6]:
+      - generic [ref=e7]: Not Found
+      - main "Loading page" [ref=e10]:
+        - status "Loading" [ref=e11]:
+          - generic [ref=e22]: Loading...
+  - alert [ref=e23]

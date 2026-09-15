@@ -1,0 +1,23 @@
+- generic [ref=e1]:
+  - main [ref=e3]:
+    - region "Notifications alt+T":
+      - list:
+        - listitem [ref=e35]:
+          - button "Close toast" [ref=e36] [cursor=pointer]
+          - generic [ref=e43]: Unauthorized access
+    - generic [ref=e20]:
+      - generic [ref=e21]:
+        - heading "You have been invited by Open Mic Productions to this data room." [level=1] [ref=e23]
+        - generic [ref=e25]:
+          - generic [ref=e26]:
+            - generic [ref=e27]: Email address
+            - textbox "Email address" [active] [ref=e28] [cursor=pointer]:
+              - /placeholder: Enter email
+              - text: viewer-test@open-mic.co.za
+            - paragraph [ref=e29]: This data will be shared with the sender.
+          - button "Continue" [ref=e31] [cursor=pointer]
+      - paragraph [ref=e33]:
+        - text: This document is securely shared with you using
+        - link "Open Mic Productions" [ref=e34] [cursor=pointer]:
+          - /url: https://dealroom.open-mic.co.za
+  - alert [ref=e19]

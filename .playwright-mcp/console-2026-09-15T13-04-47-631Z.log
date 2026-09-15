@@ -1,0 +1,2 @@
+[     362ms] [ERROR] The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy. @ https://dealroom.open-mic.co.za/login:0
+[     373ms] [WARNING] While parsing speculation rules: Could not infer type of document rule predicate, no valid type specified. @ https://dealroom.open-mic.co.za/login:0
