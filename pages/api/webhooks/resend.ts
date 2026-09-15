@@ -45,7 +45,7 @@ export default async function handle(
   const mapped = TYPE_MAP[event.type];
   if (mapped && event.data?.email_id) {
     const data = event.data;
-    void ingestSafely(
+    await ingestSafely(
       recordEmailEvent({
         event_id: nanoid(),
         timestamp: Date.now(),
