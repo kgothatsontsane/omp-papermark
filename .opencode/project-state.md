@@ -341,6 +341,30 @@ Files in `lib/tinybird/endpoints/`.
 - Test artifacts: excel-luckysheet-*.jpeg in repo root (untracked, can delete).
 - Access-control notes: dataroom links reject non-viewer emails with 403 (correct); viewer email used for tests: nvisionfactory@gmail.com.
 
+## 2026-09-15 — App rename to Dealroom + mic logo on viewer pages (PRs #60, #61 MERGED + LIVE)
+
+- `BRAND_NAME` = "Open Mic Productions Dealroom" (one-liner, ~65 app spots: titles,
+  login/register/verify, OG, powered-by). New `BRAND_COMPANY` re-pins: 3 Kgothatso
+  signatures, 2 Team lines, 4 legal "agree to X's terms" (login/verify/invite/visitor).
+  Fixed "Dealroom Deal Room" redundancies (verify page x2, login line).
+- Mic logo everywhere viewers look: `BRAND_LOGO` → mic PNG (login/register/verify +
+  ee pause-resume email); viewer nav fallbacks (nav.tsx, nav-dataroom.tsx) render white
+  mic PNG instead of text (custom owner logos still win); access-form shows mic-white
+  row when no custom logo; OTP form gained a mic-white header. Verified: prod /login
+  screenshot (mic crisp, title "Login | Open Mic Productions Dealroom").
+- Emailed all 25 changed templates (.tsx attached) to nvisionfactory@gmail.com via
+  Resend HTTP API (id 1fcdc4f6…) — tsx+`resend` import broke mid-session because
+  node_modules/resend was EMPTY; restored via `npm install resend` (package.json
+  ordering-only churn reverted, no version changes).
+- GOTCHAS: (1) local `next dev` fails MODULE_NOT_FOUND + repo-wide tsc is red
+  (thousands of TS2307/implicit-any) — broken local node_modules, pre-existing, Vercel
+  builds unaffected. Judge touched files only (zero attributable errors). (2) Something
+  flipped tsconfig `jsx: react-jsx → preserve` mid-session — reverted, unknown cause;
+  if builds break, check this first. (3) Preview deploys sit behind Vercel SSO —
+  screenshot prod instead. (4) react-email injects `<!-- -->` between text and
+  `{expr}` — strip before substring assertions.
+- Heads: main = staging = develop = 1572d637b (#61 merge).
+
 ## 2026-09-15 — Email rebrand: Kgothatso + Dealroom (PRs #56, #57 MERGED + LIVE)
 
 - Rebranded all email copy: Marc → Kgothatso (maintainer of Open Mic Productions'
