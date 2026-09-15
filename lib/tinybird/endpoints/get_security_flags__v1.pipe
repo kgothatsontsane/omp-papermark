@@ -1,0 +1,41 @@
+VERSION 1
+
+DESCRIPTION >
+    Stored security flags plus computed impossible-travel flags for a link
+
+NODE endpoint
+SQL >
+    %
+    SELECT
+        timestamp,
+        flag_type,
+        severity,
+        detail,
+        view_id,
+        ip_address
+    FROM security_flags__v1
+    WHERE link_id = {{ String(link_id, required=True) }}
+        AND timestamp >= {{ Int64(since, required=True) }}
+    UNION ALL
+    SELECT
+        a2.timestamp AS timestamp,
+        'impossible_travel' AS flag_type,
+        'high' AS severity,
+        concat('Travel between ', a1.country, ' and ', a2.country, ' within ', toString(abs(a2.timestamp - a1.timestamp)), 'ms') AS detail,
+        a2.view_id AS view_id,
+        a2.ip_address AS ip_address
+    FROM access_events__v1 AS a1
+    INNER JOIN access_events__v1 AS a2
+        ON a1.view_id = a2.view_id
+        AND a1.country != a2.country
+        AND a1.timestamp < a2.timestamp
+        AND (a2.timestamp - a1.timestamp) < 3600000
+    WHERE a1.link_id = {{ String(link_id, required=True) }}
+        AND a2.link_id = {{ String(link_id, required=True) }}
+        AND a1.timestamp >= {{ Int64(since, required=True) }}
+        AND a2.timestamp >= {{ Int64(since, required=True) }}
+        AND a1.view_id IS NOT NULL
+        AND a2.view_id IS NOT NULL
+    ORDER BY timestamp ASC
+
+TYPE ENDPOINT

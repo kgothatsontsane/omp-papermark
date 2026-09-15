@@ -12,6 +12,7 @@ import {
   DownloadCloudIcon,
   FileBadgeIcon,
   FileDigitIcon,
+  MailIcon,
   MoreHorizontalIcon,
   ServerIcon,
   ThumbsDownIcon,
@@ -53,6 +54,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "../ui/dropdown-menu";
+import VisitorTimeline from "../analytics/visitor-timeline";
 import { VisitorAvatar } from "./visitor-avatar";
 import VisitorChart from "./visitor-chart";
 import VisitorClicks from "./visitor-clicks";
@@ -125,6 +127,29 @@ export default function VisitorsTable({
         : "View successfully unarchived",
     );
     setIsLoading(false);
+  };
+
+  const handleRemindViewer = async (viewId: string, viewerEmail: string | null) => {
+    if (!viewerEmail) {
+      toast.error("No viewer email on this view");
+      return;
+    }
+    setIsLoading(true);
+    try {
+      const response = await fetch(
+        `/api/teams/${teamId}/views/${viewId}/remind`,
+        { method: "POST" },
+      );
+      if (!response.ok) {
+        toast.error("Failed to send reminder");
+        return;
+      }
+      toast.success(`Reminder sent to ${viewerEmail}`);
+    } catch {
+      toast.error("Failed to send reminder");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -228,6 +253,17 @@ export default function VisitorsTable({
                             <DropdownMenuLabel>Actions</DropdownMenuLabel>
 
                             <DropdownMenuSeparator />
+                            <DropdownMenuItem
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                e.preventDefault();
+                                handleRemindViewer(view.id, view.viewerEmail);
+                              }}
+                              disabled={isLoading || !view.viewerEmail}
+                            >
+                              <MailIcon className="mr-2 h-4 w-4" />
+                              Remind
+                            </DropdownMenuItem>
                             <DropdownMenuItem
                               className="text-destructive focus:bg-destructive focus:text-destructive-foreground"
                               onClick={(e) => {
@@ -378,6 +414,17 @@ export default function VisitorsTable({
 
                                 <DropdownMenuSeparator />
                                 <DropdownMenuItem
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    e.preventDefault();
+                                    handleRemindViewer(view.id, view.viewerEmail);
+                                  }}
+                                  disabled={isLoading || !view.viewerEmail}
+                                >
+                                  <MailIcon className="mr-2 h-4 w-4" />
+                                  Remind
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
                                   className="text-destructive focus:bg-destructive focus:text-destructive-foreground"
                                   onClick={(e) => {
                                     e.stopPropagation();
@@ -415,6 +462,12 @@ export default function VisitorsTable({
                               ) : (
                                 <VisitorUserAgentPlaceholder />
                               )}
+                              {!isFreePlan ? (
+                                <VisitorTimeline
+                                  viewId={view.id}
+                                  documentId={view.documentId!}
+                                />
+                              ) : null}
 
                               <div className="pb-0.5 pl-0.5 md:pb-1 md:pl-1">
                                 <div className="flex items-center gap-x-1 px-1">

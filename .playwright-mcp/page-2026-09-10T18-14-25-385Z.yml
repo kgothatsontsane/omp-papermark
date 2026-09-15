@@ -1,0 +1,19 @@
+- generic [ref=f1e1]:
+  - main [ref=f1e3]:
+    - region "Notifications alt+T"
+    - generic [ref=f1e20]:
+      - generic [ref=f1e21]:
+        - heading "You have been invited by Open Mic Productions to this data room." [level=1] [ref=f1e23]
+        - generic [ref=f1e25]:
+          - generic [ref=f1e26]:
+            - generic [ref=f1e27]: Email address
+            - textbox "Email address" [active] [ref=f1e28] [cursor=pointer]:
+              - /placeholder: Enter email
+              - text: nvisionfactory@gmail.com
+            - paragraph [ref=f1e29]: This data will be shared with the sender.
+          - button "Continue" [ref=f1e31] [cursor=pointer]
+      - paragraph [ref=f1e33]:
+        - text: This document is securely shared with you using
+        - link "Open Mic Productions" [ref=f1e34] [cursor=pointer]:
+          - /url: https://dealroom.open-mic.co.za
+  - alert [ref=f1e19]

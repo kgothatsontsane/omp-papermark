@@ -5,17 +5,23 @@ import { useState } from "react";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 
+import { useDocumentInsights } from "@/lib/swr/use-insights";
+import { useDocumentLinks } from "@/lib/swr/use-document";
 import { useStats } from "@/lib/swr/use-stats";
 
+import DocumentInsights from "../analytics/document-insights";
+import InternalListManager from "../analytics/internal-list-manager";
 import StatsCard from "./stats-card";
 import StatsChart from "./stats-chart";
 
 export const StatsComponent = ({
   documentId,
   numPages,
+  isVideo = false,
 }: {
   documentId: string;
   numPages: number;
+  isVideo?: boolean;
 }) => {
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -25,6 +31,8 @@ export const StatsComponent = ({
     useState<boolean>(initialExclude);
 
   const statsData = useStats({ excludeTeamMembers });
+  const { insights } = useDocumentInsights(documentId);
+  const { links } = useDocumentLinks();
 
   const onToggle = (checked: boolean) => {
     setExcludeTeamMembers(checked);
@@ -59,6 +67,14 @@ export const StatsComponent = ({
 
       {/* Stats Card */}
       <StatsCard statsData={statsData} />
+
+      {/* Internal list */}
+      <InternalListManager links={links ?? []} />
+
+      {/* Phase-1 insights */}
+      {insights ? (
+        <DocumentInsights insights={insights} isVideo={isVideo} />
+      ) : null}
     </>
   );
 };

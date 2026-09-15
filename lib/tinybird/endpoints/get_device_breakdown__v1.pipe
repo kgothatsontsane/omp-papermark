@@ -1,0 +1,20 @@
+VERSION 1
+
+DESCRIPTION >
+    View counts grouped by browser, os and device for a link
+
+NODE endpoint
+SQL >
+    %
+    SELECT
+        browser,
+        os,
+        device,
+        count() AS view_count
+    FROM pm_click_events__v1
+    WHERE link_id = {{ String(link_id, required=True) }}
+        AND timestamp >= {{ Int64(since, required=True) }}
+    GROUP BY browser, os, device
+    ORDER BY view_count DESC
+
+TYPE ENDPOINT

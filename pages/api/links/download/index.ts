@@ -4,7 +4,9 @@ import { LinkType } from "@prisma/client";
 
 import { getFile } from "@/lib/files/get-file";
 import prisma from "@/lib/prisma";
-import { getFileNameWithPdfExtension } from "@/lib/utils";
+import { recordDownloadEvent } from "@/lib/tinybird";
+import { ingestSafely, metaFromApiRequest } from "@/lib/tracking/request-meta";
+import { getFileNameWithPdfExtension, nanoid } from "@/lib/utils";
 import { getIpAddress } from "@/lib/utils/ip";
 
 export default async function handle(
@@ -38,6 +40,7 @@ export default async function handle(
           },
           document: {
             select: {
+              id: true,
               teamId: true,
               downloadOnly: true,
               name: true,
@@ -98,6 +101,31 @@ export default async function handle(
         where: { id: viewId },
         data: { downloadedAt: new Date() },
       });
+
+      const meta = metaFromApiRequest(req);
+      if (!meta.isBot) {
+        void ingestSafely(
+          recordDownloadEvent({
+            event_id: nanoid(),
+            timestamp: Date.now(),
+            link_id: linkId,
+            view_id: viewId,
+            document_id: view.document!.id,
+            download_type: "single",
+            file_count: 1,
+            total_bytes: 0,
+            country: meta.country,
+            city: meta.city,
+            region: meta.region,
+            device: meta.device,
+            browser: meta.browser,
+            os: meta.os,
+            ua: meta.ua,
+            ip_address: meta.ip_address,
+          }),
+          "downloadEvent single",
+        );
+      }
 
       // get the file to be downloaded, if watermark is enabled and document is not pdf, then get the pdf file, otherwise return the original file
       // if watermark is enabled and document version is pdf, then get the file

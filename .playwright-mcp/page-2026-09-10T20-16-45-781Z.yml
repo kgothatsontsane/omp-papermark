@@ -1,0 +1,133 @@
+- generic [active] [ref=f7e1]:
+  - main [ref=f7e3]:
+    - region "Notifications alt+T"
+    - generic [ref=f7e20]:
+      - navigation [ref=f7e21]:
+        - generic [ref=f7e23]:
+          - generic [ref=f7e24]:
+            - img "Logo" [ref=f7e26]
+            - navigation "breadcrumb" [ref=f7e27]:
+              - list [ref=f7e28]:
+                - listitem [ref=f7e29]:
+                  - link "Home" [ref=f7e30] [cursor=pointer]:
+                    - /url: /view/cmtegyvfz0001l304mlb0bj5d
+          - generic [ref=f7e31]:
+            - button [ref=f7e32] [cursor=pointer]
+            - button "Report abuse" [ref=f7e34] [cursor=pointer]
+      - generic [ref=f7e35]:
+        - generic [ref=f7e37]:
+          - generic [ref=f7e38]:
+            - generic [ref=f7e39]:
+              - generic [aria-hidden] [ref=f7e41] [cursor=pointer]: 
+              - generic "Annexure 1 – Sound Recordings Schedule.xlsx" [ref=f7e42]
+              - textbox "Rename" [ref=f7e44] [cursor=pointer]: Annexure 1 – Sound Recordings Schedule.xlsx
+              - generic [ref=f7e45]: New opened
+              - generic [ref=f7e46]: Local cache restored
+            - generic [ref=f7e47]:
+              - button [ref=f7e49]:
+                - generic [aria-hidden] [ref=f7e53]: 
+              - button [ref=f7e54]:
+                - generic [aria-hidden] [ref=f7e58]: 
+              - button [ref=f7e59]:
+                - generic [aria-hidden] [ref=f7e63]: 
+              - button [ref=f7e65]:
+                - generic [aria-hidden] [ref=f7e69]: 
+              - button [ref=f7e70]:
+                - generic [aria-hidden] [ref=f7e74]: 
+              - button [ref=f7e75]:
+                - generic [aria-hidden] [ref=f7e79]: 
+              - button [ref=f7e80]:
+                - generic [aria-hidden] [ref=f7e84]: 
+              - button "Automatic " [ref=f7e85]:
+                - generic [ref=f7e87]:
+                  - generic [ref=f7e88]: Automatic
+                  - generic [ref=f7e89]: 
+              - button "Times New Roman " [ref=f7e91]:
+                - generic [ref=f7e93]:
+                  - generic [ref=f7e94]: Times New Roman
+                  - generic [ref=f7e95]: 
+              - generic [ref=f7e99]:
+                - combobox "Font size" [ref=f7e101] [cursor=pointer]: "10"
+                - generic [ref=f7e102]: 
+              - button [ref=f7e104]:
+                - generic [aria-hidden] [ref=f7e108]: 
+              - button [ref=f7e109]:
+                - generic [aria-hidden] [ref=f7e113]: 
+              - button [ref=f7e114]:
+                - generic [aria-hidden] [ref=f7e118]: 
+              - button [ref=f7e119]:
+                - generic [aria-hidden] [ref=f7e123]: 
+              - button [ref=f7e124]:
+                - generic [aria-hidden] [ref=f7e131]: 
+              - button "" [ref=f7e132]
+              - button [ref=f7e137]:
+                - generic [aria-hidden] [ref=f7e144]: 
+              - button "" [ref=f7e145]
+              - button [ref=f7e149]:
+                - generic [aria-hidden] [ref=f7e153]: 
+              - button "" [ref=f7e154]
+              - button [ref=f7e158]:
+                - generic [aria-hidden] [ref=f7e162]: 
+              - button "" [ref=f7e163]
+              - button [ref=f7e168]:
+                - generic [aria-hidden] [ref=f7e173]: 
+              - button "" [ref=f7e174]
+              - button [ref=f7e178]:
+                - generic [aria-hidden] [ref=f7e183]: 
+              - button "" [ref=f7e184]
+              - button [ref=f7e188]:
+                - generic [aria-hidden] [ref=f7e193]: 
+              - button "" [ref=f7e194]
+              - button [ref=f7e198]:
+                - generic [aria-hidden] [ref=f7e203]: 
+              - button "" [ref=f7e204]
+              - button "More " [ref=f7e209]:
+                - generic [ref=f7e211]:
+                  - generic [ref=f7e212]: More
+                  - generic [ref=f7e213]: 
+            - text:    
+          - generic [ref=f7e214]:
+            - generic [ref=f7e215]:
+              - table [ref=f7e217]:
+                - rowgroup [ref=f7e218]:
+                  - row [ref=f7e219]:
+                    - cell [ref=f7e220]:
+                      - generic [ref=f7e221] [cursor=pointer]
+                    - cell [ref=f7e222]:
+                      - generic [ref=f7e223]: 
+                  - row [ref=f7e228]:
+                    - cell [ref=f7e229]
+                    - cell "22 Back to the top" [ref=f7e234]:
+                      - text: 
+                      - generic [ref=f7e239]:
+                        - generic [ref=f7e240]: "22"
+                        - generic:      
+                        - button "Back to the top" [ref=f7e251] [cursor=pointer]
+              - generic [ref=f7e252]:
+                - generic [ref=f7e253] [cursor=pointer]: 
+                - generic [ref=f7e255] [cursor=pointer]: 
+                - generic [ref=f7e259]:
+                  - text: Annexure 1 - Sound Recordings
+                  - generic [ref=f7e260]: 
+                - text:  
+            - generic [ref=f7e263]:
+              - generic [ref=f7e264]:
+                - generic [ref=f7e265] [cursor=pointer]
+                - generic [ref=f7e269] [cursor=pointer]
+                - generic [ref=f7e271] [cursor=pointer]
+                - generic [ref=f7e273] [cursor=pointer]: 95%
+              - generic [ref=f7e274]:
+                - generic "Normal" [ref=f7e275]: 
+                - generic "Page Layout" [ref=f7e277] [cursor=pointer]: 
+                - generic "Page break preview" [ref=f7e279] [cursor=pointer]: 
+          - button
+        - generic [ref=f7e283]:
+          - button "Zoom out" [ref=f7e284] [cursor=pointer]: −
+          - generic [ref=f7e285]: 100%
+          - button "Zoom in" [ref=f7e286] [cursor=pointer]: +
+          - button "Reset zoom" [ref=f7e287] [cursor=pointer]: Reset
+  - alert [ref=f7e19]
+  - text:   
+  - generic [ref=f7e289]:
+    - combobox
+  - text:                             

@@ -325,6 +325,30 @@ export default function DocumentHeader({
     setExportModalOpen(true);
   };
 
+  const exportActivityReport = async (document: Document) => {
+    if (isFree) {
+      toast.error("This feature is not available for your plan");
+      return;
+    }
+    try {
+      const response = await fetch(
+        `/api/teams/${teamId}/reports/activity`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ documentId: document.id }),
+        },
+      );
+      if (!response.ok) {
+        toast.error("Failed to start activity report");
+        return;
+      }
+      toast.success("Activity report started. Check your email when ready.");
+    } catch {
+      toast.error("Failed to start activity report");
+    }
+  };
+
   // Make a document download only or viewable
   const toggleDownloadOnly = async () => {
     toast.promise(
@@ -788,6 +812,18 @@ export default function DocumentHeader({
               >
                 <FileDownIcon className="mr-2 h-4 w-4" />
                 Export visits{" "}
+                {isFree && <PlanBadge className="ml-2" plan="pro" />}
+              </DropdownMenuItem>
+
+              <DropdownMenuItem
+                onClick={() =>
+                  isFree
+                    ? handleUpgradeClick(PlanEnum.Pro, "export-activity-report")
+                    : exportActivityReport(prismaDocument)
+                }
+              >
+                <FileDownIcon className="mr-2 h-4 w-4" />
+                Export report{" "}
                 {isFree && <PlanBadge className="ml-2" plan="pro" />}
               </DropdownMenuItem>
 

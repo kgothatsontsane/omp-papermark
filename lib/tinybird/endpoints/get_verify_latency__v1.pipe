@@ -1,0 +1,18 @@
+VERSION 1
+
+DESCRIPTION >
+    OTP verification latency percentiles for a link
+
+NODE endpoint
+SQL >
+    %
+    SELECT
+        quantile(0.5)(latency_ms) AS p50,
+        quantile(0.9)(latency_ms) AS p90
+    FROM access_events__v1
+    WHERE link_id = {{ String(link_id, required=True) }}
+        AND timestamp >= {{ Int64(since, required=True) }}
+        AND event_type = 'otp_verified'
+        AND latency_ms IS NOT NULL
+
+TYPE ENDPOINT

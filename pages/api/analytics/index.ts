@@ -3,8 +3,10 @@ import { NextApiRequest, NextApiResponse } from "next";
 import { addDays } from "date-fns";
 import { getServerSession } from "next-auth";
 import { z } from "zod";
+import { Prisma } from "@prisma/client";
 
 import { isSelfHostedMode } from "@/lib/self-hosted";
+import { getInternalExclusion } from "@/lib/api/internal-exclusion";
 import prisma from "@/lib/prisma";
 import {
   getTotalDocumentDuration,
@@ -90,6 +92,16 @@ export default async function handler(
     if (!team) {
       return res.status(401).json({ error: "Unauthorized" });
     }
+
+    const { excludedEmails: listedEmails, excludedLinkIds } =
+      await getInternalExclusion(teamId);
+    const members = await prisma.user.findMany({
+      where: { teams: { some: { teamId } } },
+      select: { email: true },
+    });
+    const excludedEmails = [...members.map((m) => m.email), ...listedEmails].filter(
+      (e): e is string => e != null,
+    );
 
     // Check if free plan user is trying to access data beyond 30 days
     // ponytail: self-hosted mode bypasses all plan-based analytics restrictions
@@ -178,6 +190,7 @@ export default async function handler(
               viewedAt: intervalFilter,
               isArchived: false,
               viewType: "DOCUMENT_VIEW",
+              viewerEmail: { notIn: excludedEmails },
             },
             _count: { _all: true },
           }),
@@ -193,6 +206,7 @@ export default async function handler(
                   AND "viewedAt" >= ${startDate}
                   AND "isArchived" = false
                   AND "viewType" = 'DOCUMENT_VIEW'
+                  AND ("viewerEmail" IS NULL OR "viewerEmail" NOT IN (${Prisma.join(excludedEmails)}))
                 GROUP BY DATE_TRUNC('hour', "viewedAt")
                 ORDER BY date ASC
               `
@@ -208,6 +222,7 @@ export default async function handler(
                   AND "viewedAt" <= ${endDate}
                   AND "isArchived" = false
                   AND "viewType" = 'DOCUMENT_VIEW'
+                  AND ("viewerEmail" IS NULL OR "viewerEmail" NOT IN (${Prisma.join(excludedEmails)}))
                 GROUP BY DATE_TRUNC('day', "viewedAt")
                 ORDER BY date ASC
               `
@@ -221,6 +236,7 @@ export default async function handler(
                   AND "viewedAt" >= ${startDate}
                   AND "isArchived" = false
                   AND "viewType" = 'DOCUMENT_VIEW'
+                  AND ("viewerEmail" IS NULL OR "viewerEmail" NOT IN (${Prisma.join(excludedEmails)}))
                 GROUP BY DATE_TRUNC('day', "viewedAt")
                 ORDER BY date ASC
               `,
@@ -257,11 +273,13 @@ export default async function handler(
           where: {
             teamId,
             isArchived: false,
+            id: { notIn: excludedLinkIds },
             views: {
               some: {
                 viewedAt: intervalFilter,
                 viewType: "DOCUMENT_VIEW",
                 isArchived: false,
+                viewerEmail: { notIn: excludedEmails },
               },
             },
           },
@@ -279,6 +297,7 @@ export default async function handler(
                     viewedAt: intervalFilter,
                     viewType: "DOCUMENT_VIEW",
                     isArchived: false,
+                    viewerEmail: { notIn: excludedEmails },
                   },
                 },
               },
@@ -288,6 +307,7 @@ export default async function handler(
                 viewedAt: intervalFilter,
                 viewType: "DOCUMENT_VIEW",
                 isArchived: false,
+                viewerEmail: { notIn: excludedEmails },
               },
               orderBy: {
                 viewedAt: "desc",
@@ -372,6 +392,8 @@ export default async function handler(
                 viewedAt: intervalFilter,
                 viewType: "DOCUMENT_VIEW",
                 isArchived: false,
+                viewerEmail: { notIn: excludedEmails },
+                linkId: { notIn: excludedLinkIds },
               },
             },
           },
@@ -385,6 +407,7 @@ export default async function handler(
                     viewedAt: intervalFilter,
                     viewType: "DOCUMENT_VIEW",
                     isArchived: false,
+                    viewerEmail: { notIn: excludedEmails },
                   },
                 },
               },
@@ -394,6 +417,7 @@ export default async function handler(
                 viewedAt: intervalFilter,
                 viewType: "DOCUMENT_VIEW",
                 isArchived: false,
+                viewerEmail: { notIn: excludedEmails },
               },
               orderBy: {
                 viewedAt: "desc",
@@ -416,7 +440,7 @@ export default async function handler(
           try {
             const durationData = await getTotalDocumentDuration({
               documentId: doc.id,
-              excludedLinkIds: "", // Include all links
+              excludedLinkIds: excludedLinkIds.join(","),
               excludedViewIds: "", // Include all views
               since,
               until: endStr
@@ -455,6 +479,7 @@ export default async function handler(
                 viewedAt: intervalFilter,
                 isArchived: false,
                 viewType: "DOCUMENT_VIEW",
+                viewerEmail: { notIn: excludedEmails },
               },
             },
           },
@@ -467,6 +492,7 @@ export default async function handler(
                 viewType: "DOCUMENT_VIEW",
                 viewedAt: intervalFilter,
                 isArchived: false,
+                viewerEmail: { notIn: excludedEmails },
               },
             },
           },
@@ -520,6 +546,8 @@ export default async function handler(
             viewedAt: intervalFilter,
             isArchived: false,
             viewType: "DOCUMENT_VIEW",
+            viewerEmail: { notIn: excludedEmails },
+            linkId: { notIn: excludedLinkIds },
           },
           include: {
             document: {

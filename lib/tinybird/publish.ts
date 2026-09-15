@@ -116,6 +116,114 @@ export const recordClickEvent = tb.buildIngestEndpoint({
   }),
 });
 
+// Access-gate events: email submitted, OTP sent/verified/failed/expired,
+// passcode passed/failed, agreement accepted, view created, repeat entry.
+// Viewer email stored as SHA-256 hash only — join emails app-side via Postgres.
+export const ACCESS_EVENT_TYPES = [
+  "email_submitted",
+  "otp_sent",
+  "otp_verified",
+  "otp_failed",
+  "otp_expired",
+  "passcode_passed",
+  "passcode_failed",
+  "agreement_accepted",
+  "view_created",
+  "repeat_entry",
+] as const;
+
+export const recordAccessEvent = tb.buildIngestEndpoint({
+  datasource: "access_events__v1",
+  event: z.object({
+    event_id: z.string(),
+    timestamp: z.number().int(),
+    link_id: z.string(),
+    view_id: z.string().nullable().optional(),
+    document_id: z.string().nullable().optional(),
+    dataroom_id: z.string().nullable().optional(),
+    event_type: z.enum(ACCESS_EVENT_TYPES),
+    auth_method: z.string().optional().default("none"),
+    outcome: z.string().optional().default("ok"),
+    email_hash: z.string().nullable().optional(),
+    latency_ms: z.number().int().nullable().optional(),
+    attempt_count: z.number().int().min(0).optional().default(0),
+    country: z.string().optional().default("Unknown"),
+    city: z.string().optional().default("Unknown"),
+    region: z.string().optional().default("Unknown"),
+    device: z.string().optional().default("Desktop"),
+    browser: z.string().optional().default("Unknown"),
+    os: z.string().optional().default("Unknown"),
+    ua: z.string().optional().default("Unknown"),
+    ip_address: z.string().nullable().optional(),
+  }),
+});
+
+// File download events across all four download routes
+export const recordDownloadEvent = tb.buildIngestEndpoint({
+  datasource: "download_events__v1",
+  event: z.object({
+    event_id: z.string(),
+    timestamp: z.number().int(),
+    link_id: z.string(),
+    view_id: z.string().nullable().optional(),
+    document_id: z.string().nullable().optional(),
+    dataroom_id: z.string().nullable().optional(),
+    download_type: z.enum(["single", "dataroom_doc", "folder", "bulk"]),
+    file_count: z.number().int().min(1).optional().default(1),
+    total_bytes: z.number().int().min(0).optional().default(0),
+    country: z.string().optional().default("Unknown"),
+    city: z.string().optional().default("Unknown"),
+    region: z.string().optional().default("Unknown"),
+    device: z.string().optional().default("Desktop"),
+    browser: z.string().optional().default("Unknown"),
+    os: z.string().optional().default("Unknown"),
+    ua: z.string().optional().default("Unknown"),
+    ip_address: z.string().nullable().optional(),
+  }),
+});
+
+// Resend delivery events via webhook
+export const recordEmailEvent = tb.buildIngestEndpoint({
+  datasource: "email_events__v1",
+  event: z.object({
+    event_id: z.string(),
+    timestamp: z.number().int(),
+    email_id: z.string(),
+    event_type: z.enum([
+      "delivered",
+      "opened",
+      "clicked",
+      "bounced",
+      "complained",
+      "delivery_delayed",
+    ]),
+    recipient: z.string(),
+    template: z.string().nullable().optional(),
+    link_id: z.string().nullable().optional(),
+    bounce_type: z.string().nullable().optional(),
+  }),
+});
+
+// Security flags: otp_bruteforce, email_enumeration, off_hours_bulk_download, impossible_travel
+export const recordSecurityFlag = tb.buildIngestEndpoint({
+  datasource: "security_flags__v1",
+  event: z.object({
+    event_id: z.string(),
+    timestamp: z.number().int(),
+    link_id: z.string(),
+    view_id: z.string().nullable().optional(),
+    flag_type: z.enum([
+      "otp_bruteforce",
+      "email_enumeration",
+      "off_hours_bulk_download",
+      "impossible_travel",
+    ]),
+    severity: z.enum(["low", "medium", "high"]).optional().default("medium"),
+    detail: z.string().optional().default(""),
+    ip_address: z.string().nullable().optional(),
+  }),
+});
+
 // Event track when a visitor opens a link
 export const recordLinkViewTB = tb.buildIngestEndpoint({
   datasource: "pm_click_events__v1",
