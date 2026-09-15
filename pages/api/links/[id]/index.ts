@@ -6,6 +6,8 @@ import { getServerSession } from "next-auth/next";
 import { getLinkViewData } from "@/lib/api/links/link-data";
 import { generateEncrpytedPassword } from "@/lib/auth/passwords";
 import prisma from "@/lib/prisma";
+import { recordTeamActivity } from "@/lib/tinybird";
+import { ingestSafely } from "@/lib/tracking/request-meta";
 import { CustomUser } from "@/lib/types";
 
 import { DomainObject } from "..";
@@ -342,6 +344,21 @@ export default async function handle(
           id: id,
         },
       });
+
+      void ingestSafely(
+        recordTeamActivity({
+          event_id: `${linkToBeDeleted.teamId}-${Date.now()}`,
+          timestamp: Date.now(),
+          team_id: linkToBeDeleted.teamId,
+          actor_user_id: (session.user as CustomUser).id,
+          event_type: "link_deleted",
+          document_id: linkToBeDeleted.documentId,
+          link_id: linkToBeDeleted.id,
+          dataroom_id: linkToBeDeleted.dataroomId,
+          detail: linkToBeDeleted.name ?? `link ${linkToBeDeleted.id}`,
+        }),
+        `team activity link_deleted for link ${linkToBeDeleted.id}`,
+      );
 
       res.status(204).end(); // 204 No Content response for successful deletes
     } catch (error) {

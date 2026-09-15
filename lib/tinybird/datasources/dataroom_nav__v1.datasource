@@ -1,0 +1,26 @@
+DESCRIPTION >
+  Dataroom viewer navigation: folder opens, document switches, searches,
+  bookmark add/remove, custom-list create/item add/remove. Viewer identified
+  by view_id (works anonymous); emails never stored here.
+
+SCHEMA >
+  `event_id` String `json:$.event_id`,
+  `timestamp` Int64 `json:$.timestamp`,
+  `link_id` String `json:$.link_id`,
+  `view_id` Nullable(String) `json:$.view_id`,
+  `dataroom_id` String `json:$.dataroom_id`,
+  `document_id` Nullable(String) `json:$.document_id`,
+  `folder_id` Nullable(String) `json:$.folder_id`,
+  `event_type` LowCardinality(String) `json:$.event_type`,
+  `query` Nullable(String) `json:$.query`,
+  `list_id` Nullable(String) `json:$.list_id`,
+  `country` String `json:$.country`,
+  `city` String `json:$.city`,
+  `device` String `json:$.device`,
+  `browser` String `json:$.browser`,
+  `os` String `json:$.os`,
+  `ip_address` Nullable(String) `json:$.ip_address`
+
+
+ENGINE "MergeTree"
+ENGINE_SORTING_KEY "link_id,dataroom_id,timestamp,event_id"

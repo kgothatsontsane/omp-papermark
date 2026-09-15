@@ -5,6 +5,8 @@ import { copyFileToBucketServer } from "@/lib/files/copy-file-to-bucket-server";
 import notion from "@/lib/notion";
 import { getNotionPageIdFromSlug } from "@/lib/notion/utils";
 import prisma from "@/lib/prisma";
+import { recordTeamActivity } from "@/lib/tinybird";
+import { ingestSafely } from "@/lib/tracking/request-meta";
 import { convertCadToPdfTask } from "@/lib/trigger/convert-files";
 import { convertFilesToPdfTask } from "@/lib/trigger/convert-files";
 import { processVideo } from "@/lib/trigger/optimize-video-files";
@@ -171,6 +173,18 @@ export const processDocument = async ({
 
   // Trigger appropriate conversion tasks based on document type
   // ponytail: .xlsx renders natively (Luckysheet viewer) — only convert non-xlsx sheets to PDF
+  void ingestSafely(
+    recordTeamActivity({
+      event_id: `${teamId}-${Date.now()}`,
+      timestamp: Date.now(),
+      team_id: teamId,
+      actor_user_id: userId ?? teamId,
+      event_type: "doc_uploaded",
+      document_id: document.id,
+      detail: name,
+    }),
+    `team activity doc_uploaded for document ${document.id}`,
+  );
   if (
     type === "docs" ||
     type === "slides" ||

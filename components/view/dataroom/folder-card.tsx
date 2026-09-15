@@ -6,6 +6,8 @@ import { toast } from "sonner";
 
 import { timeAgo } from "@/lib/utils";
 
+import { trackNav } from "@/lib/tracking/track-nav";
+
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -97,7 +99,18 @@ export default function FolderCard({
           <div className="flex items-center">
             <h2 className="min-w-0 max-w-[300px] truncate text-sm font-semibold leading-6 text-foreground sm:max-w-lg">
               <div
-                onClick={() => setFolderId(folder.id)}
+                onClick={() => {
+                  if (!isPreview) {
+                    trackNav({
+                      linkId,
+                      viewId,
+                      dataroomId,
+                      folderId: folder.id,
+                      eventType: "folder_open",
+                    });
+                  }
+                  setFolderId(folder.id);
+                }}
                 className="w-full truncate"
               >
                 <span>{folder.name}</span>

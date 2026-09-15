@@ -3,11 +3,13 @@ import { useRouter } from "next/router";
 import React from "react";
 
 import { Download, MoreVerticalIcon } from "lucide-react";
+import { Bookmark } from "lucide-react";
 import { useTheme } from "next-themes";
 import { toast } from "sonner";
 
 import { timeAgo } from "@/lib/utils";
 import { cn } from "@/lib/utils";
+import { trackNav } from "@/lib/tracking/track-nav";
 import { fileIcon } from "@/lib/utils/get-file-icon";
 
 import { Button } from "@/components/ui/button";
@@ -34,18 +36,24 @@ type DocumentsCardProps = {
   document: DRDocument;
   linkId: string;
   viewId?: string;
+  dataroomId?: string;
   isPreview: boolean;
   allowDownload: boolean;
   isProcessing?: boolean;
+  bookmarked?: boolean;
+  onToggleBookmark?: (documentId: string) => void;
 };
 
 export default function DocumentCard({
   document,
   linkId,
   viewId,
+  dataroomId,
   isPreview,
   allowDownload,
   isProcessing = false,
+  bookmarked = false,
+  onToggleBookmark,
 }: DocumentsCardProps) {
   const { theme, systemTheme } = useTheme();
   const canDownload = document.canDownload && allowDownload;
@@ -206,9 +214,28 @@ export default function DocumentCard({
           </div>
         </div>
       </div>
-      {canDownload && !isProcessing && (
-        <div className="z-10">
-          <DropdownMenu>
+      {(canDownload && !isProcessing) || onToggleBookmark ? (
+        <div className="z-10 flex items-center gap-x-1">
+          {onToggleBookmark && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 p-0 text-gray-500 ring-1 ring-gray-100 hover:bg-gray-200 group-hover/row:text-foreground group-hover/row:ring-gray-300"
+              aria-label={bookmarked ? "Remove bookmark" : "Bookmark"}
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                onToggleBookmark(document.id);
+              }}
+            >
+              <Bookmark
+                className="h-4 w-4"
+                fill={bookmarked ? "currentColor" : "none"}
+              />
+            </Button>
+          )}
+          {canDownload && !isProcessing && (
+            <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button
                 variant="ghost"
@@ -223,7 +250,16 @@ export default function DocumentCard({
               <DropdownMenuLabel>Actions</DropdownMenuLabel>
               <DropdownMenuItem
                 onClick={(e) => {
-                  e.preventDefault();
+    e.preventDefault();
+    if (!isPreview && dataroomId) {
+      trackNav({
+        linkId,
+        viewId,
+        dataroomId,
+        documentId: document.id,
+        eventType: "doc_switch",
+      });
+    }
                   e.stopPropagation();
                   downloadDocument();
                 }}
@@ -232,9 +268,10 @@ export default function DocumentCard({
                 Download
               </DropdownMenuItem>
             </DropdownMenuContent>
-          </DropdownMenu>
+            </DropdownMenu>
+          )}
         </div>
-      )}
+      ) : null}
     </div>
   );
 }

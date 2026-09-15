@@ -1,0 +1,23 @@
+VERSION 1
+
+DESCRIPTION >
+    Recent team-side activity for the team settings feed
+
+NODE endpoint
+SQL >
+    %
+    SELECT
+        timestamp,
+        actor_user_id,
+        event_type,
+        document_id,
+        link_id,
+        dataroom_id,
+        detail
+    FROM team_activity__v1
+    WHERE team_id = {{ String(team_id, required=True) }}
+        AND timestamp >= {{ Int64(since, required=True) }}
+    ORDER BY timestamp DESC
+    LIMIT {{ Integer(limit, default=100) }}
+
+TYPE ENDPOINT

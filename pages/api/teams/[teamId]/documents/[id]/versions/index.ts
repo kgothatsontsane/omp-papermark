@@ -7,6 +7,8 @@ import { getServerSession } from "next-auth/next";
 import { copyFileToBucketServer } from "@/lib/files/copy-file-to-bucket-server";
 import prisma from "@/lib/prisma";
 import { getTeamWithUsersAndDocument } from "@/lib/team/helper";
+import { recordTeamActivity } from "@/lib/tinybird";
+import { ingestSafely } from "@/lib/tracking/request-meta";
 import { convertFilesToPdfTask } from "@/lib/trigger/convert-files";
 import { processVideo } from "@/lib/trigger/optimize-video-files";
 import { convertPdfToImageRoute } from "@/lib/trigger/pdf-to-image-route";
@@ -101,6 +103,19 @@ export default async function handle(
           isPrimary: false,
         },
       });
+
+      void ingestSafely(
+        recordTeamActivity({
+          event_id: `${teamId}-${Date.now()}`,
+          timestamp: Date.now(),
+          team_id: teamId,
+          actor_user_id: userId,
+          event_type: "version_added",
+          document_id: documentId,
+          detail: `v${version.versionNumber}`,
+        }),
+        `team activity version_added for document ${documentId}`,
+      );
 
       if (type === "docs" || type === "slides") {
         try {
