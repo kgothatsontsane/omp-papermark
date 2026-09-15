@@ -4,6 +4,9 @@ import { getServerSession } from "next-auth/next";
 
 import { errorhandler } from "@/lib/errorHandler";
 import prisma from "@/lib/prisma";
+import { recordTeamActivity } from "@/lib/tinybird";
+import { ingestSafely } from "@/lib/tracking/request-meta";
+import { CustomUser } from "@/lib/types";
 
 import { authOptions } from "../../auth/[...nextauth]";
 
@@ -21,6 +24,7 @@ export default async function handle(
     const { id } = req.query as { id: string };
 
     const { isArchived } = req.body;
+    const userId = (session.user as CustomUser).id;
 
     try {
       // Update the link in the database
@@ -58,6 +62,23 @@ export default async function handle(
 
       const { tags, ...rest } = updatedLink;
       const linkTags = tags.map((t) => t.tag);
+
+      if (isArchived) {
+        void ingestSafely(
+          recordTeamActivity({
+            event_id: `${updatedLink.teamId}-${Date.now()}`,
+            timestamp: Date.now(),
+            team_id: updatedLink.teamId,
+            actor_user_id: userId,
+            event_type: "link_disabled",
+            document_id: updatedLink.documentId,
+            link_id: updatedLink.id,
+            dataroom_id: updatedLink.dataroomId,
+            detail: updatedLink.name ?? `link ${updatedLink.id}`,
+          }),
+          `team activity link_disabled for link ${updatedLink.id}`,
+        );
+      }
 
       await fetch(
         `${process.env.NEXTAUTH_URL}/api/revalidate?secret=${process.env.REVALIDATE_TOKEN}&linkId=${id}&hasDomain=${updatedLink.domainId ? "true" : "false"}`,

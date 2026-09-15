@@ -13,6 +13,7 @@ import AppLayout from "@/components/layouts/app";
 import DeleteTeam from "@/components/settings/delete-team";
 import GlobalBlockListForm from "@/components/settings/global-block-list-form";
 import IgnoredDomainsForm from "@/components/settings/ignored-domains-form";
+import TeamActivityFeed from "@/components/settings/team-activity-feed";
 import { SettingsHeader } from "@/components/settings/settings-header";
 import { Form } from "@/components/ui/form";
 
@@ -149,6 +150,7 @@ export default function General() {
           />
           <IgnoredDomainsForm />
           <GlobalBlockListForm />
+          <TeamActivityFeed />
 
           <DeleteTeam />
         </div>

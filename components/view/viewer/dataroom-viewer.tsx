@@ -1,6 +1,6 @@
 import { useSearchParams } from "next/navigation";
 
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import React from "react";
 
 import {
@@ -13,6 +13,8 @@ import * as SheetPrimitive from "@radix-ui/react-dialog";
 import { PanelLeftIcon, XIcon } from "lucide-react";
 
 import { cn } from "@/lib/utils";
+import { useViewerBookmarks } from "@/lib/swr/use-viewer-bookmarks";
+import { trackNav } from "@/lib/tracking/track-nav";
 import { sortByIndexThenName } from "@/lib/utils/sort-items-by-index-name";
 
 import { ViewFolderTree } from "@/components/datarooms/folders";
@@ -35,6 +37,7 @@ import {
 
 import { DEFAULT_DATAROOM_VIEW_TYPE } from "../dataroom/dataroom-view";
 import DocumentCard from "../dataroom/document-card";
+import ViewerListsPanel from "../dataroom/viewer-lists-panel";
 import { DocumentUploadModal } from "../dataroom/document-upload-modal";
 import FolderCard from "../dataroom/folder-card";
 import IndexFileDialog from "../dataroom/index-file-dialog";
@@ -121,6 +124,127 @@ export default function DataroomViewer({
 
   const searchParams = useSearchParams();
   const searchQuery = searchParams?.get("search")?.toLowerCase() || "";
+
+  const { bookmarks, lists, mutate } = useViewerBookmarks(
+    linkId,
+    isPreview ? undefined : viewId,
+  );
+  const [activeFilter, setActiveFilter] = useState<string | null>(null);
+
+  const bookmarkedSet = useMemo(() => new Set(bookmarks), [bookmarks]);
+  const activeListItems = useMemo(
+    () =>
+      activeFilter && activeFilter !== "bookmarked"
+        ? new Set(lists.find((l) => l.id === activeFilter)?.items ?? [])
+        : null,
+    [activeFilter, lists],
+  );
+  const docNames = useMemo(
+    () => new Map(documents.map((d) => [d.id, d.name])),
+    [documents],
+  );
+
+  useEffect(() => {
+    if (searchQuery && !isPreview) {
+      trackNav({
+        linkId,
+        viewId,
+        dataroomId: dataroom?.id,
+        query: searchQuery,
+        eventType: "search",
+      });
+    }
+  }, [searchQuery]);
+
+  const toggleBookmark = async (documentId: string) => {
+    await fetch("/api/links/bookmark", {
+      method: bookmarkedSet.has(documentId) ? "DELETE" : "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        linkId,
+        viewId,
+        dataroomId: dataroom?.id,
+        documentId,
+      }),
+    });
+    mutate();
+  };
+
+  const createList = async (name: string) => {
+    await fetch("/api/links/lists", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ linkId, viewId, dataroomId: dataroom?.id, name }),
+    });
+    mutate();
+  };
+
+  const renameList = async (id: string, name: string) => {
+    await fetch("/api/links/lists", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        linkId,
+        viewId,
+        dataroomId: dataroom?.id,
+        listId: id,
+        name,
+      }),
+    });
+    mutate();
+  };
+
+  const deleteList = async (id: string) => {
+    await fetch("/api/links/lists", {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        linkId,
+        viewId,
+        dataroomId: dataroom?.id,
+        listId: id,
+      }),
+    });
+    if (activeFilter === id) setActiveFilter(null);
+    mutate();
+  };
+
+  const removeListItem = async (listId: string, documentId: string) => {
+    await fetch("/api/links/list-items", {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        linkId,
+        viewId,
+        dataroomId: dataroom?.id,
+        listId,
+        documentId,
+      }),
+    });
+    mutate();
+  };
+
+  const addVisibleToList = async (listId: string) => {
+    const visibleDocs = mixedItems.filter(
+      (item): item is DataroomDocument => "versions" in item,
+    );
+    await Promise.all(
+      visibleDocs.map((doc) =>
+        fetch("/api/links/list-items", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            linkId,
+            viewId,
+            dataroomId: dataroom?.id,
+            listId,
+            documentId: doc.id,
+          }),
+        }),
+      ),
+    );
+    mutate();
+  };
 
   const breadcrumbFolders = useMemo(
     () => getParentFolders(folderId, folders),
@@ -209,6 +333,28 @@ export default function DataroomViewer({
 
   // create a mixedItems array with folders and documents of the current folder and memoize it
   const mixedItems = useMemo(() => {
+    const filterSet =
+      activeFilter === "bookmarked"
+        ? bookmarkedSet
+        : activeListItems;
+    if (filterSet) {
+      return (documents || [])
+        .filter((doc) => filterSet.has(doc.id))
+        .map((doc) => {
+          const accessControl = accessControls.find(
+            (access) => access.itemId === doc.dataroomDocumentId,
+          );
+
+          return {
+            ...doc,
+            itemType: "document",
+            canDownload:
+              (accessControl?.canDownload ?? true) &&
+              doc.versions[0].type !== "notion",
+          };
+        })
+        .sort((a, b) => (a.orderIndex || 0) - (b.orderIndex || 0));
+    }
     // If there's a search query, filter documents by name across all folders
     if (searchQuery) {
       return (documents || [])
@@ -287,6 +433,9 @@ export default function DataroomViewer({
     allowDownload,
     folderEffectiveUpdatedAt,
     searchQuery,
+    activeFilter,
+    bookmarkedSet,
+    activeListItems,
   ]);
 
   const renderItem = (item: FolderOrDocument) => {
@@ -301,9 +450,14 @@ export default function DataroomViewer({
           document={item}
           linkId={linkId}
           viewId={viewId}
+          dataroomId={dataroom?.id}
           isPreview={!!isPreview}
           allowDownload={allowDownload && item.canDownload}
           isProcessing={isProcessing}
+          bookmarked={bookmarkedSet.has(item.id)}
+          onToggleBookmark={
+            !isPreview && viewId ? toggleBookmark : undefined
+          }
         />
       );
     }
@@ -467,6 +621,23 @@ export default function DataroomViewer({
                 </div>
               )}
 
+              {!isPreview && viewId && (
+                <div className="px-4 pt-4">
+                  <ViewerListsPanel
+                    lists={lists}
+                    bookmarksCount={bookmarks.length}
+                    activeFilter={activeFilter}
+                    onSelect={setActiveFilter}
+                    onCreate={createList}
+                    onRename={renameList}
+                    onDelete={deleteList}
+                    onRemoveItem={removeListItem}
+                    onAddVisible={addVisibleToList}
+                    visibleCount={mixedItems.length}
+                    docName={(id) => docNames.get(id) ?? "Unknown document"}
+                  />
+                </div>
+              )}
               <ul role="list" className="-mx-4 space-y-4 overflow-auto p-4">
                 {mixedItems.length === 0 ? (
                   <li className="py-6 text-center text-muted-foreground">

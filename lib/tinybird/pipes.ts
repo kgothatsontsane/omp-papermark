@@ -372,3 +372,69 @@ export const getViewTimeline = tb.buildPipe({
     detail: z.string(),
   }),
 });
+
+export const getTeamActivity = tb.buildPipe({
+  pipe: "get_team_activity__v1",
+  parameters: z.object({
+    team_id: z.string(),
+    since: z.number(),
+    limit: z.number().optional(),
+  }),
+  data: z.object({
+    timestamp: z.number(),
+    actor_user_id: z.string(),
+    event_type: z.string(),
+    document_id: z.string().nullable(),
+    link_id: z.string().nullable(),
+    dataroom_id: z.string().nullable(),
+    detail: z.string(),
+  }),
+});
+
+export const getNavFlow = tb.buildPipe({
+  pipe: "get_nav_flow__v1",
+  parameters: z.object({
+    dataroom_id: z.string(),
+    since: z.number(),
+  }),
+  data: z.object({
+    event_type: z.string(),
+    event_count: z.number(),
+  }),
+});
+
+export const getPopularDocs = tb.buildPipe({
+  pipe: "get_popular_docs__v1",
+  parameters: z.object({
+    dataroom_id: z.string(),
+    since: z.number(),
+  }),
+  data: z.object({
+    document_id: z.string().nullable(),
+    open_count: z.number(),
+  }),
+});
+
+export const getTopSearches = tb.buildPipe({
+  pipe: "get_top_searches__v1",
+  parameters: z.object({
+    dataroom_id: z.string(),
+    since: z.number(),
+  }),
+  data: z.object({
+    query: z.string().nullable(),
+    search_count: z.number(),
+  }),
+});
+
+export const getBookmarkLeaderboard = tb.buildPipe({
+  pipe: "get_bookmark_leaderboard__v1",
+  parameters: z.object({
+    dataroom_id: z.string(),
+    since: z.number(),
+  }),
+  data: z.object({
+    document_id: z.string().nullable(),
+    bookmark_count: z.number(),
+  }),
+});

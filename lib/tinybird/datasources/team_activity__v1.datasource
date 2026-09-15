@@ -1,0 +1,18 @@
+DESCRIPTION >
+  Team-side activity audit: document uploads, versions, link and dataroom
+  lifecycle. Actor is the team userId. Read by the team activity feed.
+
+SCHEMA >
+  `event_id` String `json:$.event_id`,
+  `timestamp` Int64 `json:$.timestamp`,
+  `team_id` String `json:$.team_id`,
+  `actor_user_id` String `json:$.actor_user_id`,
+  `event_type` LowCardinality(String) `json:$.event_type`,
+  `document_id` Nullable(String) `json:$.document_id`,
+  `link_id` Nullable(String) `json:$.link_id`,
+  `dataroom_id` Nullable(String) `json:$.dataroom_id`,
+  `detail` String `json:$.detail`
+
+
+ENGINE "MergeTree"
+ENGINE_SORTING_KEY "team_id,timestamp,event_id"

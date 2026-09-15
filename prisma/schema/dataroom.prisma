@@ -34,6 +34,9 @@ model Dataroom {
   // bulk download setting
   allowBulkDownload Boolean @default(true) // Allow bulk download of entire dataroom
 
+  viewerBookmarks ViewerBookmark[]
+  viewerLists     ViewerList[]
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -205,4 +208,46 @@ model PermissionGroupAccessControls {
 
   @@unique([groupId, itemId])
   @@index([groupId])
+}
+
+model ViewerBookmark {
+  id         String   @id @default(cuid())
+  viewId     String
+  view       View     @relation(fields: [viewId], references: [id], onDelete: Cascade)
+  dataroomId String
+  dataroom   Dataroom @relation(fields: [dataroomId], references: [id], onDelete: Cascade)
+  documentId String
+  document   Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@unique([viewId, documentId])
+  @@index([viewId])
+}
+
+model ViewerList {
+  id         String   @id @default(cuid())
+  viewId     String
+  view       View     @relation(fields: [viewId], references: [id], onDelete: Cascade)
+  dataroomId String
+  dataroom   Dataroom @relation(fields: [dataroomId], references: [id], onDelete: Cascade)
+  name       String
+  items      ViewerListItem[]
+
+  createdAt DateTime @default(now())
+
+  @@index([viewId])
+}
+
+model ViewerListItem {
+  id         String     @id @default(cuid())
+  listId     String
+  list       ViewerList @relation(fields: [listId], references: [id], onDelete: Cascade)
+  documentId String
+  document   Document   @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@unique([listId, documentId])
+  @@index([listId])
 }

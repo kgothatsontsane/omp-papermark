@@ -117,6 +117,9 @@ model Document {
   uploadedDocument DocumentUpload[]
   isExternalUpload Boolean          @default(false) // Indicates if the document is an external upload
 
+  viewerBookmarks ViewerBookmark[]
+  viewerListItems ViewerListItem[]
+
   @@index([ownerId])
   @@index([teamId])
   @@index([folderId])
@@ -219,6 +222,9 @@ model View {
   initialConversations Conversation[]     @relation("initialView")
 
   uploadedDocuments DocumentUpload[] // uploaded documents by this view
+
+  viewerBookmarks ViewerBookmark[]
+  viewerLists     ViewerList[]
 
   teamId String?
   team   Team?   @relation(fields: [teamId], references: [id], onDelete: Cascade)

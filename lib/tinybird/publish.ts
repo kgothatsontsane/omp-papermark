@@ -224,6 +224,63 @@ export const recordSecurityFlag = tb.buildIngestEndpoint({
   }),
 });
 
+export const DATAROOM_NAV_EVENT_TYPES = [
+  "folder_open",
+  "doc_switch",
+  "search",
+  "bookmark_add",
+  "bookmark_remove",
+  "list_create",
+  "list_item_add",
+  "list_item_remove",
+] as const;
+
+export const recordDataroomNav = tb.buildIngestEndpoint({
+  datasource: "dataroom_nav__v1",
+  event: z.object({
+    event_id: z.string(),
+    timestamp: z.number().int(),
+    link_id: z.string(),
+    view_id: z.string().nullable().optional(),
+    dataroom_id: z.string(),
+    document_id: z.string().nullable().optional(),
+    folder_id: z.string().nullable().optional(),
+    event_type: z.enum(DATAROOM_NAV_EVENT_TYPES),
+    query: z.string().nullable().optional(),
+    list_id: z.string().nullable().optional(),
+    country: z.string().optional().default("Unknown"),
+    city: z.string().optional().default("Unknown"),
+    device: z.string().optional().default("Desktop"),
+    browser: z.string().optional().default("Unknown"),
+    os: z.string().optional().default("Unknown"),
+    ip_address: z.string().nullable().optional(),
+  }),
+});
+
+export const TEAM_ACTIVITY_EVENT_TYPES = [
+  "doc_uploaded",
+  "version_added",
+  "link_created",
+  "link_disabled",
+  "link_deleted",
+  "dataroom_created",
+] as const;
+
+export const recordTeamActivity = tb.buildIngestEndpoint({
+  datasource: "team_activity__v1",
+  event: z.object({
+    event_id: z.string(),
+    timestamp: z.number().int(),
+    team_id: z.string(),
+    actor_user_id: z.string(),
+    event_type: z.enum(TEAM_ACTIVITY_EVENT_TYPES),
+    document_id: z.string().nullable().optional(),
+    link_id: z.string().nullable().optional(),
+    dataroom_id: z.string().nullable().optional(),
+    detail: z.string().optional().default(""),
+  }),
+});
+
 // Event track when a visitor opens a link
 export const recordLinkViewTB = tb.buildIngestEndpoint({
   datasource: "pm_click_events__v1",
