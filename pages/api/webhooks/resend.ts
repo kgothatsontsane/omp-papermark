@@ -31,9 +31,8 @@ export default async function handle(
   if (!secret) return res.status(500).json({ error: "webhook not configured" });
 
   const payload = await rawBody(req);
-  let event: any;
   try {
-    event = new Webhook(secret).verify(payload, {
+    new Webhook(secret).verify(payload, {
       "svix-id": req.headers["svix-id"] as string,
       "svix-timestamp": req.headers["svix-timestamp"] as string,
       "svix-signature": req.headers["svix-signature"] as string,
@@ -41,6 +40,7 @@ export default async function handle(
   } catch {
     return res.status(400).json({ error: "invalid signature" });
   }
+  const event = JSON.parse(payload);
 
   const mapped = TYPE_MAP[event.type];
   if (mapped && event.data?.email_id) {
