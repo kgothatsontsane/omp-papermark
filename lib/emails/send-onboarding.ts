@@ -27,7 +27,7 @@ export const sendOnboardingEmail = async (
   switch (emailType) {
     case "onboarding1":
       emailTemplate = Onboarding1Email();
-      subject = "Day 1 with {BRAND_NAME} - Turn your documents into links";
+      subject = `Day 1 with ${BRAND_PLATFORM} - Turn your documents into links`;
       break;
     case "onboarding2":
       emailTemplate = Onboarding2Email();
@@ -47,7 +47,7 @@ export const sendOnboardingEmail = async (
       break;
     default:
       emailTemplate = Onboarding1Email();
-      subject = "Day 1 with {BRAND_NAME} - Turn your documents into links";
+      subject = `Day 1 with ${BRAND_PLATFORM} - Turn your documents into links`;
       break;
   }
 
@@ -63,4 +63,4 @@ export const sendOnboardingEmail = async (
   }
 };
 
-import { BRAND_NAME } from "@/lib/branding";
+import { BRAND_PLATFORM } from "@/lib/branding";

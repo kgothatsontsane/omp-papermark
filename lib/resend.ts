@@ -58,7 +58,7 @@ export const sendEmail = async ({
       from: fromAddress,
       to: test ? "delivered@resend.dev" : to,
       cc: cc,
-      replyTo: marketing ? "marc@open-mic.co.za" : replyTo,
+      replyTo: marketing ? "kgothatso@open-mic.co.za" : replyTo,
       subject,
       react,
       scheduledAt,

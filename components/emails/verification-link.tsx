@@ -13,7 +13,7 @@ import {
   Text,
 } from "@react-email/components";
 
-import { BRAND_NAME } from "@/lib/branding";
+import { BRAND_PLATFORM } from "@/lib/branding";
 import EmailLogo from "@/components/emails/email-logo";
 
 const VerificationLinkEmail = ({
@@ -24,7 +24,7 @@ const VerificationLinkEmail = ({
   return (
     <Html>
       <Head />
-      <Preview>Login to your {BRAND_NAME} account with a link</Preview>
+      <Preview>Login to your {BRAND_PLATFORM} account with a link</Preview>
       <Tailwind>
         <Body className="mx-auto my-auto bg-white font-sans">
           <Container className="mx-auto my-10 max-w-[500px] rounded border border-solid border-gray-200 px-10 py-5">
@@ -32,7 +32,7 @@ const VerificationLinkEmail = ({
               <EmailLogo />
             </Text>
             <Text className="mx-0 my-7 p-0 text-center text-xl font-semibold text-black">
-              Your {BRAND_NAME} Login Link
+              Your {BRAND_PLATFORM} Login Link
             </Text>
 
             <Text className="text-sm leading-6 text-black">

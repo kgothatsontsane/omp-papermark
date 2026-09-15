@@ -12,7 +12,7 @@ import {
   Text,
 } from "@react-email/components";
 
-import { BRAND_NAME } from "@/lib/branding";
+import { BRAND_PLATFORM } from "@/lib/branding";
 import EmailLogo from "@/components/emails/email-logo";
 
 interface ConfirmEmailChangeProps {
@@ -38,7 +38,7 @@ export function ConfirmEmailChange({
                 <EmailLogo />
               </Text>
               <Heading className="mx-0 my-7 p-0 text-center text-xl font-semibold text-black">
-                Your {BRAND_NAME} Email Change Confirmation Link
+                Your {BRAND_PLATFORM} Email Change Confirmation Link
               </Heading>
             </Section>
             <Heading className="text-sm leading-6 text-black">

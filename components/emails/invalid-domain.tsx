@@ -14,7 +14,7 @@ import {
   Text,
 } from "@react-email/components";
 
-import { BRAND_NAME } from "@/lib/branding";
+import { BRAND_PLATFORM } from "@/lib/branding";
 import EmailLogo from "@/components/emails/email-logo";
 
 export default function InvalidDomain({
@@ -41,14 +41,14 @@ export default function InvalidDomain({
             </Text>
             <Text className="text-sm leading-6 text-black">
               Your domain <code className="text-purple-600">{domain}</code> for
-              your {BRAND_NAME} account{" "}
+              your {BRAND_PLATFORM} account{" "}
               {invalidDays >= 14
                 ? `has been invalid for ${invalidDays} days.`
                 : `is still unconfigured.`}
             </Text>
             <Text className="text-sm leading-6 text-black">
               If your domain remains unconfigured for 30 days, it will be
-              automatically deleted from {BRAND_NAME}. Please click the link below
+              automatically deleted from {BRAND_PLATFORM}. Please click the link below
               to configure your domain.
             </Text>
             <Section className="my-8 text-center">
@@ -61,7 +61,7 @@ export default function InvalidDomain({
               </Button>
             </Section>
             <Text className="text-sm leading-6 text-black">
-              If you do not want to keep this domain on {BRAND_NAME}, you can{" "}
+              If you do not want to keep this domain on {BRAND_PLATFORM}, you can{" "}
               <Link
                 href={`https://dealroom.open-mic.co.za/settings/domains`}
                 className="font-medium text-blue-600 no-underline"
