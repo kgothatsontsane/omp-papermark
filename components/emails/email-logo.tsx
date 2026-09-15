@@ -6,7 +6,7 @@ export const EMAIL_LOGO_URL = `${APP_URL}${BRAND_LOGO_PNG}`;
 
 export default function EmailLogo({
   width = 240,
-  height = 84,
+  height = 124,
   className = "mx-auto",
 }: {
   width?: number;
