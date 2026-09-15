@@ -341,7 +341,7 @@ Files in `lib/tinybird/endpoints/`.
 - Test artifacts: excel-luckysheet-*.jpeg in repo root (untracked, can delete).
 - Access-control notes: dataroom links reject non-viewer emails with 403 (correct); viewer email used for tests: nvisionfactory@gmail.com.
 
-## 2026-09-15 — Email rebrand: Kgothatso + Dealroom (PRs #56, #57 — PENDING)
+## 2026-09-15 — Email rebrand: Kgothatso + Dealroom (PRs #56, #57 MERGED + LIVE)
 
 - Rebranded all email copy: Marc → Kgothatso (maintainer of Open Mic Productions'
   Dealroom) in welcome, upgrade-plan, dataroom-trial-welcome (now signed "Kgothatso
