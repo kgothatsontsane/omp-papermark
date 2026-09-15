@@ -12,7 +12,7 @@ import { z } from "zod";
 
 import { cn } from "@/lib/utils";
 
-import { BRAND_LOGO, BRAND_NAME, SUPPORT_EMAIL } from "@/lib/branding";
+import { BRAND_COMPANY, BRAND_LOGO, BRAND_NAME, BRAND_PLATFORM, SUPPORT_EMAIL } from "@/lib/branding";
 
 import { LastUsed, useLastUsed } from "@/components/hooks/useLastUsed";
 import Google from "@/components/shared/icons/google";
@@ -141,7 +141,7 @@ export default function Login() {
               className="mt-4 max-w-sm text-balance leading-relaxed text-gray-500"
               style={{ animationDelay: "180ms" }}
             >
-              Private, role-based access to {BRAND_NAME}&apos;s deal room —
+              Private, role-based access to the {BRAND_PLATFORM} deal room —
               only the documents you&apos;re cleared to see, with your activity
               protected and transparent.
             </p>
@@ -288,7 +288,7 @@ export default function Login() {
 
             <p className="mt-8 text-xs leading-relaxed text-gray-400">
               By continuing, you acknowledge that you have read and agree to{" "}
-              {BRAND_NAME}&apos;s{" "}
+              {BRAND_COMPANY}&apos;s{" "}
               <a
                 href={`${process.env.NEXT_PUBLIC_MARKETING_URL}/terms`}
                 target="_blank"

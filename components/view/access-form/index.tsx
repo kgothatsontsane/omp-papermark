@@ -15,7 +15,7 @@ import NameSection from "./name-section";
 import PasswordSection from "./password-section";
 
 
-import { BRAND_NAME } from "@/lib/branding";
+import { BRAND_LOGO_WHITE_PNG, BRAND_NAME } from "@/lib/branding";
 export const DEFAULT_ACCESS_FORM_DATA = {
   email: null,
   password: null,
@@ -111,26 +111,26 @@ export default function AccessForm({
       }}
     >
       {/* Light Navbar */}
-      {logoOnAccessForm && brand && brand.logo && (
+      {logoOnAccessForm ? (
         <nav
           className="w-full"
           style={{
-            backgroundColor: brand.brandColor ? brand.brandColor : "black",
+            backgroundColor: brand?.brandColor ? brand.brandColor : "black",
           }}
         >
           <div className="flex h-16 items-center justify-start px-2 sm:px-6 lg:px-8">
             <Image
-              src={brand.logo as string}
+              src={(brand?.logo as string) || BRAND_LOGO_WHITE_PNG}
               alt="Brand Logo"
               width={144}
-              height={64}
+              height={50}
               className="h-16 w-auto object-contain"
               priority
               unoptimized
             />
           </div>
         </nav>
-      )}
+      ) : null}
 
       <div className="flex flex-1 flex-col px-6 pb-12 pt-8 lg:px-8">
         <div className="sm:mx-auto sm:w-full sm:max-w-md">

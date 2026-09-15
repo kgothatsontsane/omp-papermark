@@ -39,7 +39,7 @@ export default function Register() {
           <Link href="/">
             <Image
               src={BRAND_LOGO}
-              width={119}
+              width={62}
               height={32}
               alt={`${BRAND_NAME} Logo`}
             />

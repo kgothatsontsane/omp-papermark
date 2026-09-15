@@ -11,7 +11,7 @@ import {
   Text,
 } from "@react-email/components";
 
-import { BRAND_NAME, BRAND_PLATFORM } from "@/lib/branding";
+import { BRAND_COMPANY, BRAND_PLATFORM } from "@/lib/branding";
 import EmailLogo from "@/components/emails/email-logo";
 
 export default function ExportReady({
@@ -60,7 +60,7 @@ export default function ExportReady({
             <Text className="text-sm leading-6 text-black">
               Best,
               <br />
-              The {BRAND_NAME} Team
+              The {BRAND_COMPANY} Team
             </Text>
             <Hr />
             <Section className="mt-8 text-gray-400">
