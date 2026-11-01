@@ -6,7 +6,7 @@ import PlausibleProvider from "next-plausible";
 import { APP_URL, BRAND_NAME } from "@/lib/branding";
 import "@/styles/globals.css";
 
-const inter = Inter({ subsets: ["latin"] });
+const inter = Inter({ subsets: ["latin"], display: "swap" });
 
 const data = {
   description: `${BRAND_NAME} secure document sharing with real-time analytics.`,

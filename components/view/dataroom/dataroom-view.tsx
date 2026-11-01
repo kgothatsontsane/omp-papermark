@@ -275,7 +275,7 @@ export default function DataroomView({
 
   if (isLoading) {
     return (
-      <div className="flex h-screen items-center justify-center">
+      <div className="flex h-screen items-center justify-center bg-gray-950">
         <LoadingSpinner className="h-20 w-20" />
       </div>
     );
