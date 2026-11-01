@@ -7,6 +7,7 @@ import {
   Head,
   Hr,
   Html,
+  Link,
   Preview,
   Section,
   Tailwind,
@@ -50,8 +51,18 @@ const VerificationLinkEmail = ({
             <Text className="text-sm leading-6 text-black">
               or copy and paste this URL into your browser:
             </Text>
-            <Text className="max-w-sm flex-wrap break-words font-medium text-purple-600 no-underline">
-              {url.replace(/^https?:\/\//, "")}
+            <Text
+              className="font-medium text-purple-600 no-underline"
+              style={{ wordBreak: "break-all", overflowWrap: "anywhere" }}
+            >
+              <Link
+                href={url}
+                target="_blank"
+                className="font-medium text-purple-600 no-underline"
+                style={{ wordBreak: "break-all", overflowWrap: "anywhere" }}
+              >
+                {url}
+              </Link>
             </Text>
             <Hr />
             <Section className="mt-8 text-gray-400">
