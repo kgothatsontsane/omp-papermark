@@ -396,6 +396,11 @@ Files in `lib/tinybird/endpoints/`.
   separately); serverless freezes fire-and-forget fetches — AWAIT ingest in routes
   that respond immediately (webhook route fixed PRs #68-71, signed test row landed
   in email_events__v1 then deleted).
+- Login email fix (2026-11-01): NEXT_PRIVATE_VERIFICATION_SECRET was missing in
+  Vercel → generateChecksum threw ERR_INVALID_ARG_TYPE → every email sign-in failed.
+  Set the secret in prod+preview, redeployed + re-aliased dealroom.open-mic.co.za.
+  Verification email: URL now wraps at char boundaries + clickable Link; logo PNG
+  downscaled 1434x740 → 480x247 (~44KB) for reliable rendering (PRs #76/#77).
 - GOTCHAS: Next rejects same-level dynamic slugs with different names (views/[id] vs
   views/[viewId]) — remind.ts moved under [id]. `git add -A` sweeps strays (removed
   zoom-pill jpeg). tsx scripts need dotenv import + must live in repo; npx tsx
