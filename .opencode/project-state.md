@@ -389,6 +389,11 @@ Files in `lib/tinybird/endpoints/`.
 - Prod: main synced, worker 20260915.7, Team columns verified (excludedEmails,
   excludedLinkIds). USER ACTIONS: Resend dashboard webhook → /api/webhooks/resend;
   set RESEND_WEBHOOK_SECRET in Vercel; confirm kgothatso@ mailbox.
+- Loading/FOUC polish (2026-11-01, PRs #80/#81): replaced top-left "Loading..."
+  text with centered spinner in notion-page; added app/loading.tsx; path-aware
+  critical CSS in _document (dark bg for /view, light otherwise) to prevent FOUC;
+  explicit font-display:swap on Inter; consistent bg-gray-950 on viewer loading
+  states. Prod deploy aliased to dealroom.open-mic.co.za.
 - RESEND WEBHOOK LIVE (verified E2E 2026-09-15): secret set in Vercel prod
   (preview still missing — CLI can't answer the branch prompt non-interactively;
   add via dashboard if needed). Select events: delivered/opened/clicked/bounced/
