@@ -1,10 +1,22 @@
 import { Head, Html, Main, NextScript } from "next/document";
 
-export default function Document() {
+Document.getInitialProps = async (ctx: any) => {
+  const initialProps = await ctx.defaultGetInitialProps(ctx);
+  return { ...initialProps, isView: (ctx.pathname || "").startsWith("/view") };
+};
+
+export default function Document({ isView }: { isView?: boolean }) {
   return (
     <Html lang="en" className="bg-background" suppressHydrationWarning>
-      <Head>
-        {/* Preload critical dataroom images — above-the-fold logo + banner (WebP) */}
+       <Head>
+        {/* Prevent FOUC: set base background before CSS loads (path-aware) */}
+        <style
+          dangerouslySetInnerHTML={{
+            __html: isView
+                ? "html,body{background:#030712;color:#fff;margin:0;padding:0;}body{font-family:system-ui,-apple-system,sans-serif;}"
+                : "html,body{background:#ffffff;color:#111827;margin:0;padding:0;}body{font-family:system-ui,-apple-system,sans-serif;}",
+          }}
+        />
         <link
           rel="preload"
           as="image"
