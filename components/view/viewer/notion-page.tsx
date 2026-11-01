@@ -13,6 +13,7 @@ import "react-notion-x/src/styles.css";
 import { useSafePageViewTracker } from "@/lib/tracking/safe-page-view-tracker";
 import { getTrackingOptions } from "@/lib/tracking/tracking-config";
 import { NotionTheme } from "@/lib/types";
+import LoadingSpinner from "@/components/ui/loading-spinner";
 import { cn } from "@/lib/utils";
 import { determineTextColor } from "@/lib/utils/determine-text-color";
 
@@ -420,7 +421,11 @@ export const NotionPage = ({
         </>
       </Portal>
 
-      {loading && <div>Loading...</div>}
+      {loading && (
+        <div className="flex items-center justify-center py-6">
+          <LoadingSpinner className="h-8 w-8" />
+        </div>
+      )}
 
       <div
         className={cn(
