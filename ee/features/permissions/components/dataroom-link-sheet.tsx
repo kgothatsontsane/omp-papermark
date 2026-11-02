@@ -19,6 +19,7 @@ import z from "zod";
 import { useAnalytics } from "@/lib/analytics";
 import { usePlan } from "@/lib/swr/use-billing";
 import useDataroomGroups from "@/lib/swr/use-dataroom-groups";
+import useDataroomPermissionGroups from "@/lib/swr/use-dataroom-permission-groups";
 import { useDomains } from "@/lib/swr/use-domains";
 import useLimits from "@/lib/swr/use-limits";
 import { LinkWithViews } from "@/lib/types";
@@ -100,6 +101,7 @@ export function DataroomLinkSheet({
     loading: isLoadingGroups,
     mutate: mutateGroups,
   } = useDataroomGroups();
+  const { permissionGroups } = useDataroomPermissionGroups();
   const { currentTeamId: teamId } = useTeam();
   const { isFree, isPro, isBusiness, isDatarooms, isDataroomsPlus, isTrial } =
     usePlan();
@@ -119,6 +121,7 @@ export function DataroomLinkSheet({
   const [createdLink, setCreatedLink] = useState<LinkWithViews | null>(null);
   const [hasCustomPermissions, setHasCustomPermissions] =
     useState<boolean>(false);
+  const [selectedGroupId, setSelectedGroupId] = useState<string>("");
 
   const isPresetsAllowed =
     isTrial ||
@@ -969,6 +972,23 @@ export function DataroomLinkSheet({
               </div>
             </ScrollArea>
 
+            {linkType === LinkType.DATAROOM_LINK && (
+              <div className="mb-3 flex items-center gap-2 px-1">
+                <label className="text-sm font-medium whitespace-nowrap">Permission group</label>
+                <select
+                  className="h-8 flex-1 rounded-md border bg-background px-2 text-sm"
+                  value={selectedGroupId || ""}
+                  onChange={(e) => setSelectedGroupId(e.target.value)}
+                >
+                  <option value="">Custom (create new)</option>
+                  {(permissionGroups ?? []).map((g: any) => (
+                    <option key={g.id} value={g.id}>
+                      {g.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
             <SheetFooter>
               <div className="flex flex-row-reverse items-center gap-2 pt-2">
                 {linkType === LinkType.DATAROOM_LINK &&
