@@ -92,7 +92,7 @@ export default async function handle(
       teamId: string;
       id: string;
     };
-    const { permissions, linkId } = req.body;
+    const { permissions, linkId, name } = req.body;
 
     const userId = (session.user as CustomUser).id;
 
@@ -128,8 +128,8 @@ export default async function handle(
         // Create the permission group
         const permissionGroup = await tx.permissionGroup.create({
           data: {
-            name: `Link Permissions ${Date.now()}`,
-            description: "Auto-generated permission group for link",
+            name: name || `Link Permissions ${Date.now()}`,
+            description: "Permission group for link",
             dataroomId: dataroomId,
             teamId: teamId,
           },
