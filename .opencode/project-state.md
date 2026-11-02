@@ -389,6 +389,11 @@ Files in `lib/tinybird/endpoints/`.
 - Prod: main synced, worker 20260915.7, Team columns verified (excludedEmails,
   excludedLinkIds). USER ACTIONS: Resend dashboard webhook → /api/webhooks/resend;
   set RESEND_WEBHOOK_SECRET in Vercel; confirm kgothatso@ mailbox.
+- Reusable permission groups (2026-11-01, PRs #84/#85): PermissionGroupsManager on
+  dataroom permissions page (create with name + matrix, rename inline, delete);
+  multi-select checkbox column in links table + bulk "Apply permission group"
+  (PATCH /api/links/:id). POST /permission-groups accepts name. Prod deployed +
+  aliased. Follow-up (Phase C): pick existing group in DataroomLinkSheet.
 - Loading/FOUC polish (2026-11-01, PRs #80/#81): replaced top-left "Loading..."
   text with centered spinner in notion-page; added app/loading.tsx; path-aware
   critical CSS in _document (dark bg for /view, light otherwise) to prevent FOUC;
