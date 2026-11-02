@@ -9,6 +9,7 @@ import { DataroomNavigation } from "@/components/datarooms/dataroom-navigation";
 import AppLayout from "@/components/layouts/app";
 import LinkSheet from "@/components/links/link-sheet";
 import LinksTable from "@/components/links/links-table";
+import PermissionGroupsManager from "@/components/datarooms/permission-groups-manager";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { BadgeTooltip } from "@/components/ui/tooltip";
@@ -44,6 +45,7 @@ export default function DataroomAnalyticsPage() {
         <Tabs defaultValue="links" className="!mt-4 space-y-4">
           <TabsList>
             <TabsTrigger value="links">Links</TabsTrigger>
+            <TabsTrigger value="permission-groups">Permission groups</TabsTrigger>
             <TabsTrigger value="groups" asChild>
               <Link href={`/datarooms/${dataroom.id}/groups`}>Groups</Link>
             </TabsTrigger>
@@ -75,6 +77,10 @@ export default function DataroomAnalyticsPage() {
               setIsOpen={setIsLinkSheetOpen}
               existingLinks={links}
             />
+          </TabsContent>
+
+          <TabsContent value="permission-groups" className="space-y-4">
+            <PermissionGroupsManager dataroomId={dataroom.id} />
           </TabsContent>
         </Tabs>
       </div>

@@ -21,6 +21,7 @@ import useSWR, { mutate } from "swr";
 import z from "zod";
 
 import { usePlan } from "@/lib/swr/use-billing";
+import useDataroomPermissionGroups from "@/lib/swr/use-dataroom-permission-groups";
 import useLimits from "@/lib/swr/use-limits";
 import { LinkWithViews, WatermarkConfig } from "@/lib/types";
 import { cn, copyToClipboard, fetcher, nFormatter, timeAgo } from "@/lib/utils";
@@ -28,6 +29,7 @@ import { useMediaQuery } from "@/lib/utils/use-media-query";
 
 import { UpgradePlanModal } from "@/components/billing/upgrade-plan-modal";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Collapsible,
   CollapsibleContent,
@@ -107,6 +109,10 @@ export default function LinksTable({
   const router = useRouter();
   const { isFree, isTrial } = usePlan();
   const { currentTeamId } = useTeam();
+  const { permissionGroups } = useDataroomPermissionGroups();
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [applying, setApplying] = useState(false);
+  const [applyGroupId, setApplyGroupId] = useState<string>("");
   const { id: targetId, groupId } = router.query as {
     id: string;
     groupId?: string;
@@ -571,10 +577,80 @@ export default function LinksTable({
         <div className={cn(targetType === "DATAROOM" && "hidden")}>
           <h2 className="mb-2 md:mb-4">All links</h2>
         </div>
+        {selected.size > 0 && (
+          <div className="mb-2 flex flex-wrap items-center gap-2 rounded-md border bg-muted/40 p-2">
+            <span className="text-sm font-medium">{selected.size} selected</span>
+            <select
+              className="h-8 rounded-md border bg-background px-2 text-sm"
+              value={applyGroupId}
+              onChange={(e) => setApplyGroupId(e.target.value)}
+            >
+              <option value="">Choose permission group…</option>
+              {(permissionGroups ?? []).map((g: any) => (
+                <option key={g.id} value={g.id}>
+                  {g.name}
+                </option>
+              ))}
+              <option value="__none__">Remove permissions</option>
+            </select>
+            <Button
+              size="sm"
+              disabled={!applyGroupId || applying}
+              onClick={async () => {
+                if (!currentTeamId || !targetId) return;
+                setApplying(true);
+                try {
+                  const groupId =
+                    applyGroupId === "__none__" ? null : applyGroupId;
+                  await Promise.all(
+                    Array.from(selected).map((linkId) =>
+                      fetch(`/api/links/${linkId}`, {
+                        method: "PUT",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ permissionGroupId: groupId }),
+                      }),
+                    ),
+                  );
+                  toast.success("Permissions applied");
+                  setSelected(new Set());
+                  setApplyGroupId("");
+                  mutate(
+                    `/api/teams/${currentTeamId}/datarooms/${targetId}/links`,
+                  );
+                } catch {
+                  toast.error("Failed to apply");
+                } finally {
+                  setApplying(false);
+                }
+              }}
+            >
+              {applying ? "Applying…" : "Apply"}
+            </Button>
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => setSelected(new Set())}
+            >
+              Clear
+            </Button>
+          </div>
+        )}
         <div className="rounded-md border">
           <Table>
             <TableHeader>
               <TableRow className="*:whitespace-nowrap *:font-medium hover:bg-transparent">
+                <TableHead className="w-[40px]">
+                  <Checkbox
+                    checked={
+                      processedLinks.length > 0 &&
+                      selected.size === processedLinks.length
+                    }
+                    onCheckedChange={(v) => {
+                      if (v) setSelected(new Set(processedLinks.map((l) => l.id)));
+                      else setSelected(new Set());
+                    }}
+                  />
+                </TableHead>
                 <TableHead>Name</TableHead>
                 <TableHead className="w-[150px] sm:w-[200px] md:w-[250px]">
                   Link
@@ -602,6 +678,17 @@ export default function LinksTable({
                             "bg-gray-50 opacity-50 dark:bg-gray-700",
                         )}
                       >
+                        <TableCell className="w-[40px]">
+                          <Checkbox
+                            checked={selected.has(link.id)}
+                            onCheckedChange={(v) => {
+                              const next = new Set(selected);
+                              if (v) next.add(link.id);
+                              else next.delete(link.id);
+                              setSelected(next);
+                            }}
+                          />
+                        </TableCell>
                         <TableCell className="w-[250px] truncate font-medium">
                           <div className="flex items-center gap-x-2">
                             {link.groupId ? (

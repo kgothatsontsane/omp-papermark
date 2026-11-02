@@ -367,9 +367,34 @@ export default async function handle(
         error: (error as Error).message,
       });
     }
+  } else if (req.method === "PATCH") {
+    // PATCH /api/links/:id — partial update (currently: permissionGroupId)
+    const session = await getServerSession(req, res, authOptions);
+    if (!session) {
+      return res.status(401).end("Unauthorized");
+    }
+    const userId = (session.user as CustomUser).id;
+    const { id } = req.query as { id: string };
+    const { permissionGroupId, teamId } = req.body ?? {};
+
+    try {
+      const existing = await prisma.link.findUnique({
+        where: { id, teamId, team: { users: { some: { userId } } } },
+      });
+      if (!existing) {
+        return res.status(404).json({ error: "Link not found or unauthorized" });
+      }
+      const updated = await prisma.link.update({
+        where: { id, teamId },
+        data: { permissionGroupId: permissionGroupId || null },
+      });
+      return res.status(200).json(updated);
+    } catch (error) {
+      return res.status(500).json({ message: "Internal Server Error", error: (error as Error).message });
+    }
   }
 
-  // We only allow GET and PUT requests
-  res.setHeader("Allow", ["GET", "PUT", "DELETE"]);
+  // We only allow GET, PUT, PATCH, and DELETE requests
+  res.setHeader("Allow", ["GET", "PUT", "PATCH", "DELETE"]);
   return res.status(405).end(`Method ${req.method} Not Allowed`);
 }
