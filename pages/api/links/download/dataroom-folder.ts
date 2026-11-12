@@ -109,7 +109,7 @@ export default async function handler(
         dataroomId,
         path: { startsWith: rootFolder.path + "/" },
       },
-      select: { id: true, name: true, path: true },
+      select: { id: true, name: true, path: true, parentId: true },
     });
 
     let allFolders = [rootFolder, ...subfolders];
@@ -128,14 +128,14 @@ export default async function handler(
             name: true,
             versions: {
               where: { isPrimary: true },
-              select: {
-                type: true,
-                file: true,
-                storageType: true,
-                originalFile: true,
-                numPages: true,
-                contentType: true,
-              },
+               select: {
+                 type: true,
+                 file: true,
+                 storageType: true,
+                 originalFile: true,
+                 contentType: true,
+                 numPages: true,
+               },
               take: 1,
             },
           },

@@ -81,6 +81,19 @@ export default async function handle(
         result?.document?.numPages ||
         0;
 
+      const isFreePlan =
+        !isSelfHostedMode() && result?.document?.team?.plan === "free";
+
+      const page = Math.max(
+        1,
+        parseInt(String(req.query.page ?? "1"), 10) || 1,
+      );
+      const requestedLimit = Math.max(
+        1,
+        parseInt(String(req.query.limit ?? "50"), 10) || 50,
+      );
+      const limit = Math.min(requestedLimit, 200);
+
       const views = await prisma.view.findMany({
         where: {
           linkId: id,
@@ -88,13 +101,24 @@ export default async function handle(
         orderBy: {
           viewedAt: "desc",
         },
+        select: {
+          id: true,
+          viewerEmail: true,
+          viewerName: true,
+          viewedAt: true,
+          downloadedAt: true,
+          verified: true,
+          linkId: true,
+          documentId: true,
+          isArchived: true,
+          dataroomId: true,
+        },
+        ...(isFreePlan
+          ? { take: LIMITS.views ?? 100 }
+          : { skip: (page - 1) * limit, take: limit }),
       });
 
-      // limit the number of views to 20 on free plan
-      const limitedViews =
-        !isSelfHostedMode() && result?.document?.team?.plan === "free"
-          ? views.slice(0, LIMITS.views)
-          : views;
+      const limitedViews = views;
 
       const durationsPromises = limitedViews.map((view) => {
         return getViewPageDuration({

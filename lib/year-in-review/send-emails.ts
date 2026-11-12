@@ -81,33 +81,27 @@ export async function processEmailQueue() {
   );
 
   try {
-    // Fetch team data for all jobs
-    const teamsData = await prisma.$transaction(async (tx) => {
-      return Promise.all(
-        jobs.map(async (job) => {
-          const team = await tx.team.findUnique({
-            where: { id: job.teamId },
-            include: {
-              users: {
-                where: { role: { in: ["ADMIN", "MANAGER"] } },
-                include: {
-                  user: {
-                    select: {
-                      email: true,
-                    },
-                  },
-                },
+    const teamIds = jobs.map((job) => job.teamId);
+    const teams = await prisma.team.findMany({
+      where: { id: { in: teamIds } },
+      include: {
+        users: {
+          where: { role: { in: ["ADMIN", "MANAGER"] } },
+          include: {
+            user: {
+              select: {
+                email: true,
               },
             },
-          });
-
-          return {
-            job,
-            team,
-          };
-        }),
-      );
+          },
+        },
+      },
     });
+    const teamById = new Map(teams.map((team) => [team.id, team]));
+    const teamsData = jobs.map((job) => ({
+      job,
+      team: teamById.get(job.teamId) ?? null,
+    }));
     console.log(`📋 Found ${teamsData.length} teams with valid data`);
 
     // Prepare batch of emails

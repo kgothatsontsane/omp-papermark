@@ -1,10 +1,13 @@
+import prisma from "@/lib/prisma";
 import { log } from "@/lib/utils";
 
 export default async function sendNotification({
   viewId,
+  linkId,
   locationData,
 }: {
   viewId: string;
+  linkId?: string;
   locationData: {
     continent: string | null;
     country: string;
@@ -12,6 +15,27 @@ export default async function sendNotification({
     city: string;
   };
 }) {
+  let resolvedLinkId = linkId;
+  if (!resolvedLinkId) {
+    const view = await prisma.view.findUnique({
+      where: { id: viewId },
+      select: { linkId: true },
+    });
+    resolvedLinkId = view?.linkId ?? undefined;
+  }
+
+  if (resolvedLinkId) {
+    const recentViews = await prisma.view.count({
+      where: {
+        linkId: resolvedLinkId,
+        viewedAt: { gte: new Date(Date.now() - 60 * 60 * 1000) },
+      },
+    });
+    if (recentViews > 5) {
+      return;
+    }
+  }
+
   return await fetch(`${process.env.NEXTAUTH_URL}/api/jobs/send-notification`, {
     method: "POST",
     headers: {

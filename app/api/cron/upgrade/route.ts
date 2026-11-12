@@ -28,11 +28,15 @@ export async function POST(req: Request) {
   }
 
   try {
+    const now = new Date();
     const teams = await prisma.team.findMany({
       where: {
         plan: {
-          // exclude users who are on pro or free plan
           in: ["trial"],
+        },
+        createdAt: {
+          gte: new Date(now.getTime() - 31 * 24 * 60 * 60 * 1000),
+          lt: new Date(now.getTime() - 24 * 24 * 60 * 60 * 1000),
         },
       },
       select: {

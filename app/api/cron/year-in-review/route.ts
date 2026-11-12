@@ -19,6 +19,10 @@ export async function POST(req: Request) {
     }
   }
 
+  if (new Date().getFullYear() !== 2024) {
+    return NextResponse.json({ success: true });
+  }
+
   try {
     await processEmailQueue();
     return NextResponse.json({ success: true });
