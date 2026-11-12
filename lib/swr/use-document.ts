@@ -1,4 +1,5 @@
 import { useRouter } from "next/router";
+import { useEffect, useRef, useState } from "react";
 
 import { useTeam } from "@/context/team-context";
 import { View } from "@prisma/client";
@@ -149,20 +150,63 @@ interface DocumentProcessingStatus {
   currentPageCount: number;
   totalPages: number;
   hasPages: boolean;
+  status?: string;
 }
+
+const TERMINAL_STATUSES = new Set(["COMPLETED", "FAILED", "ERROR"]);
 
 export function useDocumentProcessingStatus(documentVersionId: string) {
   const teamInfo = useTeam();
   const teamId = teamInfo?.currentTeam?.id;
+
+  const [refreshInterval, setRefreshInterval] = useState(5000);
+  const previousStatusRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    setRefreshInterval(5000);
+    previousStatusRef.current = null;
+  }, [documentVersionId]);
 
   const { data: status, error } = useSWR<DocumentProcessingStatus>(
     teamId &&
       `/api/teams/${teamId}/documents/document-processing-status?documentVersionId=${documentVersionId}`,
     fetcher,
     {
-      refreshInterval: 3000, // refresh every 3 seconds
+      refreshInterval,
     },
   );
+
+  useEffect(() => {
+    if (error) {
+      setRefreshInterval(0);
+      return;
+    }
+    if (!status) return;
+    const isTerminalByStatus =
+      !!status.status && TERMINAL_STATUSES.has(status.status);
+    const isTerminalByPages =
+      status.hasPages &&
+      status.totalPages > 0 &&
+      status.currentPageCount >= status.totalPages;
+    if (isTerminalByStatus || isTerminalByPages) {
+      setRefreshInterval(0);
+      return;
+    }
+    const currentKey = `${status.status ?? ""}:${status.currentPageCount}:${status.totalPages}:${status.hasPages}`;
+    if (previousStatusRef.current === null) {
+      previousStatusRef.current = currentKey;
+      setRefreshInterval(5000);
+      return;
+    }
+    if (previousStatusRef.current !== currentKey) {
+      previousStatusRef.current = currentKey;
+      setRefreshInterval(5000);
+      return;
+    }
+    setRefreshInterval((previous) =>
+      previous === 0 ? 5000 : Math.min(previous * 2, 30000),
+    );
+  }, [status, error]);
 
   return {
     status: status,

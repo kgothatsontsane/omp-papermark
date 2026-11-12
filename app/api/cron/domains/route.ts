@@ -38,12 +38,15 @@ export async function POST(req: Request) {
     const domains = await prisma.domain.findMany({
       where: {
         slug: {
-          // exclude domains that belong to us
           not: {
-              contains: BRAND_DOMAIN,
+            contains: BRAND_DOMAIN,
           },
         },
+        lastChecked: {
+          lt: new Date(Date.now() - 24 * 60 * 60 * 1000),
+        },
       },
+      take: 100,
       select: {
         slug: true,
         verified: true,

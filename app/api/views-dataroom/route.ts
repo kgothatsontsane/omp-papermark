@@ -886,21 +886,25 @@ export async function POST(request: NextRequest) {
           );
         }
 
-        // create the document view
-        newView = await prisma.view.create({
-          data: {
-            ...viewFields,
-            documentId: documentId,
-            dataroomViewId:
-              dataroomSession?.viewId ?? dataroomView?.id ?? dataroomViewId,
-            viewType: "DOCUMENT_VIEW",
-          },
-          select: { id: true },
-        });
-        console.timeEnd("create-view");
+       // create the document view; reuse the session view when a session exists
+       if (!dataroomSession) {
+         newView = await prisma.view.create({
+           data: {
+             ...viewFields,
+             documentId: documentId,
+             dataroomViewId:
+               dataroomView?.id ?? dataroomViewId,
+             viewType: "DOCUMENT_VIEW",
+           },
+           select: { id: true },
+         });
+       } else {
+         newView = { id: (dataroomSession as unknown as { viewId: string }).viewId };
+       }
+       console.timeEnd("create-view");
       }
 
-      if (newView) {
+      if (newView && !dataroomSession) {
         trackAccess("view_created", {
           auth_method: link.emailAuthenticated
             ? "email-otp"

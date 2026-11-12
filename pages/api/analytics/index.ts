@@ -193,6 +193,8 @@ export default async function handler(
               viewerEmail: { notIn: excludedEmails },
             },
             _count: { _all: true },
+            orderBy: { linkId: "asc" },
+            take: 1000,
           }),
           // Get views data for graph grouped by day
           interval === "24h"
@@ -485,6 +487,11 @@ export default async function handler(
           },
           include: {
             views: {
+              select: {
+                id: true,
+                documentId: true,
+                viewedAt: true,
+              },
               orderBy: {
                 viewedAt: "desc",
               },
@@ -494,6 +501,7 @@ export default async function handler(
                 isArchived: false,
                 viewerEmail: { notIn: excludedEmails },
               },
+              take: 5,
             },
           },
           take: 20,

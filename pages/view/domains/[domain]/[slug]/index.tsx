@@ -136,7 +136,7 @@ export const getStaticProps = async (context: GetStaticPropsContext) => {
             teamId === "cm7nlkrhm0000qgh0nvyrrywr" ||
             teamId === "clup33by90000oewh4rfvp2eg",
         },
-        revalidate: 60,
+        revalidate: 3600,
       };
     }
 
@@ -209,12 +209,12 @@ export const getStaticProps = async (context: GetStaticPropsContext) => {
             teamId === "cm7nlkrhm0000qgh0nvyrrywr" ||
             teamId === "clup33by90000oewh4rfvp2eg",
         },
-        revalidate: 60,
+        revalidate: 3600,
       };
     }
   } catch (error) {
     console.error("Fetching error:", error);
-    return { props: { error: true }, revalidate: 30 };
+    return { props: { error: true }, revalidate: 3600 };
   }
 };
 
