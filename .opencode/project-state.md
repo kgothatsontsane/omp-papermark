@@ -389,6 +389,15 @@ Files in `lib/tinybird/endpoints/`.
 - Prod: main synced, worker 20260915.7, Team columns verified (excludedEmails,
   excludedLinkIds). USER ACTIONS: Resend dashboard webhook → /api/webhooks/resend;
   set RESEND_WEBHOOK_SECRET in Vercel; confirm kgothatso@ mailbox.
+- PG memory fixes (2026-11-12, PRs #92/#93, deploy g9gkx7u93): export-visits
+  cursor pagination + narrow selects; visits cap pushdown; stats filter pushdown;
+  dataroom-document stream + direct download; folder narrow select; links N+1
+  batched (dataroom/groups/document); analytics groupBy cap + nested views;
+  views-dataroom duplicate view.create skip + notif rate-limit; polling backoff
+  3s->15-30s; enable-advanced-mode S3 out of tx; cron domains/upgrade window
+  filters; year-in-review seasonal disable + batch N+1; ISR revalidate 30-120s
+  ->3600s; statement_timeout 30s on Prisma URL. Prod aliased. Aiven pooler
+  endpoint still to be verified by user in Vercel env.
 - Reusable permission groups (2026-11-01, PRs #84/#85): PermissionGroupsManager on
   dataroom permissions page (create with name + matrix, rename inline, delete);
   multi-select checkbox column in links table + bulk "Apply permission group"
