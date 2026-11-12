@@ -6,7 +6,9 @@ declare global {
 
 let prisma: PrismaClient;
 
-// NOTE: prod must use Aiven's pooler endpoint (cannot verify secret here).
+// NOTE: Aiven free tier has no pooler; connection_limit=1 + global client is the cap.
+// Server-side statement_timeout must be set in the Aiven console (PostgreSQL settings),
+// NOT as a URL param — node-postgres (pg) silently ignores unknown URL params.
 if (process.env.NODE_ENV === "production") {
   if (!global.prisma) {
     global.prisma = new PrismaClient({
@@ -14,7 +16,7 @@ if (process.env.NODE_ENV === "production") {
         db: {
           url: `${process.env.POSTGRES_PRISMA_URL}${
             process.env.POSTGRES_PRISMA_URL?.includes("?") ? "&" : "?"
-          }pgbouncer=true&connection_limit=1&statement_timeout=30000`,
+          }pgbouncer=true&connection_limit=1`,
         },
       },
     });
@@ -26,7 +28,7 @@ if (process.env.NODE_ENV === "production") {
       db: {
         url: `${process.env.POSTGRES_PRISMA_URL}${
           process.env.POSTGRES_PRISMA_URL?.includes("?") ? "&" : "?"
-        }pgbouncer=true&connection_limit=1&statement_timeout=30000`,
+        }pgbouncer=true&connection_limit=1`,
       },
     },
   });
