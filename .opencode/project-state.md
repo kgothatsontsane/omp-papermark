@@ -396,8 +396,17 @@ Files in `lib/tinybird/endpoints/`.
   views-dataroom duplicate view.create skip + notif rate-limit; polling backoff
   3s->15-30s; enable-advanced-mode S3 out of tx; cron domains/upgrade window
   filters; year-in-review seasonal disable + batch N+1; ISR revalidate 30-120s
-  ->3600s; statement_timeout 30s on Prisma URL. Prod aliased. Aiven pooler
-  endpoint still to be verified by user in Vercel env.
+  ->3600s; statement_timeout 30s on Prisma URL (reverted: pg ignores unknown
+  URL params). Prod aliased.
+- Dead statement_timeout URL param reverted (PRs #96/#97, deploy c1ovzwve9):
+  node-postgres (pg) silently ignores unknown URL params, so the param added in
+  Phase 3-P never enforced anything. Server-side statement_timeout must be set
+  in the Aiven console: Aiven Console -> project papermark -> service
+  papermark-pg-2d04c3ed -> Overview/Settings -> PostgreSQL settings ->
+  statement_timeout (e.g. 30000 ms) -> Save. Applies to every connection without
+  pooling. Free tier has no pooler endpoint, so connection_limit=1 + the global
+  Prisma client + the shipped caps/N+1 fixes are the real levers; upgrading
+  Aiven one tier (adds pooler + RAM) is the actual fix if baseline stays high.
 - Reusable permission groups (2026-11-01, PRs #84/#85): PermissionGroupsManager on
   dataroom permissions page (create with name + matrix, rename inline, delete);
   multi-select checkbox column in links table + bulk "Apply permission group"
