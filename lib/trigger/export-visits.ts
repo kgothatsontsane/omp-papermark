@@ -221,31 +221,55 @@ async function exportDocumentVisits(
     throw new Error("Document not found");
   }
 
-  // Fetch views
-  const views = await prisma.view.findMany({
-    where: { documentId: docId },
-    include: {
-      link: { select: { name: true } },
-      agreementResponse: {
-        include: {
-          agreement: {
-            select: {
-              name: true,
-              content: true,
-            },
-          },
-        },
+  // Fetch views (cursor-paginated)
+  const documentViewsAll: any[] = [];
+  let docCursor: string | undefined;
+  while (true) {
+    const batch = await prisma.view.findMany({
+      where: { documentId: docId },
+      select: {
+        id: true,
+        viewedAt: true,
+        viewerEmail: true,
+        viewerName: true,
+        documentId: true,
+        linkId: true,
+        downloadedAt: true,
+        verified: true,
+        dataroomId: true,
+        link: { select: { name: true } },
+        customFieldResponse: { select: { data: true } },
+        agreementResponse: { select: { agreementId: true, createdAt: true } },
       },
-      customFieldResponse: {
-        select: {
-          data: true,
-        },
-      },
-    },
-    orderBy: {
-      viewedAt: "desc",
-    },
-  });
+      orderBy: { id: "asc" },
+      take: 500,
+      ...(docCursor ? { cursor: { id: docCursor }, skip: 1 } : {}),
+    });
+    documentViewsAll.push(...batch);
+    if (batch.length < 500) break;
+    docCursor = batch[batch.length - 1].id;
+  }
+  const views = documentViewsAll.sort(
+    (a, b) =>
+      new Date(b.viewedAt).getTime() - new Date(a.viewedAt).getTime(),
+  );
+
+  // Fetch agreement content once per unique agreement
+  const docAgreementIds = Array.from(
+    new Set(
+      views
+        .map((v) => v.agreementResponse?.agreementId)
+        .filter((id): id is string => Boolean(id)),
+    ),
+  );
+  const docAgreements =
+    docAgreementIds.length > 0
+      ? await prisma.agreement.findMany({
+          where: { id: { in: docAgreementIds } },
+          select: { id: true, name: true, content: true },
+        })
+      : [];
+  const agreementMap = new Map(docAgreements.map((a) => [a.id, a]));
 
   if (!views || views.length === 0) {
     throw new Error("Document has no views");
@@ -354,8 +378,10 @@ async function exportDocumentVisits(
       view.downloadedAt ? view.downloadedAt.toISOString() : "NaN",
       view.verified ? "Yes" : "No",
       view.agreementResponse ? "Yes" : "NaN",
-      view.agreementResponse?.agreement.name || "NaN",
-      view.agreementResponse?.agreement.content || "NaN",
+      agreementMap.get(view.agreementResponse?.agreementId ?? "")?.name ||
+        "NaN",
+      agreementMap.get(view.agreementResponse?.agreementId ?? "")?.content ||
+        "NaN",
       view.agreementResponse?.createdAt.toISOString() || "NaN",
       view.dataroomId ? "Yes" : "No",
       userAgentData?.data[0]?.browser || "NaN",
@@ -518,49 +544,68 @@ async function exportDataroomVisits(
     throw new Error("Dataroom not found");
   }
 
-  // Fetch views
-  const views = await prisma.view.findMany({
-    where: {
-      dataroomId: dataroomId,
-      ...(groupId && { groupId }),
-    },
-    include: {
-      link: { select: { name: true } },
-      agreementResponse: {
-        include: {
-          agreement: {
-            select: {
-              name: true,
-              content: true,
-            },
-          },
-        },
+  // Fetch views (cursor-paginated)
+  const dataroomViewsAll: any[] = [];
+  let drCursor: string | undefined;
+  while (true) {
+    const batch = await prisma.view.findMany({
+      where: {
+        dataroomId: dataroomId,
+        ...(groupId && { groupId }),
       },
-      document: {
-        select: {
-          id: true,
-          name: true,
-          numPages: true,
-          versions: {
-            orderBy: { createdAt: "desc" },
-            select: {
-              versionNumber: true,
-              createdAt: true,
-              numPages: true,
-            },
-          },
-        },
+      select: {
+        id: true,
+        viewedAt: true,
+        viewerEmail: true,
+        viewerName: true,
+        documentId: true,
+        linkId: true,
+        downloadedAt: true,
+        verified: true,
+        viewType: true,
+        dataroomViewId: true,
+        groupId: true,
+        link: { select: { name: true } },
+        customFieldResponse: { select: { data: true } },
+        agreementResponse: { select: { agreementId: true, createdAt: true } },
       },
-      customFieldResponse: {
-        select: {
-          data: true,
-        },
-      },
-    },
-    orderBy: {
-      viewedAt: "desc",
-    },
-  });
+      orderBy: { id: "asc" },
+      take: 500,
+      ...(drCursor ? { cursor: { id: drCursor }, skip: 1 } : {}),
+    });
+    dataroomViewsAll.push(...batch);
+    if (batch.length < 500) break;
+    drCursor = batch[batch.length - 1].id;
+  }
+  const documentMap = new Map(
+    dataroom.documents.map((d: any) => [d.document.id, d.document]),
+  );
+  const views = dataroomViewsAll
+    .map((v: any) => ({
+      ...v,
+      document: v.documentId ? documentMap.get(v.documentId) : undefined,
+    }))
+    .sort(
+      (a: any, b: any) =>
+        new Date(b.viewedAt).getTime() - new Date(a.viewedAt).getTime(),
+    );
+
+  // Fetch agreement content once per unique agreement
+  const drAgreementIds = Array.from(
+    new Set(
+      views
+        .map((v: any) => v.agreementResponse?.agreementId)
+        .filter((id: any): id is string => Boolean(id)),
+    ),
+  );
+  const drAgreements =
+    drAgreementIds.length > 0
+      ? await prisma.agreement.findMany({
+          where: { id: { in: drAgreementIds } },
+          select: { id: true, name: true, content: true },
+        })
+      : [];
+  const agreementMap = new Map(drAgreements.map((a) => [a.id, a]));
 
   if (!views || views.length === 0) {
     throw new Error("Dataroom has no views");
@@ -616,8 +661,8 @@ async function exportDataroomVisits(
         }),
       );
 
-      const relevantVersion = docView.document?.versions.find(
-        (version) => version.createdAt <= docView.viewedAt,
+      const relevantVersion = docView.document?.versions?.find(
+        (version: any) => version.createdAt <= docView.viewedAt,
       );
 
       const numPages =
@@ -652,11 +697,16 @@ async function exportDataroomVisits(
       linkName: dataroomView.link?.name || "NaN",
       verified: dataroomView.verified ? "Yes" : "NaN",
       agreementStatus: dataroomView.agreementResponse ? "Yes" : "NaN",
-      agreementName: dataroomView.agreementResponse?.agreement.name || "NaN",
+      agreementName:
+        agreementMap.get(
+          dataroomView.agreementResponse?.agreementId ?? "",
+        )?.name || "NaN",
       agreementAcceptedAt:
         dataroomView.agreementResponse?.createdAt.toISOString() || "NaN",
-      agreementContent:
-        dataroomView.agreementResponse?.agreement.content || "NaN",
+       agreementContent:
+         agreementMap.get(
+           dataroomView.agreementResponse?.agreementId ?? "",
+         )?.content || "NaN",
       documentViews: documentViewDetails,
     });
   }

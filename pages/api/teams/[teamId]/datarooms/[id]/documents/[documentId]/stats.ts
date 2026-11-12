@@ -1,7 +1,6 @@
 import { NextApiRequest, NextApiResponse } from "next";
 
 import { authOptions } from "@/pages/api/auth/[...nextauth]";
-import { View } from "@prisma/client";
 import { getServerSession } from "next-auth/next";
 
 import { errorhandler } from "@/lib/errorHandler";
@@ -99,10 +98,36 @@ export default async function handle(
         });
       }
 
+      const { excludedEmails: teamExcludedEmails, excludedLinkIds } =
+        await getInternalExclusion(teamId);
+
+      // exclude views from the team's members if requested
+      let exclusionEmails: string[] = [];
+      if (excludeTeamMembers) {
+        const users = await prisma.user.findMany({
+          where: { teams: { some: { teamId } } },
+          select: { email: true },
+        });
+        exclusionEmails = [
+          ...users
+            .map((user) => user.email)
+            .filter((email): email is string => Boolean(email)),
+          ...teamExcludedEmails,
+        ];
+      }
+
       // Get all views for this document that are specifically from the dataroom
       const views = await prisma.view.findMany({
         where: {
           documentId: documentId,
+          isArchived: false,
+          dataroomId: dataroomId,
+          ...(exclusionEmails.length > 0
+            ? { viewerEmail: { notIn: exclusionEmails } }
+            : {}),
+        },
+        select: {
+          id: true,
         },
       });
 
@@ -118,56 +143,30 @@ export default async function handle(
         });
       }
 
-      const activeViews = views.filter((view) => !view.isArchived);
-      const archivedViews = views.filter((view) => view.isArchived);
-      const nonDataroomViews = activeViews.filter(
-        (view) => view.dataroomId !== dataroomId,
-      );
+      const excludedViews = await prisma.view.findMany({
+        where: {
+          documentId: documentId,
+          OR: [
+            { isArchived: true },
+            { dataroomId: { not: dataroomId } },
+            ...(exclusionEmails.length > 0
+              ? [{ isArchived: false, viewerEmail: { in: exclusionEmails } }]
+              : []),
+          ],
+        },
+        select: {
+          id: true,
+        },
+      });
 
-      // exclude views from the team's members if requested
-      let internalViews: View[] = [];
-      if (excludeTeamMembers) {
-        const users = await prisma.user.findMany({
-          where: { teams: { some: { teamId } } },
-          select: { email: true },
-        });
-        const { excludedEmails } = await getInternalExclusion(teamId);
-        const exclusionEmails = [
-          ...users.map((user) => user.email),
-          ...excludedEmails,
-        ];
-        internalViews = activeViews.filter((view) => {
-          return (
-            view.viewerEmail != null &&
-            exclusionEmails.includes(view.viewerEmail)
-          );
-        });
-      }
-
-      const { excludedLinkIds } = await getInternalExclusion(teamId);
-
-      // combined archived and internal and non-dataroom views
-      const allExcludedViews = [
-        ...internalViews,
-        ...archivedViews,
-        ...nonDataroomViews,
-      ];
-
-      // filter out the excluded views
-      const filteredViews = views
-        .filter(
-          (view) => !allExcludedViews.map((view) => view.id).includes(view.id),
-        )
-        .map((view) => ({
-          id: view.id,
-        }));
+      const filteredViews = views;
 
       let duration;
       try {
         duration = await getTotalAvgPageDuration({
           documentId: documentId,
           excludedLinkIds: excludedLinkIds.join(","),
-          excludedViewIds: allExcludedViews.map((view) => view.id).join(","),
+          excludedViewIds: excludedViews.map((view) => view.id).join(","),
           since: 0,
         });
       } catch (durationError) {

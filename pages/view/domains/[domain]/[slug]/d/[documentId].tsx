@@ -287,7 +287,7 @@ export async function getStaticProps(context: GetStaticPropsContext) {
           teamId === "cm76hfyvy0002q623hmen99pf",
         logoOnAccessForm: teamId === "cm7nlkrhm0000qgh0nvyrrywr",
       },
-      revalidate: brand || recordMap ? 60 : 120,
+      revalidate: 3600,
     };
   } catch (error) {
     console.error("Fetching error:", error);

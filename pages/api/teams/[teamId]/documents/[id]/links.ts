@@ -44,6 +44,11 @@ export default async function handle(
                   orderBy: {
                     viewedAt: "desc",
                   },
+                  select: {
+                    id: true,
+                    viewedAt: true,
+                  },
+                  take: 1,
                 },
                 feedback: {
                   select: {
@@ -73,39 +78,50 @@ export default async function handle(
         },
       });
 
-      let links = document!.links;
+      const rawLinks = document!.links;
 
-      // Decrypt the password for each link
-      if (links && links.length > 0) {
-        links = await Promise.all(
-          links.map(async (link) => {
-            // Remove password from response - client does not need it
-            if (link.password !== null) {
-              link.password = null;
-            }
-            const tags = await prisma.tag.findMany({
-              where: {
-                items: {
-                  some: {
-                    linkId: link.id,
-                    itemType: "LINK_TAG",
-                  },
-                },
-              },
+      let links = rawLinks;
+
+      if (rawLinks && rawLinks.length > 0) {
+        const linkIds = rawLinks.map((link) => link.id);
+        const tagItems = await prisma.tagItem.findMany({
+          where: {
+            linkId: { in: linkIds },
+            itemType: "LINK_TAG",
+          },
+          select: {
+            linkId: true,
+            tag: {
               select: {
                 id: true,
                 name: true,
                 color: true,
                 description: true,
               },
-            });
+            },
+          },
+        });
 
-            return {
-              ...link,
-              tags,
-            };
-          }),
-        );
+        const tagsByLink = new Map<string, { id: string; name: string; color: string; description: string | null }[]>();
+        for (const item of tagItems) {
+          if (!item.linkId || !item.tag) continue;
+          const existing = tagsByLink.get(item.linkId);
+          if (existing) {
+            existing.push(item.tag);
+          } else {
+            tagsByLink.set(item.linkId, [item.tag]);
+          }
+        }
+
+        links = rawLinks.map((link) => {
+          if (link.password !== null) {
+            link.password = null;
+          }
+          return {
+            ...link,
+            tags: tagsByLink.get(link.id) ?? [],
+          };
+        });
       }
 
       return res.status(200).json(links);

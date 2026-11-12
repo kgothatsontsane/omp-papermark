@@ -8,6 +8,7 @@ import { recordDownloadEvent } from "@/lib/tinybird";
 import { ingestSafely, metaFromApiRequest } from "@/lib/tracking/request-meta";
 import { getFileNameWithPdfExtension, nanoid } from "@/lib/utils";
 import { getIpAddress } from "@/lib/utils/ip";
+import { Readable } from "stream";
 
 export const config = {
   maxDuration: 180,
@@ -239,18 +240,28 @@ export default async function handle(
           return res.status(500).json({ error: "Error downloading" });
         }
 
-        const pdfBuffer = await response.arrayBuffer();
-
-        // Set appropriate headers for watermarked PDF
         res.setHeader("Content-Type", "application/pdf");
         res.setHeader(
           "Content-Disposition",
           `attachment; filename="${encodeURIComponent(getFileNameWithPdfExtension(downloadDocuments[0].document!.name))}"`,
         );
-        res.setHeader("Content-Length", Buffer.from(pdfBuffer).length);
+        const contentLength = response.headers.get("content-length");
+        if (contentLength) {
+          res.setHeader("Content-Length", contentLength);
+        }
 
-        // Send the watermarked buffer directly
-        return res.send(Buffer.from(pdfBuffer));
+        if (!response.body) {
+          return res.status(500).json({ error: "Error downloading" });
+        }
+
+        const stream = Readable.fromWeb(response.body as any);
+        stream.pipe(res);
+        await new Promise<void>((resolve, reject) => {
+          stream.on("end", resolve);
+          stream.on("error", reject);
+          res.on("error", reject);
+        });
+        return;
       }
 
       // For non-watermarked PDFs, we need to buffer and set proper headers
@@ -265,26 +276,21 @@ export default async function handle(
         downloadDocuments[0].document!.versions[0].contentType?.startsWith(
           "image/",
         )
-      ) {
-        const response = await fetch(downloadUrl);
-        if (!response.ok) {
-          return res.status(500).json({ error: "Error downloading file" });
-        }
+       ) {
+         const contentType =
+           downloadDocuments[0].document!.versions[0].contentType ||
+           (downloadDocuments[0].document!.versions[0].type === "pdf"
+             ? "application/pdf"
+             : "application/octet-stream");
+         const fileName = downloadDocuments[0].document!.name;
 
-        const pdfBuffer = await response.arrayBuffer();
-
-        // Set appropriate headers to force download
-        res.setHeader("Content-Type", "application/pdf");
-        res.setHeader(
-          "Content-Disposition",
-          `attachment; filename="${encodeURIComponent(downloadDocuments[0].document!.name)}"`,
-        );
-        res.setHeader("Content-Length", Buffer.from(pdfBuffer).length);
-        res.setHeader("Cache-Control", "no-cache");
-
-        // Send the PDF buffer directly
-        return res.send(Buffer.from(pdfBuffer));
-      }
+         return res.status(200).json({
+           downloadUrl,
+           fileName,
+           contentType,
+           isDirectDownload: true,
+         });
+       }
 
       const headResponse = await fetch(downloadUrl, { method: "HEAD" });
       const contentType =

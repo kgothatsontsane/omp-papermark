@@ -6,6 +6,7 @@ declare global {
 
 let prisma: PrismaClient;
 
+// NOTE: prod must use Aiven's pooler endpoint (cannot verify secret here).
 if (process.env.NODE_ENV === "production") {
   if (!global.prisma) {
     global.prisma = new PrismaClient({
@@ -13,7 +14,7 @@ if (process.env.NODE_ENV === "production") {
         db: {
           url: `${process.env.POSTGRES_PRISMA_URL}${
             process.env.POSTGRES_PRISMA_URL?.includes("?") ? "&" : "?"
-          }pgbouncer=true&connection_limit=1`,
+          }pgbouncer=true&connection_limit=1&statement_timeout=30000`,
         },
       },
     });
@@ -25,7 +26,7 @@ if (process.env.NODE_ENV === "production") {
       db: {
         url: `${process.env.POSTGRES_PRISMA_URL}${
           process.env.POSTGRES_PRISMA_URL?.includes("?") ? "&" : "?"
-        }pgbouncer=true&connection_limit=1`,
+        }pgbouncer=true&connection_limit=1&statement_timeout=30000`,
       },
     },
   });

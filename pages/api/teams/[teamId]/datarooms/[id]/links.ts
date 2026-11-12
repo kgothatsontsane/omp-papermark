@@ -63,6 +63,11 @@ export default async function handle(
             orderBy: {
               viewedAt: "desc",
             },
+            take: 1,
+            select: {
+              id: true,
+              viewedAt: true,
+            },
           },
           customFields: true,
           _count: {
@@ -72,48 +77,63 @@ export default async function handle(
       });
 
       let extendedLinks: LinkWithViews[] = links as LinkWithViews[];
-      // Decrypt the password for each link
       if (extendedLinks && extendedLinks.length > 0) {
-        extendedLinks = await Promise.all(
-          extendedLinks.map(async (link) => {
-            // Remove password from response - client does not need it
-            if (link.password !== null) {
-              link.password = null;
-            }
-            if (link.enableUpload && link.uploadFolderId !== null) {
-              const folder = await prisma.dataroomFolder.findUnique({
-                where: {
-                  id: link.uploadFolderId,
-                },
+        for (const link of extendedLinks) {
+          if (link.password !== null) {
+            link.password = null;
+          }
+        }
+        const folderIds = Array.from(
+          new Set(
+            extendedLinks
+              .filter((link) => link.enableUpload && link.uploadFolderId !== null)
+              .map((link) => link.uploadFolderId as string),
+          ),
+        );
+        const folders =
+          folderIds.length > 0
+            ? await prisma.dataroomFolder.findMany({
+                where: { id: { in: folderIds } },
+                select: { id: true, name: true },
+              })
+            : [];
+        const folderMap = new Map(folders.map((folder) => [folder.id, folder.name]));
+
+        const linkIds = extendedLinks.map((link) => link.id);
+        const tagItems =
+          linkIds.length > 0
+            ? await prisma.tagItem.findMany({
+                where: { linkId: { in: linkIds }, itemType: "LINK_TAG" },
                 select: {
-                  name: true,
-                },
-              });
-              link.uploadFolderName = folder?.name;
-            }
-            const tags = await prisma.tag.findMany({
-              where: {
-                items: {
-                  some: {
-                    linkId: link.id,
-                    itemType: "LINK_TAG",
+                  linkId: true,
+                  tag: {
+                    select: {
+                      id: true,
+                      name: true,
+                      color: true,
+                      description: true,
+                    },
                   },
                 },
-              },
-              select: {
-                id: true,
-                name: true,
-                color: true,
-                description: true,
-              },
-            });
+              })
+            : [];
+        const tagsByLink = new Map<string, typeof tagItems[number]["tag"][]>();
+        for (const item of tagItems) {
+          if (!item.linkId) continue;
+          const arr = tagsByLink.get(item.linkId) ?? [];
+          arr.push(item.tag);
+          tagsByLink.set(item.linkId, arr);
+        }
 
-            return {
-              ...link,
-              tags,
-            };
-          }),
-        );
+        extendedLinks = extendedLinks.map((link) => {
+          if (link.enableUpload && link.uploadFolderId !== null) {
+            link.uploadFolderName = folderMap.get(link.uploadFolderId);
+          }
+          return {
+            ...link,
+            tags: tagsByLink.get(link.id) ?? [],
+          };
+        });
       }
 
       // console.log("links", links);
