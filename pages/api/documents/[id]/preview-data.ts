@@ -3,6 +3,7 @@ import { NextApiRequest, NextApiResponse } from "next";
 import { getServerSession } from "next-auth/next";
 
 import { getFile } from "@/lib/files/get-file";
+import { parseSheet } from "@/lib/sheet";
 import prisma from "@/lib/prisma";
 import { CustomUser } from "@/lib/types";
 import { log } from "@/lib/utils";
@@ -108,11 +109,19 @@ export default async function handle(
       });
       returnData.numPages = 1;
     } else if (primaryVersion.type === "sheet") {
-      // Excel/CSV files - preview not supported
-      return res.status(400).json({
-        message:
-          "Sheet preview not available. Please preview via a shared link.",
+      // Excel/CSV files - parse into tabular data for preview
+      const fileUrl = await getFile({
+        data: primaryVersion.file,
+        type: primaryVersion.storageType,
       });
+      const parsed = await parseSheet({ fileUrl });
+      returnData.sheetData = parsed.map((sheet) => ({
+        sheetName: sheet.sheetName,
+        columnData: sheet.columnData,
+        rowData: sheet.rowData.slice(0, 200),
+      }));
+      returnData.file = fileUrl;
+      returnData.numPages = 1;
     } else if (primaryVersion.type === "notion") {
       // Notion documents - preview not supported
       return res.status(400).json({

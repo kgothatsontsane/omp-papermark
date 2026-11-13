@@ -2,6 +2,7 @@ import { DocumentPreviewData } from "@/lib/types/document-preview";
 
 import { PreviewImageViewer } from "./preview-image-viewer";
 import { PreviewPagesViewer } from "./preview-pages-viewer";
+import { PreviewSheetViewer } from "./preview-sheet-viewer";
 
 interface PreviewViewerProps {
   documentData: DocumentPreviewData;
@@ -26,15 +27,7 @@ export function PreviewViewer({ documentData, onClose }: PreviewViewerProps) {
 
     // Excel/CSV files
     if (documentData.fileType === "sheet" && documentData.sheetData) {
-      return (
-        <div className="flex h-full w-full items-center justify-center">
-          <div className="text-center">
-            <p className="text-gray-400">
-              Sheet preview coming soon. Please preview via a shared link.
-            </p>
-          </div>
-        </div>
-      );
+      return <PreviewSheetViewer documentData={documentData} onClose={onClose} />;
     }
 
     // Notion documents (not fully supported yet)
