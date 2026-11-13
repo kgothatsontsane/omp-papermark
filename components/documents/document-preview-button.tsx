@@ -44,7 +44,10 @@ export function DocumentPreviewButton({
     // Support image documents
     if (primaryVersion.type === "image") return true;
 
-    // Don't support sheets, notion, videos, etc.
+    // Support sheet documents (xlsx/csv)
+    if (primaryVersion.type === "sheet") return true;
+
+    // Don't support notion, videos, etc.
     return false;
   };
 
