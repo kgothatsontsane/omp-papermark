@@ -8,6 +8,7 @@ import { Prisma } from "@prisma/client";
 import { isSelfHostedMode } from "@/lib/self-hosted";
 import { getInternalExclusion } from "@/lib/api/internal-exclusion";
 import prisma from "@/lib/prisma";
+import { withStatementTimeout } from "@/lib/db/with-timeout";
 import {
   getTotalDocumentDuration,
   getTotalLinkDuration,
@@ -183,19 +184,21 @@ export default async function handler(
       case "overview": {
         const [viewCounts, graphData] = await Promise.all([
           // Use database aggregation instead of loading all rows
-          prisma.view.groupBy({
-            by: ["linkId", "documentId", "viewerId"],
-            where: {
-              teamId,
-              viewedAt: intervalFilter,
-              isArchived: false,
-              viewType: "DOCUMENT_VIEW",
-              viewerEmail: { notIn: excludedEmails },
-            },
-            _count: { _all: true },
-            orderBy: { linkId: "asc" },
-            take: 1000,
-          }),
+          withStatementTimeout(30000, async (tx) =>
+            tx.view.groupBy({
+              by: ["linkId", "documentId", "viewerId"],
+              where: {
+                teamId,
+                viewedAt: intervalFilter,
+                isArchived: false,
+                viewType: "DOCUMENT_VIEW",
+                viewerEmail: { notIn: excludedEmails },
+              },
+              _count: { _all: true },
+              orderBy: { linkId: "asc" },
+              take: 1000,
+            }),
+          ),
           // Get views data for graph grouped by day
           interval === "24h"
             ? prisma.$queryRaw`
@@ -473,39 +476,41 @@ export default async function handler(
       }
 
       case "visitors": {
-        const viewers = await prisma.viewer.findMany({
-          where: {
-            teamId,
-            views: {
-              some: {
-                viewedAt: intervalFilter,
-                isArchived: false,
-                viewType: "DOCUMENT_VIEW",
-                viewerEmail: { notIn: excludedEmails },
+        const viewers = await withStatementTimeout(30000, async (tx) =>
+          tx.viewer.findMany({
+            where: {
+              teamId,
+              views: {
+                some: {
+                  viewedAt: intervalFilter,
+                  isArchived: false,
+                  viewType: "DOCUMENT_VIEW",
+                  viewerEmail: { notIn: excludedEmails },
+                },
               },
             },
-          },
-          include: {
-            views: {
-              select: {
-                id: true,
-                documentId: true,
-                viewedAt: true,
+            include: {
+              views: {
+                select: {
+                  id: true,
+                  documentId: true,
+                  viewedAt: true,
+                },
+                orderBy: {
+                  viewedAt: "desc",
+                },
+                where: {
+                  viewType: "DOCUMENT_VIEW",
+                  viewedAt: intervalFilter,
+                  isArchived: false,
+                  viewerEmail: { notIn: excludedEmails },
+                },
+                take: 5,
               },
-              orderBy: {
-                viewedAt: "desc",
-              },
-              where: {
-                viewType: "DOCUMENT_VIEW",
-                viewedAt: intervalFilter,
-                isArchived: false,
-                viewerEmail: { notIn: excludedEmails },
-              },
-              take: 5,
             },
-          },
-          take: 20,
-        });
+            take: 20,
+          }),
+        );
 
         // Transform the data in batches of 5 to limit concurrent Tinybird queries
         const transformedVisitors = await mapInBatches(viewers, 5, async (viewer) => {
@@ -548,44 +553,46 @@ export default async function handler(
       }
 
       case "views": {
-        const views = await prisma.view.findMany({
-          where: {
-            teamId,
-            viewedAt: intervalFilter,
-            isArchived: false,
-            viewType: "DOCUMENT_VIEW",
-            viewerEmail: { notIn: excludedEmails },
-            linkId: { notIn: excludedLinkIds },
-          },
-          include: {
-            document: {
-              select: {
-                id: true,
-                name: true,
-                versions: {
-                  orderBy: {
-                    createdAt: "desc",
-                  },
-                  take: 1,
-                  select: {
-                    createdAt: true,
-                    numPages: true,
+        const views = await withStatementTimeout(30000, async (tx) =>
+          tx.view.findMany({
+            where: {
+              teamId,
+              viewedAt: intervalFilter,
+              isArchived: false,
+              viewType: "DOCUMENT_VIEW",
+              viewerEmail: { notIn: excludedEmails },
+              linkId: { notIn: excludedLinkIds },
+            },
+            include: {
+              document: {
+                select: {
+                  id: true,
+                  name: true,
+                  versions: {
+                    orderBy: {
+                      createdAt: "desc",
+                    },
+                    take: 1,
+                    select: {
+                      createdAt: true,
+                      numPages: true,
+                    },
                   },
                 },
               },
-            },
-            link: {
-              select: {
-                id: true,
-                name: true,
+              link: {
+                select: {
+                  id: true,
+                  name: true,
+                },
               },
             },
-          },
-          orderBy: {
-            viewedAt: "desc",
-          },
-          take: 20,
-        });
+            orderBy: {
+              viewedAt: "desc",
+            },
+            take: 20,
+          }),
+        );
 
         // Transform the data in batches of 5 to limit concurrent Tinybird queries
         const transformedViews = await mapInBatches(views, 5, async (view) => {

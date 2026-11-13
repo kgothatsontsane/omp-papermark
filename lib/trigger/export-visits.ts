@@ -6,6 +6,7 @@ import { getTeamS3ClientAndConfig } from "@/lib/files/aws-client";
 import { isSelfHostedMode } from "@/lib/self-hosted";
 import { sendExportReadyEmail } from "@/lib/emails/send-export-ready-email";
 import prisma from "@/lib/prisma";
+import { withStatementTimeout } from "@/lib/db/with-timeout";
 import { jobStore } from "@/lib/redis-job-store";
 import {
   getViewPageDuration,
@@ -225,8 +226,9 @@ async function exportDocumentVisits(
   const documentViewsAll: any[] = [];
   let docCursor: string | undefined;
   while (true) {
-    const batch = await prisma.view.findMany({
-      where: { documentId: docId },
+    const batch = await withStatementTimeout(30000, async (tx) =>
+      tx.view.findMany({
+        where: { documentId: docId },
       select: {
         id: true,
         viewedAt: true,
@@ -244,7 +246,8 @@ async function exportDocumentVisits(
       orderBy: { id: "asc" },
       take: 500,
       ...(docCursor ? { cursor: { id: docCursor }, skip: 1 } : {}),
-    });
+      }),
+    );
     documentViewsAll.push(...batch);
     if (batch.length < 500) break;
     docCursor = batch[batch.length - 1].id;
@@ -264,12 +267,14 @@ async function exportDocumentVisits(
   );
   const docAgreements =
     docAgreementIds.length > 0
-      ? await prisma.agreement.findMany({
-          where: { id: { in: docAgreementIds } },
-          select: { id: true, name: true, content: true },
-        })
+      ? await withStatementTimeout(30000, async (tx) =>
+          tx.agreement.findMany({
+            where: { id: { in: docAgreementIds } },
+            select: { id: true, name: true, content: true },
+          }),
+        )
       : [];
-  const agreementMap = new Map(docAgreements.map((a) => [a.id, a]));
+  const agreementMap: Map<string, any> = new Map(docAgreements.map((a: any) => [a.id, a]));
 
   if (!views || views.length === 0) {
     throw new Error("Document has no views");
@@ -548,11 +553,12 @@ async function exportDataroomVisits(
   const dataroomViewsAll: any[] = [];
   let drCursor: string | undefined;
   while (true) {
-    const batch = await prisma.view.findMany({
-      where: {
-        dataroomId: dataroomId,
-        ...(groupId && { groupId }),
-      },
+    const batch = await withStatementTimeout(30000, async (tx) =>
+      tx.view.findMany({
+        where: {
+          dataroomId: dataroomId,
+          ...(groupId && { groupId }),
+        },
       select: {
         id: true,
         viewedAt: true,
@@ -572,7 +578,8 @@ async function exportDataroomVisits(
       orderBy: { id: "asc" },
       take: 500,
       ...(drCursor ? { cursor: { id: drCursor }, skip: 1 } : {}),
-    });
+      }),
+    );
     dataroomViewsAll.push(...batch);
     if (batch.length < 500) break;
     drCursor = batch[batch.length - 1].id;
@@ -600,12 +607,14 @@ async function exportDataroomVisits(
   );
   const drAgreements =
     drAgreementIds.length > 0
-      ? await prisma.agreement.findMany({
-          where: { id: { in: drAgreementIds } },
-          select: { id: true, name: true, content: true },
-        })
+      ? await withStatementTimeout(30000, async (tx) =>
+          tx.agreement.findMany({
+            where: { id: { in: drAgreementIds } },
+            select: { id: true, name: true, content: true },
+          }),
+        )
       : [];
-  const agreementMap = new Map(drAgreements.map((a) => [a.id, a]));
+  const agreementMap: Map<string, any> = new Map(drAgreements.map((a: any) => [a.id, a]));
 
   if (!views || views.length === 0) {
     throw new Error("Dataroom has no views");

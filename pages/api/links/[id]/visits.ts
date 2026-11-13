@@ -5,6 +5,7 @@ import { getServerSession } from "next-auth/next";
 import { LIMITS } from "@/lib/constants";
 import { errorhandler } from "@/lib/errorHandler";
 import prisma from "@/lib/prisma";
+import { withStatementTimeout } from "@/lib/db/with-timeout";
 import { isSelfHostedMode } from "@/lib/self-hosted";
 import { getDocumentWithTeamAndUser } from "@/lib/team/helper";
 import { getViewPageDuration } from "@/lib/tinybird";
@@ -94,29 +95,31 @@ export default async function handle(
       );
       const limit = Math.min(requestedLimit, 200);
 
-      const views = await prisma.view.findMany({
-        where: {
-          linkId: id,
-        },
-        orderBy: {
-          viewedAt: "desc",
-        },
-        select: {
-          id: true,
-          viewerEmail: true,
-          viewerName: true,
-          viewedAt: true,
-          downloadedAt: true,
-          verified: true,
-          linkId: true,
-          documentId: true,
-          isArchived: true,
-          dataroomId: true,
-        },
-        ...(isFreePlan
-          ? { take: LIMITS.views ?? 100 }
-          : { skip: (page - 1) * limit, take: limit }),
-      });
+      const views = await withStatementTimeout(30000, async (tx) =>
+        tx.view.findMany({
+          where: {
+            linkId: id,
+          },
+          orderBy: {
+            viewedAt: "desc",
+          },
+          select: {
+            id: true,
+            viewerEmail: true,
+            viewerName: true,
+            viewedAt: true,
+            downloadedAt: true,
+            verified: true,
+            linkId: true,
+            documentId: true,
+            isArchived: true,
+            dataroomId: true,
+          },
+          ...(isFreePlan
+            ? { take: LIMITS.views ?? 100 }
+            : { skip: (page - 1) * limit, take: limit }),
+        }),
+      );
 
       const limitedViews = views;
 
