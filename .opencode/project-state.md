@@ -407,6 +407,13 @@ Files in `lib/tinybird/endpoints/`.
   pooling. Free tier has no pooler endpoint, so connection_limit=1 + the global
   Prisma client + the shipped caps/N+1 fixes are the real levers; upgrading
   Aiven one tier (adds pooler + RAM) is the actual fix if baseline stays high.
+- SET LOCAL statement_timeout shipped (PRs #100/#101, deploy 3hhrqy09w):
+  new lib/db/with-timeout.ts (withStatementTimeout runs fn inside prisma.$transaction
+  after SET LOCAL statement_timeout). Wired into export-visits (2 batch loops +
+  agreement fetches), visits.ts, stats.ts, analytics groupBy + viewer/views
+  findMany, weekly-digest scans. On timeout Prisma throws a catchable error
+  (P2010/P2024) instead of hanging until OOM. Complements Aiven console
+  pg.idle_in_transaction_session_timeout=60000 (user-set).
 - Reusable permission groups (2026-11-01, PRs #84/#85): PermissionGroupsManager on
   dataroom permissions page (create with name + matrix, rename inline, delete);
   multi-select checkbox column in links table + bulk "Apply permission group"
