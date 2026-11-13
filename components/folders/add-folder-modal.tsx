@@ -60,8 +60,8 @@ export function AddFolderModal({
       : `/documents/tree/${currentFolderPath ? currentFolderPath?.join("/") : ""}${"/" + slugify(folderName.trim())}`;
 
   const addFolderSchema = z.object({
-    name: z.string().min(3, {
-      message: "Please provide a folder name with at least 3 characters.",
+    name: z.string().min(2, {
+      message: "Please provide a folder name with at least 2 characters.",
     }),
   });
 
