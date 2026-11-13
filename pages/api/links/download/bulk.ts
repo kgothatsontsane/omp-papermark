@@ -305,105 +305,73 @@ export default async function handle(
         return res.status(404).json({ error: "No files to download" });
       }
 
-      // Get team-specific storage configuration
-      const teamId = view.dataroom!.teamId;
-      const [client, storageConfig] = await Promise.all([
-        getLambdaClientForTeam(teamId),
-        getTeamStorageConfigById(teamId),
-      ]);
-
-      const params = {
-        FunctionName: storageConfig.lambdaFunctionName,
-        InvocationType: InvocationType.RequestResponse,
-        Payload: JSON.stringify({
-          sourceBucket: storageConfig.bucket,
-          fileKeys: fileKeys,
-          folderStructure: folderStructure,
-          watermarkConfig: view.link.enableWatermark
-            ? {
-                enabled: true,
-                config: view.link.watermarkConfig,
-                viewerData: {
-                  email: view.viewerEmail,
-                  date: new Date(view.viewedAt).toLocaleDateString(),
-                  time: new Date(view.viewedAt).toLocaleTimeString(),
-                  link: view.link.name,
-                  ipAddress: getIpAddress(req.headers),
-                },
-              }
-            : { enabled: false },
-        }),
-      };
-
-      try {
-        const command = new InvokeCommand(params);
-        const response = await client.send(command);
-
-        if (response.Payload) {
-          const decodedPayload = new TextDecoder().decode(response.Payload);
-
-          const payload = JSON.parse(decodedPayload);
-          const { downloadUrl } = JSON.parse(payload.body);
-
-          const meta = metaFromApiRequest(req);
-          if (!meta.isBot) {
-            const fileCount = Math.max(fileKeys.length, 1);
-            void ingestSafely(
-              recordDownloadEvent({
-                event_id: nanoid(),
-                timestamp: Date.now(),
-                link_id: linkId,
-                view_id: viewId,
-                dataroom_id: view.dataroom!.id,
-                download_type: "bulk",
-                file_count: fileCount,
-                total_bytes: 0,
-                country: meta.country,
-                city: meta.city,
-                region: meta.region,
-                device: meta.device,
-                browser: meta.browser,
-                os: meta.os,
-                ua: meta.ua,
-                ip_address: meta.ip_address,
-              }),
-              "downloadEvent bulk",
-            );
-            const hour = Number(
-              new Intl.DateTimeFormat("en", {
-                timeZone: "Africa/Johannesburg",
-                hour: "numeric",
-                hour12: false,
-              }).format(new Date()),
-            );
-            if (hour >= 22 || hour < 6) {
-              void ingestSafely(
-                recordSecurityFlag({
-                  event_id: nanoid(),
-                  timestamp: Date.now(),
-                  link_id: linkId,
-                  view_id: viewId,
-                  flag_type: "off_hours_bulk_download",
-                  severity: "medium",
-                  detail: `off-hours bulk download: ${fileCount} files`,
-                  ip_address: meta.ip_address,
-                }),
-                "securityFlag off_hours_bulk_download",
-              );
-            }
-          }
-
-          res.status(200).json({ downloadUrl });
-        } else {
-          throw new Error("Payload is undefined or empty");
+      // Build zip entries from the folder structure (stream from R2, no Lambda)
+      const zipEntries: { key: string; zipPath: string }[] = [];
+      for (const [folderPath, folder] of Object.entries(folderStructure)) {
+        for (const file of (folder as any).files || []) {
+          if (!file.key || !file.name) continue;
+          const cleanPath = (folderPath === "/" ? "" : folderPath).replace(/^\/+/, "");
+          const zipPath = cleanPath ? `${cleanPath}/${file.name}` : file.name;
+          zipEntries.push({ key: file.key, zipPath });
         }
-      } catch (error) {
-        console.error("Error invoking Lambda:", error);
-        res.status(500).json({
-          error: "Failed to generate download link",
-          details: (error as Error).message,
-        });
       }
+
+      if (zipEntries.length === 0) {
+        return res.status(404).json({ error: "No files to download" });
+      }
+
+      const meta = metaFromApiRequest(req);
+      if (!meta.isBot) {
+        const fileCount = Math.max(zipEntries.length, 1);
+        void ingestSafely(
+          recordDownloadEvent({
+            event_id: nanoid(),
+            timestamp: Date.now(),
+            link_id: linkId,
+            view_id: viewId,
+            dataroom_id: view.dataroom!.id,
+            download_type: "bulk",
+            file_count: fileCount,
+            total_bytes: 0,
+            country: meta.country,
+            city: meta.city,
+            region: meta.region,
+            device: meta.device,
+            browser: meta.browser,
+            os: meta.os,
+            ua: meta.ua,
+            ip_address: meta.ip_address,
+          }),
+          "downloadEvent bulk",
+        );
+        const hour = Number(
+          new Intl.DateTimeFormat("en", {
+            timeZone: "Africa/Johannesburg",
+            hour: "numeric",
+            hour12: false,
+          }).format(new Date()),
+        );
+        if (hour >= 22 || hour < 6) {
+          void ingestSafely(
+            recordSecurityFlag({
+              event_id: nanoid(),
+              timestamp: Date.now(),
+              link_id: linkId,
+              view_id: viewId,
+              flag_type: "off_hours_bulk_download",
+              severity: "medium",
+              detail: `off-hours bulk download: ${zipEntries.length} files`,
+              ip_address: meta.ip_address,
+            }),
+            "securityFlag off_hours_bulk_download",
+          );
+        }
+      }
+
+      const { streamZipToResponse } = await import("@/lib/files/stream-zip");
+      await streamZipToResponse(view.dataroom!.teamId, zipEntries, res);
+      return;
+
     } catch (error) {
       return res.status(500).json({
         message: "Internal Server Error",

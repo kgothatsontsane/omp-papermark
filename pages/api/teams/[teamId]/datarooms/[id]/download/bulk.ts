@@ -177,41 +177,25 @@ export default async function handler(
         }
       });
 
-      // Get team-specific Lambda client and storage config
-      const client = await getLambdaClientForTeam(teamId);
-      const storageConfig = await getTeamStorageConfigById(teamId);
-
-      const params = {
-        FunctionName: storageConfig.lambdaFunctionName,
-        InvocationType: InvocationType.RequestResponse,
-        Payload: JSON.stringify({
-          sourceBucket: storageConfig.bucket,
-          fileKeys: fileKeys,
-          folderStructure: folderStructure,
-        }),
-      };
-
-      try {
-        const command = new InvokeCommand(params);
-        const response = await client.send(command);
-
-        if (response.Payload) {
-          const decodedPayload = new TextDecoder().decode(response.Payload);
-
-          const payload = JSON.parse(decodedPayload);
-          const { downloadUrl } = JSON.parse(payload.body);
-
-          res.status(200).json({ downloadUrl });
-        } else {
-          throw new Error("Payload is undefined or empty");
+      // Build zip entries from the folder structure (stream from R2, no Lambda)
+      const zipEntries: { key: string; zipPath: string }[] = [];
+      for (const [folderPath, folder] of Object.entries(folderStructure)) {
+        for (const file of (folder as any).files || []) {
+          if (!file.key || !file.name) continue;
+          const cleanPath = (folderPath === "/" ? "" : folderPath).replace(/^\/+/, "");
+          const zipPath = cleanPath ? `${cleanPath}/${file.name}` : file.name;
+          zipEntries.push({ key: file.key, zipPath });
         }
-      } catch (error) {
-        console.error("Error invoking Lambda:", error);
-        res.status(500).json({
-          error: "Failed to generate download link",
-          details: (error as Error).message,
-        });
       }
+
+      if (zipEntries.length === 0) {
+        return res.status(404).json({ error: "No files to download" });
+      }
+
+      const { streamZipToResponse } = await import("@/lib/files/stream-zip");
+      await streamZipToResponse(teamId, zipEntries, res);
+      return;
+
     } catch (error) {
       return res.status(500).json({
         message: "Internal Server Error",
