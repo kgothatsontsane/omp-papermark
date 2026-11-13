@@ -264,10 +264,8 @@ export default async function handle(
         return;
       }
 
-      // For non-watermarked PDFs, we need to buffer and set proper headers
-      // - contentType is application/pdf
-      // - contentType is null and type is pdf
-      // - contentType starts with image/
+      // For non-watermarked PDFs/images, buffer and set proper headers
+      // (direct URL via iframe was unreliable for triggering downloads)
       if (
         downloadDocuments[0].document!.versions[0].contentType ===
           "application/pdf" ||
@@ -276,21 +274,27 @@ export default async function handle(
         downloadDocuments[0].document!.versions[0].contentType?.startsWith(
           "image/",
         )
-       ) {
-         const contentType =
-           downloadDocuments[0].document!.versions[0].contentType ||
-           (downloadDocuments[0].document!.versions[0].type === "pdf"
-             ? "application/pdf"
-             : "application/octet-stream");
-         const fileName = downloadDocuments[0].document!.name;
-
-         return res.status(200).json({
-           downloadUrl,
-           fileName,
-           contentType,
-           isDirectDownload: true,
-         });
-       }
+      ) {
+        const response = await fetch(downloadUrl);
+        if (!response.ok) {
+          return res.status(500).json({ error: "Error downloading file" });
+        }
+        const pdfBuffer = await response.arrayBuffer();
+        const contentType =
+          downloadDocuments[0].document!.versions[0].contentType ||
+          (downloadDocuments[0].document!.versions[0].type === "pdf"
+            ? "application/pdf"
+            : "application/octet-stream");
+        const fileName = downloadDocuments[0].document!.name;
+        res.setHeader("Content-Type", contentType);
+        res.setHeader(
+          "Content-Disposition",
+          `attachment; filename="${encodeURIComponent(fileName)}"`,
+        );
+        res.setHeader("Content-Length", Buffer.from(pdfBuffer).length);
+        res.setHeader("Cache-Control", "no-cache");
+        return res.send(Buffer.from(pdfBuffer));
+      }
 
       const headResponse = await fetch(downloadUrl, { method: "HEAD" });
       const contentType =
