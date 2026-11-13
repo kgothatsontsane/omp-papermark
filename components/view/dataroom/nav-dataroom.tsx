@@ -70,17 +70,24 @@ export default function DataroomNav({
         {
           loading: "Downloading dataroom...",
           success: async (response) => {
-            const { downloadUrl } = await response.json();
+            if (!response.ok) {
+              throw new Error("Failed to fetch download URL");
+            }
+
+            const blob = await response.blob();
+            const url = window.URL.createObjectURL(blob);
 
             const link = document.createElement("a");
-            link.href = downloadUrl;
+            link.href = url;
+            link.download = "dataroom.zip";
             link.rel = "noopener noreferrer";
             document.body.appendChild(link);
             link.click();
 
             setTimeout(() => {
+              window.URL.revokeObjectURL(url);
               document.body.removeChild(link);
-            }, 100);
+            }, 1000);
 
             return "Dataroom downloaded successfully.";
           },

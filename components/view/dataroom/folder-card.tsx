@@ -61,25 +61,28 @@ export default function FolderCard({
       }),
       {
         loading: "Downloading dataroom folder...",
-        success: async (response) => {
-          if (!response.ok) {
-            throw new Error("Failed to fetch download URL");
-          }
+          success: async (response) => {
+            if (!response.ok) {
+              throw new Error("Failed to fetch download URL");
+            }
 
-          const { downloadUrl } = await response.json();
+            const blob = await response.blob();
+            const url = window.URL.createObjectURL(blob);
 
-          const link = document.createElement("a");
-          link.href = downloadUrl;
-          link.rel = "noopener noreferrer";
-          document.body.appendChild(link);
-          link.click();
+            const link = document.createElement("a");
+            link.href = url;
+            link.download = `${folder.name || "folder"}.zip`;
+            link.rel = "noopener noreferrer";
+            document.body.appendChild(link);
+            link.click();
 
-          setTimeout(() => {
-            document.body.removeChild(link);
-          }, 100);
+            setTimeout(() => {
+              window.URL.revokeObjectURL(url);
+              document.body.removeChild(link);
+            }, 1000);
 
-          return `${folder.name} downloaded successfully.`;
-        },
+            return `${folder.name} downloaded successfully.`;
+          },
         error: (error) => {
           console.error("Error downloading folder:", error);
           return error.message || "An error occurred while downloading file.";

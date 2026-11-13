@@ -19,30 +19,44 @@ export async function streamZipToResponse(
   res.setHeader("Content-Disposition", 'attachment; filename="download.zip"');
   res.setHeader("Cache-Control", "no-cache");
 
+  const done = new Promise<void>((resolve, reject) => {
+    archive.on("error", (err: Error) => {
+      log({ message: `streamZip error: ${err}`, type: "error" });
+      reject(err);
+    });
+    res.on("finish", () => resolve());
+    res.on("error", (err: Error) => reject(err));
+    res.on("close", () => resolve());
+  });
+
   archive.pipe(res);
 
-  archive.on("error", (err: Error) => {
-    log({ message: `streamZip error: ${err}`, type: "error" });
+  try {
+    for (const entry of entries) {
+      if (!entry.key || !entry.zipPath) continue;
+      const cmd = new GetObjectCommand({
+        Bucket: config.bucket,
+        Key: entry.key,
+      });
+      const out = await client.send(cmd);
+      const body = out.Body as any;
+      if (!body) {
+        log({
+          message: `streamZip empty body for ${entry.key}`,
+          type: "error",
+        });
+        continue;
+      }
+      archive.append(body, { name: entry.zipPath });
+    }
+    archive.finalize();
+    await done;
+  } catch (err) {
     try {
-      res.destroy();
+      archive.abort();
     } catch {
       /* noop */
     }
-  });
-
-  for (const entry of entries) {
-    if (!entry.key || !entry.zipPath) continue;
-    try {
-      const cmd = new GetObjectCommand({ Bucket: config.bucket, Key: entry.key });
-      const out = await client.send(cmd);
-      const body = out.Body as any;
-      archive.append(body, { name: entry.zipPath });
-    } catch (err) {
-      log({ message: `streamZip file fetch failed (${entry.key}): ${err}`, type: "error" });
-      archive.abort();
-      return;
-    }
+    throw err;
   }
-
-  await archive.finalize();
 }
