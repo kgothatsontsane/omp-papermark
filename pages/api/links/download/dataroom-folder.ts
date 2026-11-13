@@ -298,46 +298,24 @@ export default async function handler(
       };
     }
 
-    // Get team-specific storage configuration
-    const [client, storageConfig] = await Promise.all([
-      getLambdaClientForTeam(view.link.teamId!),
-      getTeamStorageConfigById(view.link.teamId!),
-    ]);
+    // Build zip entries from the folder structure (no Lambda — stream from R2)
+    const zipEntries: { key: string; zipPath: string }[] = [];
+    for (const [folderPath, folder] of Object.entries(folderStructure)) {
+      for (const file of (folder as any).files || []) {
+        if (!file.key || !file.name) continue;
+        const cleanPath = (folderPath === "/" ? "" : folderPath).replace(/^\/+/, "");
+        const zipPath = cleanPath ? `${cleanPath}/${file.name}` : file.name;
+        zipEntries.push({ key: file.key, zipPath });
+      }
+    }
 
-    const params = {
-      FunctionName: `bulk-download-zip-creator-${process.env.NODE_ENV === "development" ? "dev" : "prod"}`,
-      InvocationType: InvocationType.RequestResponse,
-      Payload: JSON.stringify({
-        sourceBucket: storageConfig.bucket,
-        fileKeys,
-        folderStructure,
-        watermarkConfig: view.link.enableWatermark
-          ? {
-              enabled: true,
-              config: view.link.watermarkConfig,
-              viewerData: {
-                email: view.viewerEmail,
-                date: new Date(view.viewedAt).toLocaleDateString(),
-                time: new Date(view.viewedAt).toLocaleTimeString(),
-                link: view.link.name,
-                ipAddress: getIpAddress(req.headers),
-              },
-            }
-          : { enabled: false },
-      }),
-    };
-
-    const command = new InvokeCommand(params);
-    const response = await client.send(command);
-
-    if (!response.Payload) throw new Error("Lambda returned empty payload");
-
-    const parsed = JSON.parse(new TextDecoder().decode(response.Payload));
-    const { downloadUrl } = JSON.parse(parsed.body);
+    if (zipEntries.length === 0) {
+      return res.status(404).json({ error: "No files to download" });
+    }
 
     const meta = metaFromApiRequest(req);
     if (!meta.isBot) {
-      const fileCount = Math.max(fileKeys.length, 1);
+      const fileCount = Math.max(zipEntries.length, 1);
       void ingestSafely(
         recordDownloadEvent({
           event_id: nanoid(),
@@ -366,7 +344,7 @@ export default async function handler(
           hour12: false,
         }).format(new Date()),
       );
-      if ((hour >= 22 || hour < 6) && fileCount >= 10) {
+      if ((hour >= 22 || hour < 6) && zipEntries.length >= 10) {
         void ingestSafely(
           recordSecurityFlag({
             event_id: nanoid(),
@@ -375,7 +353,7 @@ export default async function handler(
             view_id: viewId,
             flag_type: "off_hours_bulk_download",
             severity: "medium",
-            detail: `off-hours folder download: ${fileCount} files`,
+            detail: `off-hours folder download: ${zipEntries.length} files`,
             ip_address: meta.ip_address,
           }),
           "securityFlag off_hours_bulk_download",
@@ -383,7 +361,8 @@ export default async function handler(
       }
     }
 
-    res.status(200).json({ downloadUrl });
+    const { streamZipToResponse } = await import("@/lib/files/stream-zip");
+    await streamZipToResponse(view.link.teamId!, zipEntries, res);
   } catch (error) {
     console.error("Download error:", error);
     return res.status(500).json({
