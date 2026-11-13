@@ -3,6 +3,7 @@ import Bottleneck from "bottleneck";
 
 import WeeklyDigest from "@/components/emails/weekly-digest";
 import prisma from "@/lib/prisma";
+import { withStatementTimeout } from "@/lib/db/with-timeout";
 import { sendEmail } from "@/lib/resend";
 import { getSecurityFlags, getViewPageDuration } from "@/lib/tinybird";
 
@@ -24,11 +25,13 @@ export const weeklyDigest = schedules.task({
     const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
 
     try {
-      const activeTeams = await prisma.view.groupBy({
-        by: ["teamId"],
-        where: { viewedAt: { gte: weekAgo }, teamId: { not: null } },
-        _count: { _all: true },
-      });
+      const activeTeams = await withStatementTimeout(30000, async (tx) =>
+        tx.view.groupBy({
+          by: ["teamId"],
+          where: { viewedAt: { gte: weekAgo }, teamId: { not: null } },
+          _count: { _all: true },
+        }),
+      );
 
       logger.info(`Found ${activeTeams.length} teams with weekly activity`);
 
@@ -64,28 +67,32 @@ async function sendTeamDigest(teamId: string, weekAgo: Date) {
 
   const [viewerGroups, docGroups, links, unsignedAgreements, admins] =
     await Promise.all([
-      prisma.view.groupBy({
-        by: ["viewerEmail"],
-        where: {
-          teamId,
-          viewedAt: { gte: weekAgo },
-          viewerEmail: { not: null },
-        },
-        _count: { viewerEmail: true },
-        orderBy: { _count: { viewerEmail: "desc" } },
-        take: 5,
-      }),
-      prisma.view.groupBy({
-        by: ["documentId"],
-        where: {
-          teamId,
-          viewedAt: { gte: weekAgo },
-          documentId: { not: null },
-        },
-        _count: { _all: true },
-        orderBy: { _count: { documentId: "desc" } },
-        take: 20,
-      }),
+      withStatementTimeout(30000, async (tx) =>
+        tx.view.groupBy({
+          by: ["viewerEmail"],
+          where: {
+            teamId,
+            viewedAt: { gte: weekAgo },
+            viewerEmail: { not: null },
+          },
+          _count: { viewerEmail: true },
+          orderBy: { _count: { viewerEmail: "desc" } },
+          take: 5,
+        }),
+      ),
+      withStatementTimeout(30000, async (tx) =>
+        tx.view.groupBy({
+          by: ["documentId"],
+          where: {
+            teamId,
+            viewedAt: { gte: weekAgo },
+            documentId: { not: null },
+          },
+          _count: { _all: true },
+          orderBy: { _count: { documentId: "desc" } },
+          take: 20,
+        }),
+      ),
       prisma.link.findMany({
         where: { teamId },
         select: { id: true },
@@ -114,8 +121,8 @@ async function sendTeamDigest(teamId: string, weekAgo: Date) {
     ]);
 
   const topViewers = viewerGroups
-    .filter((g) => g.viewerEmail)
-    .map((g) => ({
+    .filter((g: any) => g.viewerEmail)
+     .map((g: any) => ({
       email: g.viewerEmail as string,
       views: g._count.viewerEmail,
     }));
@@ -130,18 +137,20 @@ async function sendTeamDigest(teamId: string, weekAgo: Date) {
       });
       const numPages = doc?.numPages ?? 0;
       if (!doc || numPages === 0) continue;
-      const sampleViews = await prisma.view.findMany({
-        where: {
-          teamId,
-          documentId: group.documentId,
-          viewedAt: { gte: weekAgo },
-        },
-        select: { id: true },
-        orderBy: { viewedAt: "desc" },
-        take: 5,
-      });
+      const sampleViews = await withStatementTimeout(30000, async (tx) =>
+        tx.view.findMany({
+          where: {
+            teamId,
+            documentId: group.documentId,
+            viewedAt: { gte: weekAgo },
+          },
+          select: { id: true },
+          orderBy: { viewedAt: "desc" },
+          take: 5,
+        }),
+      );
       const completions = await Promise.all(
-        sampleViews.map((v) =>
+        sampleViews.map((v: any) =>
           tinybirdLimiter
             .schedule(() =>
               getViewPageDuration({

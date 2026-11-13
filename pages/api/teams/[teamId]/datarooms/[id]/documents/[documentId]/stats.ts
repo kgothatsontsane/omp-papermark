@@ -6,6 +6,7 @@ import { getServerSession } from "next-auth/next";
 import { errorhandler } from "@/lib/errorHandler";
 import { getInternalExclusion } from "@/lib/api/internal-exclusion";
 import prisma from "@/lib/prisma";
+import { withStatementTimeout } from "@/lib/db/with-timeout";
 import {
   getTotalAvgPageDuration,
   getTotalDocumentDuration,
@@ -117,19 +118,21 @@ export default async function handle(
       }
 
       // Get all views for this document that are specifically from the dataroom
-      const views = await prisma.view.findMany({
-        where: {
-          documentId: documentId,
-          isArchived: false,
-          dataroomId: dataroomId,
-          ...(exclusionEmails.length > 0
-            ? { viewerEmail: { notIn: exclusionEmails } }
-            : {}),
-        },
-        select: {
-          id: true,
-        },
-      });
+      const views = await withStatementTimeout(30000, async (tx) =>
+        tx.view.findMany({
+          where: {
+            documentId: documentId,
+            isArchived: false,
+            dataroomId: dataroomId,
+            ...(exclusionEmails.length > 0
+              ? { viewerEmail: { notIn: exclusionEmails } }
+              : {}),
+          },
+          select: {
+            id: true,
+          },
+        }),
+      );
 
       // if there are no views, return an empty array
       if (!views || views.length === 0) {
@@ -143,21 +146,23 @@ export default async function handle(
         });
       }
 
-      const excludedViews = await prisma.view.findMany({
-        where: {
-          documentId: documentId,
-          OR: [
-            { isArchived: true },
-            { dataroomId: { not: dataroomId } },
-            ...(exclusionEmails.length > 0
-              ? [{ isArchived: false, viewerEmail: { in: exclusionEmails } }]
-              : []),
-          ],
-        },
-        select: {
-          id: true,
-        },
-      });
+      const excludedViews = await withStatementTimeout(30000, async (tx) =>
+        tx.view.findMany({
+          where: {
+            documentId: documentId,
+            OR: [
+              { isArchived: true },
+              { dataroomId: { not: dataroomId } },
+              ...(exclusionEmails.length > 0
+                ? [{ isArchived: false, viewerEmail: { in: exclusionEmails } }]
+                : []),
+            ],
+          },
+          select: {
+            id: true,
+          },
+        }),
+      );
 
       const filteredViews = views;
 
