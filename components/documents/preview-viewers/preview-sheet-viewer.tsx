@@ -1,154 +1,182 @@
-import { useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
-import { Minus, Plus } from "lucide-react";
+const LUCKYSHEET_VERSION = "2.1.13";
+const LUCKYEXCEL_VERSION = "1.0.1";
 
-import { cn } from "@/lib/utils";
-
-function colLetter(i: number): string {
-  let n = i + 1;
-  let s = "";
-  while (n > 0) {
-    const r = (n - 1) % 26;
-    s = String.fromCharCode(65 + r) + s;
-    n = Math.floor((n - 1) / 26);
+declare global {
+  interface Window {
+    luckysheet?: any;
+    LuckyExcel?: any;
   }
-  return s;
 }
+
+function loadScript(src: string): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const existing = document.querySelector<HTMLScriptElement>(
+      `script[src="${src}"]`,
+    );
+    if (existing) {
+      if (existing.dataset.loaded === "true") {
+        resolve();
+      } else {
+        existing.addEventListener("load", () => resolve(), { once: true });
+        existing.addEventListener("error", () => reject(new Error(src)), {
+          once: true,
+        });
+      }
+      return;
+    }
+    const script = document.createElement("script");
+    script.src = src;
+    script.async = true;
+    script.onload = () => {
+      script.dataset.loaded = "true";
+      resolve();
+    };
+    script.onerror = () => reject(new Error(`Failed to load ${src}`));
+    document.body.appendChild(script);
+  });
+}
+
+function loadStyles(): void {
+  const base = `https://cdn.jsdelivr.net/npm/luckysheet@${LUCKYSHEET_VERSION}/dist`;
+  const hrefs = [
+    `${base}/plugins/css/pluginsCss.css`,
+    `${base}/plugins/plugins.css`,
+    `${base}/css/luckysheet.css`,
+    `${base}/assets/iconfont/iconfont.css`,
+  ];
+  for (const href of hrefs) {
+    if (!document.querySelector(`link[href="${href}"]`)) {
+      const link = document.createElement("link");
+      link.rel = "stylesheet";
+      link.href = href;
+      document.head.appendChild(link);
+    }
+  }
+}
+
+let previewInstance = 0;
 
 export function PreviewSheetViewer({
   documentData,
-  onClose,
 }: {
   documentData: any;
   onClose: () => void;
 }) {
-  const sheets = documentData.sheetData ?? [];
-  const [active, setActive] = useState(0);
-  const [zoom, setZoom] = useState(1);
-  const sheet = sheets[active];
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [attempt, setAttempt] = useState(0);
+  const containerId = useRef(`preview-sheet-${++previewInstance}`);
 
-  if (!sheets.length) {
-    return (
-      <div className="flex h-full w-full items-center justify-center text-gray-400">
-        No sheet data available.
-      </div>
-    );
-  }
+  const file: string | undefined = documentData?.file;
+  const fileName: string =
+    documentData?.documentName ?? documentData?.fileName ?? "spreadsheet";
 
-  const cols = sheet.columnData ?? [];
-  const rows = sheet.rowData ?? [];
-  const headerRow = rows[0] ?? {};
-  const dataRows = rows.slice(1);
+  useEffect(() => {
+    let cancelled = false;
+    if (!file) {
+      setError("No file available for preview.");
+      setLoading(false);
+      return;
+    }
+
+    (async () => {
+      try {
+        loadStyles();
+        await loadScript(
+          `https://cdn.jsdelivr.net/npm/luckysheet@${LUCKYSHEET_VERSION}/dist/plugins/js/plugin.js`,
+        );
+        await loadScript(
+          `https://cdn.jsdelivr.net/npm/luckysheet@${LUCKYSHEET_VERSION}/dist/luckysheet.umd.js`,
+        );
+        await loadScript(
+          `https://cdn.jsdelivr.net/npm/luckyexcel@${LUCKYEXCEL_VERSION}/dist/luckyexcel.umd.js`,
+        );
+        if (cancelled || !window.LuckyExcel || !window.luckysheet) return;
+
+        const response = await fetch(file);
+        if (!response.ok) {
+          throw new Error(`Failed to fetch file (${response.status})`);
+        }
+        const buffer = await response.arrayBuffer();
+        if (cancelled) return;
+
+        const xlsxFile = new File(
+          [buffer],
+          fileName.endsWith(".xlsx") ? fileName : `${fileName}.xlsx`,
+          {
+            type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+          },
+        );
+
+        window.LuckyExcel.transformExcelToLucky(xlsxFile, (exportJson: any) => {
+          if (cancelled) return;
+          const sheets = exportJson?.sheets;
+          if (!sheets || sheets.length === 0) {
+            setError(
+              "Could not read this spreadsheet. Download it to view the original file.",
+            );
+            return;
+          }
+
+          window.luckysheet!.create({
+            container: containerId.current,
+            data: sheets,
+            title: exportJson.info?.name ?? fileName,
+            showtoolbar: true,
+            showSheetBar: true,
+            allowEdit: false,
+            enableAddRow: false,
+            addRow: 0,
+            showConfigWindow: false,
+            sheetFormulaBar: false,
+          } as any);
+          setLoading(false);
+        });
+      } catch (e) {
+        if (!cancelled) {
+          setError("Failed to load the spreadsheet preview.");
+        }
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+      try {
+        window.luckysheet?.destroy?.();
+      } catch {
+        // ignore
+      }
+    };
+  }, [file, fileName, attempt]);
+
+  const handleRetry = useCallback(() => {
+    setError(null);
+    setLoading(true);
+    setAttempt((a) => a + 1);
+  }, []);
 
   return (
-    <div className="flex h-full w-full flex-col overflow-hidden">
-      {/* scroll container */}
-      <div className="min-h-0 flex-1 overflow-auto overscroll-contain p-2 [-webkit-overflow-scrolling:touch]">
-        <div style={{ fontSize: `${Math.round(zoom * 100)}%` }}>
-          <table className="border-collapse text-xs text-gray-200">
-            <thead>
-              <tr>
-                <th className="sticky left-0 top-0 z-30 w-10 min-w-[2.5rem] border border-gray-700 bg-gray-900 px-1 text-center text-gray-500">
-                  #
-                </th>
-                {cols.map((col: string, i: number) => (
-                  <th
-                    key={i}
-                    className="sticky top-0 z-20 h-7 min-w-[6rem] max-w-[12rem] truncate border border-gray-700 bg-gray-800 px-2 py-1 text-left font-medium text-gray-300"
-                    title={String(col)}
-                  >
-                    {colLetter(i)}
-                  </th>
-                ))}
-              </tr>
-              <tr>
-                <th className="sticky left-0 top-7 z-30 w-10 min-w-[2.5rem] border border-gray-700 bg-gray-900 px-1 text-center text-gray-500">
-                  1
-                </th>
-                {cols.map((col: string, i: number) => (
-                  <th
-                    key={i}
-                    className="sticky top-7 z-20 min-w-[6rem] max-w-[12rem] truncate border border-gray-700 bg-gray-700 px-2 py-1 text-left font-semibold text-white"
-                    title={String(headerRow[col] ?? "")}
-                  >
-                    {headerRow[col] ?? ""}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {dataRows.map((row: any, ri: number) => (
-                <tr
-                  key={ri}
-                  className={ri % 2 === 0 ? "bg-gray-900" : "bg-gray-900/40"}
-                >
-                  <td className="sticky left-0 z-10 border border-gray-700 bg-gray-900 px-1 text-center text-gray-500">
-                    {ri + 2}
-                  </td>
-                  {cols.map((col: string, ci: number) => (
-                    <td
-                      key={ci}
-                      className="min-w-[6rem] max-w-[12rem] truncate border border-gray-700 px-2 py-1 tabular-nums"
-                      title={String(row[col] ?? "")}
-                    >
-                      {row[col] ?? ""}
-                    </td>
-                  ))}
-                </tr>
-              ))}
-            </tbody>
-          </table>
+    <div className="relative h-full w-full" ref={containerRef}>
+      {loading && !error && (
+        <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center">
+          <p className="text-sm text-gray-400">Loading spreadsheet…</p>
         </div>
-        {rows.length >= 200 && (
-          <p className="mt-2 text-xs text-gray-500">
-            Showing first 200 rows.
-          </p>
-        )}
-      </div>
-      {/* bottom sheet tabs */}
-      <div className="flex items-center gap-1 overflow-x-auto border-t border-gray-800 px-2 py-1 [-webkit-overflow-scrolling:touch]">
-        {sheets.map((s: any, i: number) => (
+      )}
+      {error && (
+        <div className="flex h-full flex-col items-center justify-center gap-3 text-center">
+          <p className="text-sm text-gray-400">{error}</p>
           <button
-            key={i}
-            onClick={() => setActive(i)}
-            className={cn(
-              "whitespace-nowrap rounded px-3 py-1 text-xs",
-              i === active
-                ? "border-b-2 border-blue-500 text-white"
-                : "text-gray-400 hover:bg-gray-800",
-            )}
+            onClick={handleRetry}
+            className="text-sm text-gray-200 underline underline-offset-4"
           >
-            {s.sheetName}
+            Try again
           </button>
-        ))}
-      </div>
-      {/* zoom pill */}
-      <div className="absolute right-3 top-3 z-40 flex items-center gap-1 rounded-full bg-gray-950/90 px-2 py-1 text-white shadow-lg">
-        <button
-          onClick={() => setZoom((z) => Math.max(0.5, +(z - 0.25).toFixed(2)))}
-          className="px-2 text-lg leading-none hover:text-gray-300"
-          aria-label="Zoom out"
-        >
-          −
-        </button>
-        <span className="min-w-[3rem] text-center text-xs">
-          {Math.round(zoom * 100)}%
-        </span>
-        <button
-          onClick={() => setZoom((z) => Math.min(2, +(z + 0.25).toFixed(2)))}
-          className="px-2 text-lg leading-none hover:text-gray-300"
-          aria-label="Zoom in"
-        >
-          +
-        </button>
-        <button
-          onClick={() => setZoom(1)}
-          className="px-2 text-xs leading-none hover:text-gray-300"
-          aria-label="Reset zoom"
-        >
-          100%
-        </button>
-      </div>
+        </div>
+      )}
+      <div id={containerId.current} className="h-full w-full" />
     </div>
   );
 }
