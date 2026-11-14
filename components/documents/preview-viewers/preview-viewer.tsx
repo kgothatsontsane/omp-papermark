@@ -26,7 +26,7 @@ export function PreviewViewer({ documentData, onClose }: PreviewViewerProps) {
     }
 
     // Excel/CSV files
-    if (documentData.fileType === "sheet" && documentData.sheetData) {
+    if (documentData.fileType === "sheet" && documentData.file) {
       return <PreviewSheetViewer documentData={documentData} onClose={onClose} />;
     }
 
